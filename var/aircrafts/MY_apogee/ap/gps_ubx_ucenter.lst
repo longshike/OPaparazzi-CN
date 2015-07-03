@@ -1,0 +1,2541 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"gps_ubx_ucenter.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.gps_ubx_ucenter_config_port_poll,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	gps_ubx_ucenter_config_port_poll:
+  25              	.LFB337:
+  26              		.file 1 "modules/gps/gps_ubx_ucenter.c"
+   1:modules/gps/gps_ubx_ucenter.c **** /*
+   2:modules/gps/gps_ubx_ucenter.c ****  * Copyright (C) 2008-2011 The Paparazzi Team
+   3:modules/gps/gps_ubx_ucenter.c ****  *
+   4:modules/gps/gps_ubx_ucenter.c ****  * This file is part of paparazzi.
+   5:modules/gps/gps_ubx_ucenter.c ****  *
+   6:modules/gps/gps_ubx_ucenter.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:modules/gps/gps_ubx_ucenter.c ****  * it under the terms of the GNU General Public License as published by
+   8:modules/gps/gps_ubx_ucenter.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:modules/gps/gps_ubx_ucenter.c ****  * any later version.
+  10:modules/gps/gps_ubx_ucenter.c ****  *
+  11:modules/gps/gps_ubx_ucenter.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:modules/gps/gps_ubx_ucenter.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:modules/gps/gps_ubx_ucenter.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:modules/gps/gps_ubx_ucenter.c ****  * GNU General Public License for more details.
+  15:modules/gps/gps_ubx_ucenter.c ****  *
+  16:modules/gps/gps_ubx_ucenter.c ****  * You should have received a copy of the GNU General Public License
+  17:modules/gps/gps_ubx_ucenter.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:modules/gps/gps_ubx_ucenter.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:modules/gps/gps_ubx_ucenter.c ****  * Boston, MA 02111-1307, USA.
+  20:modules/gps/gps_ubx_ucenter.c ****  *
+  21:modules/gps/gps_ubx_ucenter.c ****  * Initial author: C. De Wagter
+  22:modules/gps/gps_ubx_ucenter.c ****  */
+  23:modules/gps/gps_ubx_ucenter.c **** 
+  24:modules/gps/gps_ubx_ucenter.c **** /**
+  25:modules/gps/gps_ubx_ucenter.c ****  * @file modules/gps/gps_ubx_ucenter.c
+  26:modules/gps/gps_ubx_ucenter.c ****  * @brief Configure Ublox GPS
+  27:modules/gps/gps_ubx_ucenter.c ****  *
+  28:modules/gps/gps_ubx_ucenter.c ****  */
+  29:modules/gps/gps_ubx_ucenter.c **** 
+  30:modules/gps/gps_ubx_ucenter.c **** #include "modules/gps/gps_ubx_ucenter.h"
+  31:modules/gps/gps_ubx_ucenter.c **** #include "subsystems/gps/gps_ubx.h"
+  32:modules/gps/gps_ubx_ucenter.c **** #include "ubx_protocol.h"
+  33:modules/gps/gps_ubx_ucenter.c **** #include "subsystems/datalink/downlink.h"
+  34:modules/gps/gps_ubx_ucenter.c **** #include <stdio.h>
+  35:modules/gps/gps_ubx_ucenter.c **** 
+  36:modules/gps/gps_ubx_ucenter.c **** #if PRINT_DEBUG_GPS_UBX_UCENTER
+  37:modules/gps/gps_ubx_ucenter.c **** #define DEBUG_PRINT(...) printf(__VA_ARGS__)
+  38:modules/gps/gps_ubx_ucenter.c **** #else
+  39:modules/gps/gps_ubx_ucenter.c **** #define DEBUG_PRINT(...) {}
+  40:modules/gps/gps_ubx_ucenter.c **** #endif
+  41:modules/gps/gps_ubx_ucenter.c **** 
+  42:modules/gps/gps_ubx_ucenter.c **** //////////////////////////////////////////////////////////////////////////////////////
+  43:modules/gps/gps_ubx_ucenter.c **** //////////////////////////////////////////////////////////////////////////////////////
+  44:modules/gps/gps_ubx_ucenter.c **** //
+  45:modules/gps/gps_ubx_ucenter.c **** // UCENTER: init, periodic and event
+  46:modules/gps/gps_ubx_ucenter.c **** 
+  47:modules/gps/gps_ubx_ucenter.c **** static bool_t gps_ubx_ucenter_autobaud(uint8_t nr);
+  48:modules/gps/gps_ubx_ucenter.c **** static bool_t gps_ubx_ucenter_configure(uint8_t nr);
+  49:modules/gps/gps_ubx_ucenter.c **** 
+  50:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_STATUS_STOPPED    0
+  51:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_STATUS_AUTOBAUD   1
+  52:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_STATUS_CONFIG     2
+  53:modules/gps/gps_ubx_ucenter.c **** 
+  54:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_REPLY_NONE        0
+  55:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_REPLY_ACK         1
+  56:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_REPLY_NACK        2
+  57:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_REPLY_VERSION     3
+  58:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_REPLY_CFG_PRT     4
+  59:modules/gps/gps_ubx_ucenter.c **** 
+  60:modules/gps/gps_ubx_ucenter.c **** // All U-Center data
+  61:modules/gps/gps_ubx_ucenter.c **** struct gps_ubx_ucenter_struct gps_ubx_ucenter;
+  62:modules/gps/gps_ubx_ucenter.c **** 
+  63:modules/gps/gps_ubx_ucenter.c **** 
+  64:modules/gps/gps_ubx_ucenter.c **** /////////////////////////////
+  65:modules/gps/gps_ubx_ucenter.c **** // Init Function
+  66:modules/gps/gps_ubx_ucenter.c **** 
+  67:modules/gps/gps_ubx_ucenter.c **** void gps_ubx_ucenter_init(void)
+  68:modules/gps/gps_ubx_ucenter.c **** {
+  69:modules/gps/gps_ubx_ucenter.c ****   // Start UCenter
+  70:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.status = GPS_UBX_UCENTER_STATUS_AUTOBAUD;
+  71:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+  72:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.cnt = 0;
+  73:modules/gps/gps_ubx_ucenter.c **** 
+  74:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.baud_init = 0;
+  75:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.baud_run = 0;
+  76:modules/gps/gps_ubx_ucenter.c **** 
+  77:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.sw_ver_h = 0;
+  78:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.sw_ver_l = 0;
+  79:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.hw_ver_h = 0;
+  80:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.hw_ver_l = 0;
+  81:modules/gps/gps_ubx_ucenter.c **** 
+  82:modules/gps/gps_ubx_ucenter.c ****   for (int i = 0; i < GPS_UBX_UCENTER_CONFIG_STEPS; i++) {
+  83:modules/gps/gps_ubx_ucenter.c ****     gps_ubx_ucenter.replies[i] = 0;
+  84:modules/gps/gps_ubx_ucenter.c ****   }
+  85:modules/gps/gps_ubx_ucenter.c **** 
+  86:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.dev = &(GPS_LINK).device;
+  87:modules/gps/gps_ubx_ucenter.c **** }
+  88:modules/gps/gps_ubx_ucenter.c **** 
+  89:modules/gps/gps_ubx_ucenter.c **** 
+  90:modules/gps/gps_ubx_ucenter.c **** /////////////////////////////
+  91:modules/gps/gps_ubx_ucenter.c **** // Periodic Function
+  92:modules/gps/gps_ubx_ucenter.c **** // -time-based configuration
+  93:modules/gps/gps_ubx_ucenter.c **** 
+  94:modules/gps/gps_ubx_ucenter.c **** void gps_ubx_ucenter_periodic(void)
+  95:modules/gps/gps_ubx_ucenter.c **** {
+  96:modules/gps/gps_ubx_ucenter.c ****   switch (gps_ubx_ucenter.status) {
+  97:modules/gps/gps_ubx_ucenter.c ****       // Save processing time inflight
+  98:modules/gps/gps_ubx_ucenter.c ****     case GPS_UBX_UCENTER_STATUS_STOPPED:
+  99:modules/gps/gps_ubx_ucenter.c ****       return;
+ 100:modules/gps/gps_ubx_ucenter.c ****       // Automatically Determine Current Baudrate
+ 101:modules/gps/gps_ubx_ucenter.c ****     case GPS_UBX_UCENTER_STATUS_AUTOBAUD:
+ 102:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter_autobaud(gps_ubx_ucenter.cnt) == FALSE) {
+ 103:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.status = GPS_UBX_UCENTER_STATUS_CONFIG;
+ 104:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt = 0;
+ 105:modules/gps/gps_ubx_ucenter.c **** #if PRINT_DEBUG_GPS_UBX_UCENTER
+ 106:modules/gps/gps_ubx_ucenter.c ****         if (gps_ubx_ucenter.baud_init > 0) {
+ 107:modules/gps/gps_ubx_ucenter.c ****           DEBUG_PRINT("Initial ublox baudrate found: %u\n", gps_ubx_ucenter.baud_init);
+ 108:modules/gps/gps_ubx_ucenter.c ****         } else {
+ 109:modules/gps/gps_ubx_ucenter.c ****           DEBUG_PRINT("WARNING: Unable to determine the ublox baudrate. Autoconfiguration is unlike
+ 110:modules/gps/gps_ubx_ucenter.c ****         }
+ 111:modules/gps/gps_ubx_ucenter.c **** #endif
+ 112:modules/gps/gps_ubx_ucenter.c ****       } else {
+ 113:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt++;
+ 114:modules/gps/gps_ubx_ucenter.c ****       }
+ 115:modules/gps/gps_ubx_ucenter.c ****       break;
+ 116:modules/gps/gps_ubx_ucenter.c ****       // Send Configuration
+ 117:modules/gps/gps_ubx_ucenter.c ****     case GPS_UBX_UCENTER_STATUS_CONFIG:
+ 118:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter_configure(gps_ubx_ucenter.cnt) == FALSE) {
+ 119:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.status = GPS_UBX_UCENTER_STATUS_STOPPED;
+ 120:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt = 0;
+ 121:modules/gps/gps_ubx_ucenter.c ****       } else {
+ 122:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt++;
+ 123:modules/gps/gps_ubx_ucenter.c ****       }
+ 124:modules/gps/gps_ubx_ucenter.c ****       break;
+ 125:modules/gps/gps_ubx_ucenter.c ****     default:
+ 126:modules/gps/gps_ubx_ucenter.c ****       // stop this module now...
+ 127:modules/gps/gps_ubx_ucenter.c ****       // todo
+ 128:modules/gps/gps_ubx_ucenter.c ****       break;
+ 129:modules/gps/gps_ubx_ucenter.c ****   }
+ 130:modules/gps/gps_ubx_ucenter.c **** }
+ 131:modules/gps/gps_ubx_ucenter.c **** 
+ 132:modules/gps/gps_ubx_ucenter.c **** /////////////////////////////
+ 133:modules/gps/gps_ubx_ucenter.c **** // Event Function
+ 134:modules/gps/gps_ubx_ucenter.c **** // -fetch replies: ACK and VERSION info
+ 135:modules/gps/gps_ubx_ucenter.c **** 
+ 136:modules/gps/gps_ubx_ucenter.c **** void gps_ubx_ucenter_event(void)
+ 137:modules/gps/gps_ubx_ucenter.c **** {
+ 138:modules/gps/gps_ubx_ucenter.c ****   // Save processing time inflight
+ 139:modules/gps/gps_ubx_ucenter.c ****   if (gps_ubx_ucenter.status == GPS_UBX_UCENTER_STATUS_STOPPED) {
+ 140:modules/gps/gps_ubx_ucenter.c ****     return;
+ 141:modules/gps/gps_ubx_ucenter.c ****   }
+ 142:modules/gps/gps_ubx_ucenter.c **** 
+ 143:modules/gps/gps_ubx_ucenter.c ****   // Read Configuration Reply's
+ 144:modules/gps/gps_ubx_ucenter.c ****   switch (gps_ubx.msg_class) {
+ 145:modules/gps/gps_ubx_ucenter.c ****     case UBX_ACK_ID:
+ 146:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx.msg_id == UBX_ACK_ACK_ID) {
+ 147:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_ACK;
+ 148:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("ACK\n");
+ 149:modules/gps/gps_ubx_ucenter.c ****       } else {
+ 150:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NACK;
+ 151:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("NACK\n");
+ 152:modules/gps/gps_ubx_ucenter.c ****       }
+ 153:modules/gps/gps_ubx_ucenter.c ****       break;
+ 154:modules/gps/gps_ubx_ucenter.c ****     case UBX_MON_ID:
+ 155:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx.msg_id == UBX_MON_VER_ID) {
+ 156:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_VERSION;
+ 157:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_h = UBX_MON_VER_c(gps_ubx.msg_buf, 0) - '0';
+ 158:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_l = 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 2) - '0');
+ 159:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_l += UBX_MON_VER_c(gps_ubx.msg_buf, 3) - '0';
+ 160:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_h = UBX_MON_VER_c(gps_ubx.msg_buf, 33) - '0';
+ 161:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_h += 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 32) - '0');
+ 162:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_l = UBX_MON_VER_c(gps_ubx.msg_buf, 37) - '0';
+ 163:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_l += 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 36) - '0');
+ 164:modules/gps/gps_ubx_ucenter.c **** 
+ 165:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("ublox sw_ver: %u.%u\n", gps_ubx_ucenter.sw_ver_h, gps_ubx_ucenter.sw_ver_l);
+ 166:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("ublox hw_ver: %u.%u\n", gps_ubx_ucenter.hw_ver_h, gps_ubx_ucenter.hw_ver_l);
+ 167:modules/gps/gps_ubx_ucenter.c ****       }
+ 168:modules/gps/gps_ubx_ucenter.c ****       break;
+ 169:modules/gps/gps_ubx_ucenter.c ****     case UBX_CFG_ID:
+ 170:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx.msg_id == UBX_CFG_PRT_ID) {
+ 171:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_CFG_PRT;
+ 172:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.port_id = UBX_CFG_PRT_PortId(gps_ubx.msg_buf, 0);
+ 173:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_run = UBX_CFG_PRT_Baudrate(gps_ubx.msg_buf, 0);
+ 174:modules/gps/gps_ubx_ucenter.c **** 
+ 175:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("gps_ubx_ucenter.baud_run: %u\n", gps_ubx_ucenter.baud_run);
+ 176:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("gps_ubx_ucenter.port_id: %u\n", gps_ubx_ucenter.port_id);
+ 177:modules/gps/gps_ubx_ucenter.c ****       }
+ 178:modules/gps/gps_ubx_ucenter.c ****       break;
+ 179:modules/gps/gps_ubx_ucenter.c ****     default:
+ 180:modules/gps/gps_ubx_ucenter.c ****       break;
+ 181:modules/gps/gps_ubx_ucenter.c ****   }
+ 182:modules/gps/gps_ubx_ucenter.c **** }
+ 183:modules/gps/gps_ubx_ucenter.c **** 
+ 184:modules/gps/gps_ubx_ucenter.c **** //////////////////////////////////////////////////////////////////////////////////////
+ 185:modules/gps/gps_ubx_ucenter.c **** //////////////////////////////////////////////////////////////////////////////////////
+ 186:modules/gps/gps_ubx_ucenter.c **** //
+ 187:modules/gps/gps_ubx_ucenter.c **** // UCENTER Configuration Functions
+ 188:modules/gps/gps_ubx_ucenter.c **** 
+ 189:modules/gps/gps_ubx_ucenter.c **** /**
+ 190:modules/gps/gps_ubx_ucenter.c ****  * Polls the u-blox port configuration
+ 191:modules/gps/gps_ubx_ucenter.c ****  * When the payload is omitted (zero length), the configuration for the incoming
+ 192:modules/gps/gps_ubx_ucenter.c ****  * (currently used) port is reported.
+ 193:modules/gps/gps_ubx_ucenter.c ****  *
+ 194:modules/gps/gps_ubx_ucenter.c ****  */
+ 195:modules/gps/gps_ubx_ucenter.c **** static inline void gps_ubx_ucenter_config_port_poll(void)
+ 196:modules/gps/gps_ubx_ucenter.c **** {
+  27              		.loc 1 196 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 10B5     		push	{r4, lr}
+  32              		.cfi_def_cfa_offset 8
+  33              		.cfi_offset 4, -8
+  34              		.cfi_offset 14, -4
+ 197:modules/gps/gps_ubx_ucenter.c ****   UbxSend_CFG_PRT_POLL(gps_ubx_ucenter.dev);
+  35              		.loc 1 197 0
+  36 0002 064B     		ldr	r3, .L2
+  37 0004 9C6A     		ldr	r4, [r3, #40]
+  38              	.LVL0:
+  39              	.LBB4:
+  40              	.LBB5:
+  41              		.file 2 "/home/dino/paparazzi/var/include/ubx_protocol.h"
+   1:/home/dino/paparazzi/var/include/ubx_protocol.h **** /* Generated by gen_ubx from /home/dino/paparazzi/conf/ubx.xml */
+   2:/home/dino/paparazzi/var/include/ubx_protocol.h **** /* Please DO NOT EDIT */
+   3:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+   4:/home/dino/paparazzi/var/include/ubx_protocol.h **** #include "mcu_periph/link_device.h"
+   5:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+   6:/home/dino/paparazzi/var/include/ubx_protocol.h **** #include "subsystems/gps/gps_ubx.h"
+   7:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+   8:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_SYNC1 0xB5
+   9:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_SYNC2 0x62
+  10:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  11:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_ID 0x01
+  12:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  13:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_ID 0x02
+  14:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+  15:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_LON(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_pay
+  16:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_LAT(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_pay
+  17:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_HEIGHT(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx
+  18:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_HMSL(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx_p
+  19:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_Hacc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+20)|*((uint8_t*)_ubx_
+  20:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSLLH_Vacc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+24)|*((uint8_t*)_ubx_
+  21:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  22:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_POSLLH(struct link_device *dev, uint32_t itow, int32_t lon, int32_t 
+  23:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_POSLLH_ID, 28);
+  24:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+  25:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _lon = lon; ubx_send_bytes(dev, 4, (uint8_t*)&_lon);
+  26:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _lat = lat; ubx_send_bytes(dev, 4, (uint8_t*)&_lat);
+  27:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _height = height; ubx_send_bytes(dev, 4, (uint8_t*)&_height);
+  28:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _hmsl = hmsl; ubx_send_bytes(dev, 4, (uint8_t*)&_hmsl);
+  29:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _hacc = hacc; ubx_send_bytes(dev, 4, (uint8_t*)&_hacc);
+  30:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _vacc = vacc; ubx_send_bytes(dev, 4, (uint8_t*)&_vacc);
+  31:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+  32:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+  33:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  34:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_ID 0x04
+  35:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_payl
+  36:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_GDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_payl
+  37:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_PDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+6)|*((uint8_t*)_ubx_payl
+  38:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_TDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_payl
+  39:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_VDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+10)|*((uint8_t*)_ubx_pay
+  40:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_HDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_pay
+  41:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_NDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+14)|*((uint8_t*)_ubx_pay
+  42:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_DOP_EDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx_pay
+  43:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  44:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_DOP(struct link_device *dev, uint32_t itow, uint16_t gdop, uint16_t 
+  45:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_DOP_ID, 18);
+  46:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+  47:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _gdop = gdop; ubx_send_bytes(dev, 2, (uint8_t*)&_gdop);
+  48:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pdop = pdop; ubx_send_bytes(dev, 2, (uint8_t*)&_pdop);
+  49:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tdop = tdop; ubx_send_bytes(dev, 2, (uint8_t*)&_tdop);
+  50:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _vdop = vdop; ubx_send_bytes(dev, 2, (uint8_t*)&_vdop);
+  51:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _hdop = hdop; ubx_send_bytes(dev, 2, (uint8_t*)&_hdop);
+  52:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _ndop = ndop; ubx_send_bytes(dev, 2, (uint8_t*)&_ndop);
+  53:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _edop = edop; ubx_send_bytes(dev, 2, (uint8_t*)&_edop);
+  54:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+  55:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+  56:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  57:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ID 0x06
+  58:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_payl
+  59:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_Frac(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_paylo
+  60:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_week(_ubx_payload) (int16_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_paylo
+  61:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_GPSfix(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+10))
+  62:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_Flags(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+11))
+  63:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEF_X(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_pa
+  64:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEF_Y(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx_pa
+  65:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEF_Z(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+20)|*((uint8_t*)_ubx_pa
+  66:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_Pacc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+24)|*((uint8_t*)_ubx_pay
+  67:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEFVX(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+28)|*((uint8_t*)_ubx_pa
+  68:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEFVY(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+32)|*((uint8_t*)_ubx_pa
+  69:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_ECEFVZ(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+36)|*((uint8_t*)_ubx_pa
+  70:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_Sacc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+40)|*((uint8_t*)_ubx_pay
+  71:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_PDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+44)|*((uint8_t*)_ubx_pay
+  72:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_res1(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+46))
+  73:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_numSV(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+47))
+  74:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SOL_res2(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+48)|*((uint8_t*)_ubx_pay
+  75:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  76:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_SOL(struct link_device *dev, uint32_t itow, int32_t frac, int16_t we
+  77:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_SOL_ID, 52);
+  78:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+  79:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _frac = frac; ubx_send_bytes(dev, 4, (uint8_t*)&_frac);
+  80:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int16_t _week = week; ubx_send_bytes(dev, 2, (uint8_t*)&_week);
+  81:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _gpsfix = gpsfix; ubx_send_bytes(dev, 1, (uint8_t*)&_gpsfix);
+  82:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _flags = flags; ubx_send_bytes(dev, 1, (uint8_t*)&_flags);
+  83:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecef_x = ecef_x; ubx_send_bytes(dev, 4, (uint8_t*)&_ecef_x);
+  84:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecef_y = ecef_y; ubx_send_bytes(dev, 4, (uint8_t*)&_ecef_y);
+  85:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecef_z = ecef_z; ubx_send_bytes(dev, 4, (uint8_t*)&_ecef_z);
+  86:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _pacc = pacc; ubx_send_bytes(dev, 4, (uint8_t*)&_pacc);
+  87:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecefvx = ecefvx; ubx_send_bytes(dev, 4, (uint8_t*)&_ecefvx);
+  88:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecefvy = ecefvy; ubx_send_bytes(dev, 4, (uint8_t*)&_ecefvy);
+  89:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _ecefvz = ecefvz; ubx_send_bytes(dev, 4, (uint8_t*)&_ecefvz);
+  90:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _sacc = sacc; ubx_send_bytes(dev, 4, (uint8_t*)&_sacc);
+  91:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pdop = pdop; ubx_send_bytes(dev, 2, (uint8_t*)&_pdop);
+  92:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res1 = res1; ubx_send_bytes(dev, 1, (uint8_t*)&_res1);
+  93:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _numsv = numsv; ubx_send_bytes(dev, 1, (uint8_t*)&_numsv);
+  94:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res2 = res2; ubx_send_bytes(dev, 4, (uint8_t*)&_res2);
+  95:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+  96:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+  97:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+  98:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_ID 0x08
+  99:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+ 100:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_EAST(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_pa
+ 101:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_NORTH(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_p
+ 102:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_ALT(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_pa
+ 103:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_ZONE(_ubx_payload) (int8_t)(*((uint8_t*)_ubx_payload+16))
+ 104:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_POSUTM_HEM(_ubx_payload) (int8_t)(*((uint8_t*)_ubx_payload+17))
+ 105:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 106:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_POSUTM(struct link_device *dev, uint32_t itow, int32_t east, int32_t
+ 107:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_POSUTM_ID, 18);
+ 108:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+ 109:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _east = east; ubx_send_bytes(dev, 4, (uint8_t*)&_east);
+ 110:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _north = north; ubx_send_bytes(dev, 4, (uint8_t*)&_north);
+ 111:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _alt = alt; ubx_send_bytes(dev, 4, (uint8_t*)&_alt);
+ 112:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _zone = zone; ubx_send_bytes(dev, 1, (uint8_t*)&_zone);
+ 113:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _hem = hem; ubx_send_bytes(dev, 1, (uint8_t*)&_hem);
+ 114:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 115:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 116:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 117:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_ID 0x03
+ 118:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+ 119:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_GPSfix(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+4))
+ 120:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_Flags(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+5))
+ 121:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_DiffS(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+6))
+ 122:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_res(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+7))
+ 123:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_TTFF(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_p
+ 124:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_STATUS_MSSS(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_
+ 125:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 126:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_STATUS(struct link_device *dev, uint32_t itow, uint8_t gpsfix, uint8
+ 127:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_STATUS_ID, 16);
+ 128:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+ 129:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _gpsfix = gpsfix; ubx_send_bytes(dev, 1, (uint8_t*)&_gpsfix);
+ 130:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _flags = flags; ubx_send_bytes(dev, 1, (uint8_t*)&_flags);
+ 131:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _diffs = diffs; ubx_send_bytes(dev, 1, (uint8_t*)&_diffs);
+ 132:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res = res; ubx_send_bytes(dev, 1, (uint8_t*)&_res);
+ 133:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _ttff = ttff; ubx_send_bytes(dev, 4, (uint8_t*)&_ttff);
+ 134:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _msss = msss; ubx_send_bytes(dev, 4, (uint8_t*)&_msss);
+ 135:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 136:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 137:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 138:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_ID 0x12
+ 139:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+ 140:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_VEL_N(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_p
+ 141:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_VEL_E(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx_p
+ 142:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_VEL_D(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_
+ 143:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_Speed(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx
+ 144:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_GSpeed(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+20)|*((uint8_t*)_ub
+ 145:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_Heading(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+24)|*((uint8_t*)_ub
+ 146:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_SAcc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+28)|*((uint8_t*)_ubx_
+ 147:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_VELNED_CAcc(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+32)|*((uint8_t*)_ubx_
+ 148:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 149:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_VELNED(struct link_device *dev, uint32_t itow, int32_t vel_n, int32_
+ 150:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_VELNED_ID, 36);
+ 151:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+ 152:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _vel_n = vel_n; ubx_send_bytes(dev, 4, (uint8_t*)&_vel_n);
+ 153:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _vel_e = vel_e; ubx_send_bytes(dev, 4, (uint8_t*)&_vel_e);
+ 154:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _vel_d = vel_d; ubx_send_bytes(dev, 4, (uint8_t*)&_vel_d);
+ 155:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _speed = speed; ubx_send_bytes(dev, 4, (uint8_t*)&_speed);
+ 156:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _gspeed = gspeed; ubx_send_bytes(dev, 4, (uint8_t*)&_gspeed);
+ 157:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _heading = heading; ubx_send_bytes(dev, 4, (uint8_t*)&_heading);
+ 158:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _sacc = sacc; ubx_send_bytes(dev, 4, (uint8_t*)&_sacc);
+ 159:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _cacc = cacc; ubx_send_bytes(dev, 4, (uint8_t*)&_cacc);
+ 160:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 161:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 162:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 163:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_ID 0x30
+ 164:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_ITOW(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+ 165:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_NCH(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+4))
+ 166:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_RES1(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+5))
+ 167:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_RES2(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+6)|*((uint8_t*)_ubx_p
+ 168:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_chn(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+8+12*_ubx_bl
+ 169:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_SVID(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+9+12*_ubx_b
+ 170:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_Flags(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+10+12*_ubx
+ 171:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_QI(_ubx_payload,_ubx_block) (int8_t)(*((uint8_t*)_ubx_payload+11+12*_ubx_blo
+ 172:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_CNO(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+12+12*_ubx_b
+ 173:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_Elev(_ubx_payload,_ubx_block) (int8_t)(*((uint8_t*)_ubx_payload+13+12*_ubx_b
+ 174:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_Azim(_ubx_payload,_ubx_block) (int16_t)(*((uint8_t*)_ubx_payload+14+12*_ubx_
+ 175:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_NAV_SVINFO_PRRes(_ubx_payload,_ubx_block) (int32_t)(*((uint8_t*)_ubx_payload+16+12*_ubx
+ 176:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 177:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_NAV_SVINFO(struct link_device *dev, uint32_t itow, uint8_t nch, uint8_t 
+ 178:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_NAV_ID, UBX_NAV_SVINFO_ID, 20);
+ 179:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+ 180:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _nch = nch; ubx_send_bytes(dev, 1, (uint8_t*)&_nch);
+ 181:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res1 = res1; ubx_send_bytes(dev, 1, (uint8_t*)&_res1);
+ 182:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _res2 = res2; ubx_send_bytes(dev, 2, (uint8_t*)&_res2);
+ 183:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _chn = chn; ubx_send_bytes(dev, 1, (uint8_t*)&_chn);
+ 184:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _svid = svid; ubx_send_bytes(dev, 1, (uint8_t*)&_svid);
+ 185:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _flags = flags; ubx_send_bytes(dev, 1, (uint8_t*)&_flags);
+ 186:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _qi = qi; ubx_send_bytes(dev, 1, (uint8_t*)&_qi);
+ 187:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _cno = cno; ubx_send_bytes(dev, 1, (uint8_t*)&_cno);
+ 188:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _elev = elev; ubx_send_bytes(dev, 1, (uint8_t*)&_elev);
+ 189:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int16_t _azim = azim; ubx_send_bytes(dev, 2, (uint8_t*)&_azim);
+ 190:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _prres = prres; ubx_send_bytes(dev, 4, (uint8_t*)&_prres);
+ 191:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 192:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 193:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 194:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_ID 0x06
+ 195:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 196:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_ID 0x00
+ 197:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_PortId(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+0+20*_ubx_bl
+ 198:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_ReS0(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+1+20*_ubx_bloc
+ 199:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_ReS1(_ubx_payload,_ubx_block) (uint16_t)(*((uint8_t*)_ubx_payload+2+20*_ubx_blo
+ 200:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_Mode(_ubx_payload,_ubx_block) (uint32_t)(*((uint8_t*)_ubx_payload+4+20*_ubx_blo
+ 201:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_Baudrate(_ubx_payload,_ubx_block) (uint32_t)(*((uint8_t*)_ubx_payload+8+20*_ubx
+ 202:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_In_proto_mask(_ubx_payload,_ubx_block) (uint16_t)(*((uint8_t*)_ubx_payload+12+2
+ 203:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_Out_proto_mask(_ubx_payload,_ubx_block) (uint16_t)(*((uint8_t*)_ubx_payload+14+
+ 204:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_Flags(_ubx_payload,_ubx_block) (uint16_t)(*((uint8_t*)_ubx_payload+16+20*_ubx_b
+ 205:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_Res2(_ubx_payload,_ubx_block) (uint16_t)(*((uint8_t*)_ubx_payload+18+20*_ubx_bl
+ 206:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 207:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_PRT(struct link_device *dev, uint8_t portid, uint8_t res0, uint16_t 
+ 208:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_PRT_ID, 20);
+ 209:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _portid = portid; ubx_send_bytes(dev, 1, (uint8_t*)&_portid);
+ 210:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res0 = res0; ubx_send_bytes(dev, 1, (uint8_t*)&_res0);
+ 211:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _res1 = res1; ubx_send_bytes(dev, 2, (uint8_t*)&_res1);
+ 212:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _mode = mode; ubx_send_bytes(dev, 4, (uint8_t*)&_mode);
+ 213:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _baudrate = baudrate; ubx_send_bytes(dev, 4, (uint8_t*)&_baudrate);
+ 214:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _in_proto_mask = in_proto_mask; ubx_send_bytes(dev, 2, (uint8_t*)&_in_proto_mask);
+ 215:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _out_proto_mask = out_proto_mask; ubx_send_bytes(dev, 2, (uint8_t*)&_out_proto_mask);
+ 216:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _flags = flags; ubx_send_bytes(dev, 2, (uint8_t*)&_flags);
+ 217:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _res2 = res2; ubx_send_bytes(dev, 2, (uint8_t*)&_res2);
+ 218:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 219:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 220:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 221:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_PRT_POLL_ID 0x00
+ 222:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 223:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_PRT_POLL(struct link_device *dev) {
+ 224:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_PRT_POLL_ID, 0);
+  42              		.loc 2 224 0
+  43 0006 0022     		movs	r2, #0
+  44 0008 2046     		mov	r0, r4
+  45 000a 0621     		movs	r1, #6
+  46 000c 1346     		mov	r3, r2
+  47 000e FFF7FEFF 		bl	ubx_header
+  48              	.LVL1:
+ 225:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+  49              		.loc 2 225 0
+  50 0012 2046     		mov	r0, r4
+  51              	.LBE5:
+  52              	.LBE4:
+ 198:modules/gps/gps_ubx_ucenter.c **** }
+  53              		.loc 1 198 0
+  54 0014 BDE81040 		pop	{r4, lr}
+  55              		.cfi_restore 14
+  56              		.cfi_restore 4
+  57              		.cfi_def_cfa_offset 0
+  58              	.LVL2:
+  59              	.LBB7:
+  60              	.LBB6:
+  61              		.loc 2 225 0
+  62 0018 FFF7FEBF 		b	ubx_trailer
+  63              	.LVL3:
+  64              	.L3:
+  65              		.align	2
+  66              	.L2:
+  67 001c 00000000 		.word	.LANCHOR0
+  68              	.LBE6:
+  69              	.LBE7:
+  70              		.cfi_endproc
+  71              	.LFE337:
+  73              		.section	.text.gps_ubx_ucenter_enable_msg.constprop.0,"ax",%progbits
+  74              		.align	1
+  75              		.thumb
+  76              		.thumb_func
+  78              	gps_ubx_ucenter_enable_msg.constprop.0:
+  79              	.LFB351:
+ 199:modules/gps/gps_ubx_ucenter.c **** 
+ 200:modules/gps/gps_ubx_ucenter.c **** /**
+ 201:modules/gps/gps_ubx_ucenter.c ****  * Enable u-blox message at desired period.  Will enable the message on the port
+ 202:modules/gps/gps_ubx_ucenter.c ****  * that this command is received on. For example, sending this configuration message
+ 203:modules/gps/gps_ubx_ucenter.c ****  * over UART1 will cause the desired message to be published on UART1.
+ 204:modules/gps/gps_ubx_ucenter.c ****  *
+ 205:modules/gps/gps_ubx_ucenter.c ****  * For more information on u-blox messages, see the protocol specification.
+ 206:modules/gps/gps_ubx_ucenter.c ****  * http://www.ublox.com/en/download/documents-a-resources.html
+ 207:modules/gps/gps_ubx_ucenter.c ****  *
+ 208:modules/gps/gps_ubx_ucenter.c ****  * @param class u-blox message class
+ 209:modules/gps/gps_ubx_ucenter.c ****  * @param id u-blox message ID
+ 210:modules/gps/gps_ubx_ucenter.c ****  * @param rate Desired period to send message. Example: Setting 3 would send the message on every 3
+ 211:modules/gps/gps_ubx_ucenter.c ****  */
+ 212:modules/gps/gps_ubx_ucenter.c **** static inline void gps_ubx_ucenter_enable_msg(uint8_t class, uint8_t id, uint8_t rate)
+  80              		.loc 1 212 0
+  81              		.cfi_startproc
+  82              		@ args = 0, pretend = 0, frame = 8
+  83              		@ frame_needed = 0, uses_anonymous_args = 0
+  84              	.LVL4:
+  85 0000 F7B5     		push	{r0, r1, r2, r4, r5, r6, r7, lr}
+  86              		.cfi_def_cfa_offset 32
+  87              		.cfi_offset 4, -20
+  88              		.cfi_offset 5, -16
+  89              		.cfi_offset 6, -12
+  90              		.cfi_offset 7, -8
+  91              		.cfi_offset 14, -4
+ 213:modules/gps/gps_ubx_ucenter.c **** {
+ 214:modules/gps/gps_ubx_ucenter.c ****   UbxSend_CFG_MSG(gps_ubx_ucenter.dev, class, id, rate);
+  92              		.loc 1 214 0
+  93 0002 124B     		ldr	r3, .L5
+  94 0004 9C6A     		ldr	r4, [r3, #40]
+  95              	.LVL5:
+ 212:modules/gps/gps_ubx_ucenter.c **** {
+  96              		.loc 1 212 0
+  97 0006 0746     		mov	r7, r0
+  98              	.LVL6:
+  99              	.LBB10:
+ 100              	.LBB11:
+ 226:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 227:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 228:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_MSG_ID 0x01
+ 229:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_MSG_Class(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 230:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_MSG_MsgId(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 231:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_MSG_Rate(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+2))
+ 232:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 233:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_MSG(struct link_device *dev, uint8_t class, uint8_t msgid, uint8_t r
+ 234:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_MSG_ID, 3);
+ 101              		.loc 2 234 0
+ 102 0008 0323     		movs	r3, #3
+ 103              	.LBE11:
+ 104              	.LBE10:
+ 212:modules/gps/gps_ubx_ucenter.c **** {
+ 105              		.loc 1 212 0
+ 106 000a 0E46     		mov	r6, r1
+ 107              	.LVL7:
+ 108              	.LBB13:
+ 109              	.LBB12:
+ 110              		.loc 2 234 0
+ 111 000c 2046     		mov	r0, r4
+ 112              	.LVL8:
+ 113 000e 0621     		movs	r1, #6
+ 114              	.LVL9:
+ 115 0010 0122     		movs	r2, #1
+ 116 0012 FFF7FEFF 		bl	ubx_header
+ 117              	.LVL10:
+ 235:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _class = class; ubx_send_bytes(dev, 1, (uint8_t*)&_class);
+ 118              		.loc 2 235 0
+ 119 0016 02AA     		add	r2, sp, #8
+ 120 0018 0125     		movs	r5, #1
+ 121 001a 02F8035D 		strb	r5, [r2, #-3]!
+ 122 001e 2046     		mov	r0, r4
+ 123 0020 2946     		mov	r1, r5
+ 124 0022 FFF7FEFF 		bl	ubx_send_bytes
+ 125              	.LVL11:
+ 236:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _msgid = msgid; ubx_send_bytes(dev, 1, (uint8_t*)&_msgid);
+ 126              		.loc 2 236 0
+ 127 0026 02AA     		add	r2, sp, #8
+ 128 0028 2046     		mov	r0, r4
+ 129 002a 02F8027D 		strb	r7, [r2, #-2]!
+ 130 002e 2946     		mov	r1, r5
+ 131 0030 FFF7FEFF 		bl	ubx_send_bytes
+ 132              	.LVL12:
+ 237:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _rate = rate; ubx_send_bytes(dev, 1, (uint8_t*)&_rate);
+ 133              		.loc 2 237 0
+ 134 0034 02AA     		add	r2, sp, #8
+ 135 0036 2046     		mov	r0, r4
+ 136 0038 02F8016D 		strb	r6, [r2, #-1]!
+ 137 003c 2946     		mov	r1, r5
+ 138 003e FFF7FEFF 		bl	ubx_send_bytes
+ 139              	.LVL13:
+ 238:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 140              		.loc 2 238 0
+ 141 0042 2046     		mov	r0, r4
+ 142 0044 FFF7FEFF 		bl	ubx_trailer
+ 143              	.LVL14:
+ 144              	.LBE12:
+ 145              	.LBE13:
+ 215:modules/gps/gps_ubx_ucenter.c **** }
+ 146              		.loc 1 215 0
+ 147 0048 03B0     		add	sp, sp, #12
+ 148              		.cfi_def_cfa_offset 20
+ 149              		@ sp needed
+ 150 004a F0BD     		pop	{r4, r5, r6, r7, pc}
+ 151              	.LVL15:
+ 152              	.L6:
+ 153              		.align	2
+ 154              	.L5:
+ 155 004c 00000000 		.word	.LANCHOR0
+ 156              		.cfi_endproc
+ 157              	.LFE351:
+ 159              		.section	.text.UbxSend_CFG_PRT.constprop.7,"ax",%progbits
+ 160              		.align	1
+ 161              		.thumb
+ 162              		.thumb_func
+ 164              	UbxSend_CFG_PRT.constprop.7:
+ 165              	.LFB344:
+ 207:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_PRT_ID, 20);
+ 166              		.loc 2 207 0
+ 167              		.cfi_startproc
+ 168              		@ args = 0, pretend = 0, frame = 24
+ 169              		@ frame_needed = 0, uses_anonymous_args = 0
+ 170              	.LVL16:
+ 171 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 172              		.cfi_def_cfa_offset 20
+ 173              		.cfi_offset 4, -20
+ 174              		.cfi_offset 5, -16
+ 175              		.cfi_offset 6, -12
+ 176              		.cfi_offset 7, -8
+ 177              		.cfi_offset 14, -4
+ 178 0002 0D46     		mov	r5, r1
+ 179 0004 87B0     		sub	sp, sp, #28
+ 180              		.cfi_def_cfa_offset 48
+ 207:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_PRT_ID, 20);
+ 181              		.loc 2 207 0
+ 182 0006 1746     		mov	r7, r2
+ 183 0008 1E46     		mov	r6, r3
+ 208:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _portid = portid; ubx_send_bytes(dev, 1, (uint8_t*)&_portid);
+ 184              		.loc 2 208 0
+ 185 000a 0621     		movs	r1, #6
+ 186              	.LVL17:
+ 187 000c 1423     		movs	r3, #20
+ 188              	.LVL18:
+ 189 000e 0022     		movs	r2, #0
+ 190              	.LVL19:
+ 207:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_PRT_ID, 20);
+ 191              		.loc 2 207 0
+ 192 0010 0446     		mov	r4, r0
+ 208:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _portid = portid; ubx_send_bytes(dev, 1, (uint8_t*)&_portid);
+ 193              		.loc 2 208 0
+ 194 0012 FFF7FEFF 		bl	ubx_header
+ 195              	.LVL20:
+ 209:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res0 = res0; ubx_send_bytes(dev, 1, (uint8_t*)&_res0);
+ 196              		.loc 2 209 0
+ 197 0016 06AA     		add	r2, sp, #24
+ 198 0018 2046     		mov	r0, r4
+ 199 001a 02F8145D 		strb	r5, [r2, #-20]!
+ 200 001e 0121     		movs	r1, #1
+ 201 0020 FFF7FEFF 		bl	ubx_send_bytes
+ 202              	.LVL21:
+ 210:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _res1 = res1; ubx_send_bytes(dev, 2, (uint8_t*)&_res1);
+ 203              		.loc 2 210 0
+ 204 0024 06AA     		add	r2, sp, #24
+ 205 0026 0025     		movs	r5, #0
+ 206 0028 02F8135D 		strb	r5, [r2, #-19]!
+ 207 002c 2046     		mov	r0, r4
+ 208 002e 0121     		movs	r1, #1
+ 209 0030 FFF7FEFF 		bl	ubx_send_bytes
+ 210              	.LVL22:
+ 211:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _mode = mode; ubx_send_bytes(dev, 4, (uint8_t*)&_mode);
+ 211              		.loc 2 211 0
+ 212 0034 06AA     		add	r2, sp, #24
+ 213 0036 2046     		mov	r0, r4
+ 214 0038 22F8125D 		strh	r5, [r2, #-18]!	@ movhi
+ 215 003c 0221     		movs	r1, #2
+ 216 003e FFF7FEFF 		bl	ubx_send_bytes
+ 217              	.LVL23:
+ 212:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _baudrate = baudrate; ubx_send_bytes(dev, 4, (uint8_t*)&_baudrate);
+ 218              		.loc 2 212 0
+ 219 0042 06AA     		add	r2, sp, #24
+ 220 0044 2046     		mov	r0, r4
+ 221 0046 42F8087D 		str	r7, [r2, #-8]!
+ 222 004a 0421     		movs	r1, #4
+ 223 004c FFF7FEFF 		bl	ubx_send_bytes
+ 224              	.LVL24:
+ 213:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _in_proto_mask = in_proto_mask; ubx_send_bytes(dev, 2, (uint8_t*)&_in_proto_mask);
+ 225              		.loc 2 213 0
+ 226 0050 06AA     		add	r2, sp, #24
+ 227 0052 2046     		mov	r0, r4
+ 228 0054 42F8046D 		str	r6, [r2, #-4]!
+ 229 0058 0421     		movs	r1, #4
+ 230 005a FFF7FEFF 		bl	ubx_send_bytes
+ 231              	.LVL25:
+ 214:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _out_proto_mask = out_proto_mask; ubx_send_bytes(dev, 2, (uint8_t*)&_out_proto_mask);
+ 232              		.loc 2 214 0
+ 233 005e 06AA     		add	r2, sp, #24
+ 234 0060 0126     		movs	r6, #1
+ 235              	.LVL26:
+ 236 0062 22F8106D 		strh	r6, [r2, #-16]!	@ movhi
+ 237 0066 2046     		mov	r0, r4
+ 238 0068 0221     		movs	r1, #2
+ 239 006a FFF7FEFF 		bl	ubx_send_bytes
+ 240              	.LVL27:
+ 215:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _flags = flags; ubx_send_bytes(dev, 2, (uint8_t*)&_flags);
+ 241              		.loc 2 215 0
+ 242 006e 06AA     		add	r2, sp, #24
+ 243 0070 2046     		mov	r0, r4
+ 244 0072 22F80E6D 		strh	r6, [r2, #-14]!	@ movhi
+ 245 0076 0221     		movs	r1, #2
+ 246 0078 FFF7FEFF 		bl	ubx_send_bytes
+ 247              	.LVL28:
+ 216:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _res2 = res2; ubx_send_bytes(dev, 2, (uint8_t*)&_res2);
+ 248              		.loc 2 216 0
+ 249 007c 06AA     		add	r2, sp, #24
+ 250 007e 2046     		mov	r0, r4
+ 251 0080 22F80C5D 		strh	r5, [r2, #-12]!	@ movhi
+ 252 0084 0221     		movs	r1, #2
+ 253 0086 FFF7FEFF 		bl	ubx_send_bytes
+ 254              	.LVL29:
+ 217:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 255              		.loc 2 217 0
+ 256 008a 06AA     		add	r2, sp, #24
+ 257 008c 2046     		mov	r0, r4
+ 258 008e 22F80A5D 		strh	r5, [r2, #-10]!	@ movhi
+ 259 0092 0221     		movs	r1, #2
+ 260 0094 FFF7FEFF 		bl	ubx_send_bytes
+ 261              	.LVL30:
+ 218:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 262              		.loc 2 218 0
+ 263 0098 2046     		mov	r0, r4
+ 264 009a FFF7FEFF 		bl	ubx_trailer
+ 265              	.LVL31:
+ 219:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 266              		.loc 2 219 0
+ 267 009e 07B0     		add	sp, sp, #28
+ 268              		.cfi_def_cfa_offset 20
+ 269              		@ sp needed
+ 270 00a0 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 271              		.cfi_endproc
+ 272              	.LFE344:
+ 274              		.section	.text.gps_ubx_ucenter_init,"ax",%progbits
+ 275              		.align	1
+ 276              		.global	gps_ubx_ucenter_init
+ 277              		.thumb
+ 278              		.thumb_func
+ 280              	gps_ubx_ucenter_init:
+ 281              	.LFB334:
+  68:modules/gps/gps_ubx_ucenter.c ****   // Start UCenter
+ 282              		.loc 1 68 0
+ 283              		.cfi_startproc
+ 284              		@ args = 0, pretend = 0, frame = 0
+ 285              		@ frame_needed = 0, uses_anonymous_args = 0
+ 286              		@ link register save eliminated.
+  70:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 287              		.loc 1 70 0
+ 288 0000 0A4A     		ldr	r2, .L12
+ 289 0002 0123     		movs	r3, #1
+ 290 0004 1370     		strb	r3, [r2]
+  71:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.cnt = 0;
+ 291              		.loc 1 71 0
+ 292 0006 0023     		movs	r3, #0
+ 293 0008 5370     		strb	r3, [r2, #1]
+  72:modules/gps/gps_ubx_ucenter.c **** 
+ 294              		.loc 1 72 0
+ 295 000a 9370     		strb	r3, [r2, #2]
+  74:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.baud_run = 0;
+ 296              		.loc 1 74 0
+ 297 000c 5360     		str	r3, [r2, #4]
+  75:modules/gps/gps_ubx_ucenter.c **** 
+ 298              		.loc 1 75 0
+ 299 000e 9360     		str	r3, [r2, #8]
+  77:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.sw_ver_l = 0;
+ 300              		.loc 1 77 0
+ 301 0010 1373     		strb	r3, [r2, #12]
+  78:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.hw_ver_h = 0;
+ 302              		.loc 1 78 0
+ 303 0012 5373     		strb	r3, [r2, #13]
+  79:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.hw_ver_l = 0;
+ 304              		.loc 1 79 0
+ 305 0014 D381     		strh	r3, [r2, #14]	@ movhi
+  80:modules/gps/gps_ubx_ucenter.c **** 
+ 306              		.loc 1 80 0
+ 307 0016 1382     		strh	r3, [r2, #16]	@ movhi
+ 308              	.LVL32:
+ 309              	.L9:
+ 310 0018 D118     		adds	r1, r2, r3
+ 311              	.LBB14:
+  82:modules/gps/gps_ubx_ucenter.c ****     gps_ubx_ucenter.replies[i] = 0;
+ 312              		.loc 1 82 0 discriminator 3
+ 313 001a 0133     		adds	r3, r3, #1
+ 314              	.LVL33:
+  83:modules/gps/gps_ubx_ucenter.c ****   }
+ 315              		.loc 1 83 0 discriminator 3
+ 316 001c 0020     		movs	r0, #0
+  82:modules/gps/gps_ubx_ucenter.c ****     gps_ubx_ucenter.replies[i] = 0;
+ 317              		.loc 1 82 0 discriminator 3
+ 318 001e 132B     		cmp	r3, #19
+  83:modules/gps/gps_ubx_ucenter.c ****   }
+ 319              		.loc 1 83 0 discriminator 3
+ 320 0020 C874     		strb	r0, [r1, #19]
+  82:modules/gps/gps_ubx_ucenter.c ****     gps_ubx_ucenter.replies[i] = 0;
+ 321              		.loc 1 82 0 discriminator 3
+ 322 0022 F9D1     		bne	.L9
+ 323              	.LBE14:
+  86:modules/gps/gps_ubx_ucenter.c **** }
+ 324              		.loc 1 86 0
+ 325 0024 014B     		ldr	r3, .L12
+ 326              	.LVL34:
+ 327 0026 024A     		ldr	r2, .L12+4
+ 328 0028 9A62     		str	r2, [r3, #40]
+ 329 002a 7047     		bx	lr
+ 330              	.L13:
+ 331              		.align	2
+ 332              	.L12:
+ 333 002c 00000000 		.word	.LANCHOR0
+ 334 0030 2C010000 		.word	uart4+300
+ 335              		.cfi_endproc
+ 336              	.LFE334:
+ 338              		.section	.text.gps_ubx_ucenter_periodic,"ax",%progbits
+ 339              		.align	1
+ 340              		.global	gps_ubx_ucenter_periodic
+ 341              		.thumb
+ 342              		.thumb_func
+ 344              	gps_ubx_ucenter_periodic:
+ 345              	.LFB335:
+  95:modules/gps/gps_ubx_ucenter.c ****   switch (gps_ubx_ucenter.status) {
+ 346              		.loc 1 95 0
+ 347              		.cfi_startproc
+ 348              		@ args = 0, pretend = 0, frame = 48
+ 349              		@ frame_needed = 0, uses_anonymous_args = 0
+ 350 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 351              		.cfi_def_cfa_offset 32
+ 352              		.cfi_offset 4, -32
+ 353              		.cfi_offset 5, -28
+ 354              		.cfi_offset 6, -24
+ 355              		.cfi_offset 7, -20
+ 356              		.cfi_offset 8, -16
+ 357              		.cfi_offset 9, -12
+ 358              		.cfi_offset 10, -8
+ 359              		.cfi_offset 14, -4
+  96:modules/gps/gps_ubx_ucenter.c ****       // Save processing time inflight
+ 360              		.loc 1 96 0
+ 361 0004 B04C     		ldr	r4, .L69
+ 362 0006 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 363 0008 012B     		cmp	r3, #1
+  95:modules/gps/gps_ubx_ucenter.c ****   switch (gps_ubx_ucenter.status) {
+ 364              		.loc 1 95 0
+ 365 000a 8CB0     		sub	sp, sp, #48
+ 366              		.cfi_def_cfa_offset 80
+  96:modules/gps/gps_ubx_ucenter.c ****       // Save processing time inflight
+ 367              		.loc 1 96 0
+ 368 000c 02D0     		beq	.L16
+ 369 000e 022B     		cmp	r3, #2
+ 370 0010 4BD0     		beq	.L17
+ 371 0012 61E2     		b	.L14
+ 372              	.L16:
+ 373              	.LVL35:
+ 374              	.LBB37:
+ 375              	.LBB38:
+ 216:modules/gps/gps_ubx_ucenter.c **** 
+ 217:modules/gps/gps_ubx_ucenter.c **** /**
+ 218:modules/gps/gps_ubx_ucenter.c ****  * Automatically determine the baudrate of the u-blox module.
+ 219:modules/gps/gps_ubx_ucenter.c ****  * Only needed when connecting to a UART port on the u-blox.
+ 220:modules/gps/gps_ubx_ucenter.c ****  * The discovered baudrate is copied to gps_ubx_ucenter.baud_init.
+ 221:modules/gps/gps_ubx_ucenter.c ****  *
+ 222:modules/gps/gps_ubx_ucenter.c ****  * @param nr Autobaud step number to perform
+ 223:modules/gps/gps_ubx_ucenter.c ****  * @return FALSE when completed
+ 224:modules/gps/gps_ubx_ucenter.c ****  */
+ 225:modules/gps/gps_ubx_ucenter.c **** static bool_t gps_ubx_ucenter_autobaud(uint8_t nr)
+ 226:modules/gps/gps_ubx_ucenter.c **** {
+ 227:modules/gps/gps_ubx_ucenter.c ****   switch (nr) {
+ 376              		.loc 1 227 0
+ 377 0014 A378     		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 378 0016 023B     		subs	r3, r3, #2
+ 379 0018 052B     		cmp	r3, #5
+ 380 001a 00F25782 		bhi	.L18
+ 381 001e DFE803F0 		tbb	[pc, r3]
+ 382              	.L20:
+ 383 0022 03       		.byte	(.L19-.L20)/2
+ 384 0023 09       		.byte	(.L21-.L20)/2
+ 385 0024 16       		.byte	(.L22-.L20)/2
+ 386 0025 20       		.byte	(.L23-.L20)/2
+ 387 0026 2A       		.byte	(.L24-.L20)/2
+ 388 0027 38       		.byte	(.L25-.L20)/2
+ 389              		.p2align 1
+ 390              	.L19:
+ 228:modules/gps/gps_ubx_ucenter.c ****     case 0:
+ 229:modules/gps/gps_ubx_ucenter.c ****     case 1:
+ 230:modules/gps/gps_ubx_ucenter.c ****       // Very important for some modules:
+ 231:modules/gps/gps_ubx_ucenter.c ****       // Give the GPS some time to boot (up to 0.75 second)
+ 232:modules/gps/gps_ubx_ucenter.c ****       break;
+ 233:modules/gps/gps_ubx_ucenter.c ****     case 2:
+ 234:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 391              		.loc 1 234 0
+ 392 0028 0023     		movs	r3, #0
+ 393 002a 6370     		strb	r3, [r4, #1]
+ 235:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B38400); // Try the most common first?
+ 394              		.loc 1 235 0
+ 395 002c A748     		ldr	r0, .L69+4
+ 396 002e 4FF41641 		mov	r1, #38400
+ 397 0032 29E0     		b	.L67
+ 398              	.L21:
+ 236:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port_poll();
+ 237:modules/gps/gps_ubx_ucenter.c ****       break;
+ 238:modules/gps/gps_ubx_ucenter.c ****     case 3:
+ 239:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply == GPS_UBX_UCENTER_REPLY_ACK) {
+ 399              		.loc 1 239 0
+ 400 0034 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 401 0036 012B     		cmp	r3, #1
+ 402 0038 02D1     		bne	.L26
+ 403              	.L28:
+ 240:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_init = gps_ubx_ucenter.baud_run;
+ 404              		.loc 1 240 0
+ 405 003a A368     		ldr	r3, [r4, #8]
+ 406 003c 6360     		str	r3, [r4, #4]
+ 407 003e 41E2     		b	.L27
+ 408              	.L26:
+ 241:modules/gps/gps_ubx_ucenter.c ****         return FALSE;
+ 242:modules/gps/gps_ubx_ucenter.c ****       }
+ 243:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 409              		.loc 1 243 0
+ 410 0040 A14B     		ldr	r3, .L69
+ 244:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B9600); // Maybe the factory default?
+ 411              		.loc 1 244 0
+ 412 0042 A248     		ldr	r0, .L69+4
+ 243:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B9600); // Maybe the factory default?
+ 413              		.loc 1 243 0
+ 414 0044 0022     		movs	r2, #0
+ 415 0046 5A70     		strb	r2, [r3, #1]
+ 416              		.loc 1 244 0
+ 417 0048 4FF41651 		mov	r1, #9600
+ 418 004c 1CE0     		b	.L67
+ 419              	.L22:
+ 245:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port_poll();
+ 246:modules/gps/gps_ubx_ucenter.c ****       break;
+ 247:modules/gps/gps_ubx_ucenter.c ****     case 4:
+ 248:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply == GPS_UBX_UCENTER_REPLY_ACK) {
+ 420              		.loc 1 248 0
+ 421 004e 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 422 0050 012B     		cmp	r3, #1
+ 423 0052 F2D0     		beq	.L28
+ 249:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_init = gps_ubx_ucenter.baud_run;
+ 250:modules/gps/gps_ubx_ucenter.c ****         return FALSE;
+ 251:modules/gps/gps_ubx_ucenter.c ****       }
+ 252:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 424              		.loc 1 252 0
+ 425 0054 9C4B     		ldr	r3, .L69
+ 253:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B57600); // The high-rate default?
+ 426              		.loc 1 253 0
+ 427 0056 9D48     		ldr	r0, .L69+4
+ 252:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B57600); // The high-rate default?
+ 428              		.loc 1 252 0
+ 429 0058 0022     		movs	r2, #0
+ 430 005a 5A70     		strb	r2, [r3, #1]
+ 431              		.loc 1 253 0
+ 432 005c 4FF46141 		mov	r1, #57600
+ 433 0060 12E0     		b	.L67
+ 434              	.L23:
+ 254:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port_poll();
+ 255:modules/gps/gps_ubx_ucenter.c ****       break;
+ 256:modules/gps/gps_ubx_ucenter.c ****     case 5:
+ 257:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply == GPS_UBX_UCENTER_REPLY_ACK) {
+ 435              		.loc 1 257 0
+ 436 0062 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 437 0064 012B     		cmp	r3, #1
+ 438 0066 E8D0     		beq	.L28
+ 258:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_init = gps_ubx_ucenter.baud_run;
+ 259:modules/gps/gps_ubx_ucenter.c ****         return FALSE;
+ 260:modules/gps/gps_ubx_ucenter.c ****       }
+ 261:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 439              		.loc 1 261 0
+ 440 0068 974B     		ldr	r3, .L69
+ 262:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B4800); // Default NMEA baudrate?
+ 441              		.loc 1 262 0
+ 442 006a 9848     		ldr	r0, .L69+4
+ 261:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B4800); // Default NMEA baudrate?
+ 443              		.loc 1 261 0
+ 444 006c 0022     		movs	r2, #0
+ 445 006e 5A70     		strb	r2, [r3, #1]
+ 446              		.loc 1 262 0
+ 447 0070 4FF49651 		mov	r1, #4800
+ 448 0074 08E0     		b	.L67
+ 449              	.L24:
+ 263:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port_poll();
+ 264:modules/gps/gps_ubx_ucenter.c ****       break;
+ 265:modules/gps/gps_ubx_ucenter.c ****     case 6:
+ 266:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply == GPS_UBX_UCENTER_REPLY_ACK) {
+ 450              		.loc 1 266 0
+ 451 0076 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 452 0078 012B     		cmp	r3, #1
+ 453 007a DED0     		beq	.L28
+ 267:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_init = gps_ubx_ucenter.baud_run;
+ 268:modules/gps/gps_ubx_ucenter.c ****         return FALSE;
+ 269:modules/gps/gps_ubx_ucenter.c ****       }
+ 270:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 454              		.loc 1 270 0
+ 455 007c 924B     		ldr	r3, .L69
+ 271:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B115200); // Last possible option for ublox
+ 456              		.loc 1 271 0
+ 457 007e 9348     		ldr	r0, .L69+4
+ 270:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B115200); // Last possible option for ublox
+ 458              		.loc 1 270 0
+ 459 0080 0022     		movs	r2, #0
+ 460 0082 5A70     		strb	r2, [r3, #1]
+ 461              		.loc 1 271 0
+ 462 0084 4FF4E131 		mov	r1, #115200
+ 463              	.L67:
+ 464 0088 FFF7FEFF 		bl	uart_periph_set_baudrate
+ 465              	.LVL36:
+ 272:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port_poll();
+ 466              		.loc 1 272 0
+ 467 008c FFF7FEFF 		bl	gps_ubx_ucenter_config_port_poll
+ 468              	.LVL37:
+ 469 0090 1CE2     		b	.L18
+ 470              	.LVL38:
+ 471              	.L25:
+ 273:modules/gps/gps_ubx_ucenter.c ****       break;
+ 274:modules/gps/gps_ubx_ucenter.c ****     case 7:
+ 275:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply == GPS_UBX_UCENTER_REPLY_ACK) {
+ 472              		.loc 1 275 0
+ 473 0092 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 474 0094 012B     		cmp	r3, #1
+ 475 0096 D0D0     		beq	.L28
+ 276:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_init = gps_ubx_ucenter.baud_run;
+ 277:modules/gps/gps_ubx_ucenter.c ****         return FALSE;
+ 278:modules/gps/gps_ubx_ucenter.c ****       }
+ 279:modules/gps/gps_ubx_ucenter.c **** 
+ 280:modules/gps/gps_ubx_ucenter.c ****       // Autoconfig Failed... let's setup the failsafe baudrate
+ 281:modules/gps/gps_ubx_ucenter.c ****       // Should we try even a different baudrate?
+ 282:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.baud_init = 0; // Set as zero to indicate that we couldn't verify the baudrat
+ 476              		.loc 1 282 0
+ 477 0098 8B4B     		ldr	r3, .L69
+ 283:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B9600);
+ 478              		.loc 1 283 0
+ 479 009a 8C48     		ldr	r0, .L69+4
+ 282:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B9600);
+ 480              		.loc 1 282 0
+ 481 009c 0022     		movs	r2, #0
+ 482              		.loc 1 283 0
+ 483 009e 4FF41651 		mov	r1, #9600
+ 282:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), B9600);
+ 484              		.loc 1 282 0
+ 485 00a2 5A60     		str	r2, [r3, #4]
+ 486              		.loc 1 283 0
+ 487 00a4 FFF7FEFF 		bl	uart_periph_set_baudrate
+ 488              	.LVL39:
+ 489 00a8 0CE2     		b	.L27
+ 490              	.L17:
+ 491              	.LBE38:
+ 492              	.LBE37:
+ 118:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.status = GPS_UBX_UCENTER_STATUS_STOPPED;
+ 493              		.loc 1 118 0
+ 494 00aa A378     		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 495              	.LVL40:
+ 496              	.LBB39:
+ 497              	.LBB40:
+ 284:modules/gps/gps_ubx_ucenter.c ****       return FALSE;
+ 285:modules/gps/gps_ubx_ucenter.c ****     default:
+ 286:modules/gps/gps_ubx_ucenter.c ****       break;
+ 287:modules/gps/gps_ubx_ucenter.c ****   }
+ 288:modules/gps/gps_ubx_ucenter.c ****   return TRUE;
+ 289:modules/gps/gps_ubx_ucenter.c **** }
+ 290:modules/gps/gps_ubx_ucenter.c **** 
+ 291:modules/gps/gps_ubx_ucenter.c **** /////////////////////////////////////
+ 292:modules/gps/gps_ubx_ucenter.c **** // UBlox internal Navigation Solution
+ 293:modules/gps/gps_ubx_ucenter.c **** 
+ 294:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_STATIONARY  1
+ 295:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_PEDESTRIAN  2
+ 296:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_AUTOMOTIVE  3
+ 297:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_SEA         4
+ 298:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_AIRBORNE_1G 5
+ 299:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_AIRBORNE_2G 6 // paparazzi default
+ 300:modules/gps/gps_ubx_ucenter.c **** #define NAV_DYN_AIRBORNE_4G 7
+ 301:modules/gps/gps_ubx_ucenter.c **** 
+ 302:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_PORTABLE    0 // ublox default
+ 303:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_FIXED       1
+ 304:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_STATIONARY  2
+ 305:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_PEDESTRIAN  3
+ 306:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_AUTOMOTIVE  4
+ 307:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_SEA         5
+ 308:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_AIRBORNE_1G 6
+ 309:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_AIRBORNE_2G 7 // paparazzi default
+ 310:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DYN_AIRBORNE_4G 8
+ 311:modules/gps/gps_ubx_ucenter.c **** 
+ 312:modules/gps/gps_ubx_ucenter.c **** #ifndef GPS_UBX_NAV5_DYNAMICS
+ 313:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_NAV5_DYNAMICS NAV5_DYN_AIRBORNE_2G
+ 314:modules/gps/gps_ubx_ucenter.c **** #endif
+ 315:modules/gps/gps_ubx_ucenter.c **** 
+ 316:modules/gps/gps_ubx_ucenter.c **** #define NAV5_MASK 0x05 // Apply dynamic model and position fix mode settings
+ 317:modules/gps/gps_ubx_ucenter.c **** 
+ 318:modules/gps/gps_ubx_ucenter.c **** #define NAV5_2D_ONLY 1
+ 319:modules/gps/gps_ubx_ucenter.c **** #define NAV5_3D_ONLY 2 // paparazzi default
+ 320:modules/gps/gps_ubx_ucenter.c **** #define NAV5_AUTO    3 // ublox default
+ 321:modules/gps/gps_ubx_ucenter.c **** 
+ 322:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_MIN_ELEV 5 // deg
+ 323:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_PDOP_MASK 25 // no units
+ 324:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_TDOP_MASK 25 // no units
+ 325:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_P_ACC 100 // m
+ 326:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_T_ACC 300 // m
+ 327:modules/gps/gps_ubx_ucenter.c **** #define NAV5_DEFAULT_STATIC_HOLD_THRES 0 // cm/s
+ 328:modules/gps/gps_ubx_ucenter.c **** 
+ 329:modules/gps/gps_ubx_ucenter.c **** #define IGNORED 0
+ 330:modules/gps/gps_ubx_ucenter.c **** #define RESERVED 0
+ 331:modules/gps/gps_ubx_ucenter.c **** 
+ 332:modules/gps/gps_ubx_ucenter.c **** static inline void gps_ubx_ucenter_config_nav(void)
+ 333:modules/gps/gps_ubx_ucenter.c **** {
+ 334:modules/gps/gps_ubx_ucenter.c ****   //New ublox firmware v5 or higher uses CFG_NAV5 message, CFG_NAV is no longer available
+ 335:modules/gps/gps_ubx_ucenter.c ****   if (gps_ubx_ucenter.sw_ver_h < 5 && gps_ubx_ucenter.hw_ver_h < 6) {
+ 336:modules/gps/gps_ubx_ucenter.c ****     UbxSend_CFG_NAV(gps_ubx_ucenter.dev,
+ 337:modules/gps/gps_ubx_ucenter.c ****         NAV_DYN_AIRBORNE_2G, 3, 16, 24, 20, 5, 0, 0x3C,
+ 338:modules/gps/gps_ubx_ucenter.c ****         0x3C, 0x14, 0x03E8 , 0x0000, 0x0, 0x17, 0x00FA, 0x00FA,
+ 339:modules/gps/gps_ubx_ucenter.c ****         0x0064, 0x012C, 0x000F, 0x00, 0x00);
+ 340:modules/gps/gps_ubx_ucenter.c ****   } else {
+ 341:modules/gps/gps_ubx_ucenter.c ****     UbxSend_CFG_NAV5(gps_ubx_ucenter.dev,
+ 342:modules/gps/gps_ubx_ucenter.c ****         NAV5_MASK, GPS_UBX_NAV5_DYNAMICS, NAV5_3D_ONLY, IGNORED, IGNORED, NAV5_DEFAULT_MIN_ELEV, RE
+ 343:modules/gps/gps_ubx_ucenter.c ****         NAV5_DEFAULT_PDOP_MASK, NAV5_DEFAULT_TDOP_MASK, NAV5_DEFAULT_P_ACC, NAV5_DEFAULT_T_ACC,
+ 344:modules/gps/gps_ubx_ucenter.c ****         NAV5_DEFAULT_STATIC_HOLD_THRES, RESERVED, RESERVED, RESERVED, RESERVED);
+ 345:modules/gps/gps_ubx_ucenter.c ****   }
+ 346:modules/gps/gps_ubx_ucenter.c **** }
+ 347:modules/gps/gps_ubx_ucenter.c **** 
+ 348:modules/gps/gps_ubx_ucenter.c **** 
+ 349:modules/gps/gps_ubx_ucenter.c **** 
+ 350:modules/gps/gps_ubx_ucenter.c **** /////////////////////////////////////
+ 351:modules/gps/gps_ubx_ucenter.c **** // UBlox port and protocol GPS configuration
+ 352:modules/gps/gps_ubx_ucenter.c **** 
+ 353:modules/gps/gps_ubx_ucenter.c **** #ifdef GPS_PORT_ID
+ 354:modules/gps/gps_ubx_ucenter.c **** #warning "GPS_PORT_ID is no longer needed by the ublox ucenter for automatically configuration. Ple
+ 355:modules/gps/gps_ubx_ucenter.c **** #endif
+ 356:modules/gps/gps_ubx_ucenter.c **** 
+ 357:modules/gps/gps_ubx_ucenter.c **** // UART mode: 8N1 with reserved1 set for compatability with A4
+ 358:modules/gps/gps_ubx_ucenter.c **** #define UBX_UART_MODE_MASK 0x000008D0
+ 359:modules/gps/gps_ubx_ucenter.c **** 
+ 360:modules/gps/gps_ubx_ucenter.c **** #define UBX_PROTO_MASK  0x0001
+ 361:modules/gps/gps_ubx_ucenter.c **** #define NMEA_PROTO_MASK 0x0002
+ 362:modules/gps/gps_ubx_ucenter.c **** #define RTCM_PROTO_MASK 0x0004
+ 363:modules/gps/gps_ubx_ucenter.c **** 
+ 364:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_DDC      0x00
+ 365:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_UART1    0x01
+ 366:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_UART2    0x02
+ 367:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_USB      0x03
+ 368:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_SPI      0x04
+ 369:modules/gps/gps_ubx_ucenter.c **** #define GPS_PORT_RESERVED   0x05
+ 370:modules/gps/gps_ubx_ucenter.c **** 
+ 371:modules/gps/gps_ubx_ucenter.c **** #define UBX_GPS_BAUD (GPS_LINK).baudrate
+ 372:modules/gps/gps_ubx_ucenter.c **** 
+ 373:modules/gps/gps_ubx_ucenter.c **** #ifndef GPS_UBX_UCENTER_RATE
+ 374:modules/gps/gps_ubx_ucenter.c **** #define GPS_UBX_UCENTER_RATE 0x00FA // In milliseconds. 0x00FA = 250ms = 4Hz
+ 375:modules/gps/gps_ubx_ucenter.c **** #endif
+ 376:modules/gps/gps_ubx_ucenter.c **** 
+ 377:modules/gps/gps_ubx_ucenter.c **** static inline void gps_ubx_ucenter_config_port(void)
+ 378:modules/gps/gps_ubx_ucenter.c **** {
+ 379:modules/gps/gps_ubx_ucenter.c ****   switch (gps_ubx_ucenter.port_id) {
+ 380:modules/gps/gps_ubx_ucenter.c ****       // I2C Interface
+ 381:modules/gps/gps_ubx_ucenter.c ****     case GPS_PORT_DDC:
+ 382:modules/gps/gps_ubx_ucenter.c **** #ifdef GPS_I2C
+ 383:modules/gps/gps_ubx_ucenter.c ****       UbxSend_CFG_PRT(gps_ubx_ucenter.dev, gps_ubx_ucenter.port_id, 0x0, 0x0, GPS_I2C_SLAVE_ADDR, 0
+ 384:modules/gps/gps_ubx_ucenter.c **** #else
+ 385:modules/gps/gps_ubx_ucenter.c ****       DEBUG_PRINT("WARNING: Please include the gps_i2c module.\n");
+ 386:modules/gps/gps_ubx_ucenter.c **** #endif
+ 387:modules/gps/gps_ubx_ucenter.c ****       break;
+ 388:modules/gps/gps_ubx_ucenter.c ****       // UART Interface
+ 389:modules/gps/gps_ubx_ucenter.c ****     case GPS_PORT_UART1:
+ 390:modules/gps/gps_ubx_ucenter.c ****     case GPS_PORT_UART2:
+ 391:modules/gps/gps_ubx_ucenter.c ****       UbxSend_CFG_PRT(gps_ubx_ucenter.dev,
+ 392:modules/gps/gps_ubx_ucenter.c ****           gps_ubx_ucenter.port_id, 0x0, 0x0,
+ 393:modules/gps/gps_ubx_ucenter.c ****           UBX_UART_MODE_MASK, UART_SPEED(UBX_GPS_BAUD), UBX_PROTO_MASK,
+ 394:modules/gps/gps_ubx_ucenter.c ****           UBX_PROTO_MASK, 0x0, 0x0);
+ 395:modules/gps/gps_ubx_ucenter.c ****       break;
+ 396:modules/gps/gps_ubx_ucenter.c ****       // USB Interface
+ 397:modules/gps/gps_ubx_ucenter.c ****     case GPS_PORT_USB:
+ 398:modules/gps/gps_ubx_ucenter.c ****       UbxSend_CFG_PRT(gps_ubx_ucenter.dev,
+ 399:modules/gps/gps_ubx_ucenter.c ****           gps_ubx_ucenter.port_id, 0x0, 0x0, 0x0, 0x0,
+ 400:modules/gps/gps_ubx_ucenter.c ****           UBX_PROTO_MASK, UBX_PROTO_MASK, 0x0, 0x0);
+ 401:modules/gps/gps_ubx_ucenter.c ****       break;
+ 402:modules/gps/gps_ubx_ucenter.c ****     case GPS_PORT_SPI:
+ 403:modules/gps/gps_ubx_ucenter.c ****       DEBUG_PRINT("WARNING: ublox SPI port is currently not supported.\n");
+ 404:modules/gps/gps_ubx_ucenter.c ****       break;
+ 405:modules/gps/gps_ubx_ucenter.c ****     default:
+ 406:modules/gps/gps_ubx_ucenter.c ****       DEBUG_PRINT("WARNING: Unknown ublox port id: %u\n", gps_ubx_ucenter.port_id);
+ 407:modules/gps/gps_ubx_ucenter.c ****       break;
+ 408:modules/gps/gps_ubx_ucenter.c ****   }
+ 409:modules/gps/gps_ubx_ucenter.c **** }
+ 410:modules/gps/gps_ubx_ucenter.c **** 
+ 411:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_ENABLED       0x01
+ 412:modules/gps/gps_ubx_ucenter.c **** 
+ 413:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_RANGING       0x01
+ 414:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_CORRECTIONS   0x02
+ 415:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_INTEGRITY     0x04
+ 416:modules/gps/gps_ubx_ucenter.c **** 
+ 417:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_MAX_SBAS    1 // Default ublox setting uses 3 SBAS channels(?)
+ 418:modules/gps/gps_ubx_ucenter.c **** 
+ 419:modules/gps/gps_ubx_ucenter.c **** #define GPS_SBAS_AUTOSCAN    0x00
+ 420:modules/gps/gps_ubx_ucenter.c **** 
+ 421:modules/gps/gps_ubx_ucenter.c **** static inline void gps_ubx_ucenter_config_sbas(void)
+ 422:modules/gps/gps_ubx_ucenter.c **** {
+ 423:modules/gps/gps_ubx_ucenter.c ****   // Since March 2nd 2011 EGNOS is released for aviation purposes
+ 424:modules/gps/gps_ubx_ucenter.c ****   UbxSend_CFG_SBAS(gps_ubx_ucenter.dev, GPS_SBAS_ENABLED, GPS_SBAS_RANGING | GPS_SBAS_CORRECTIONS |
+ 425:modules/gps/gps_ubx_ucenter.c ****                    GPS_SBAS_AUTOSCAN, GPS_SBAS_AUTOSCAN);
+ 426:modules/gps/gps_ubx_ucenter.c ****   //UbxSend_CFG_SBAS(0x00, 0x00, 0x00, 0x00, 0x00);
+ 427:modules/gps/gps_ubx_ucenter.c **** }
+ 428:modules/gps/gps_ubx_ucenter.c **** 
+ 429:modules/gps/gps_ubx_ucenter.c **** // Text Telemetry for Debugging
+ 430:modules/gps/gps_ubx_ucenter.c **** #undef GOT_PAYLOAD
+ 431:modules/gps/gps_ubx_ucenter.c **** 
+ 432:modules/gps/gps_ubx_ucenter.c **** static bool_t gps_ubx_ucenter_configure(uint8_t nr)
+ 433:modules/gps/gps_ubx_ucenter.c **** {
+ 434:modules/gps/gps_ubx_ucenter.c ****   DEBUG_PRINT("gps_ubx_ucenter_configure nr: %u\n", nr);
+ 435:modules/gps/gps_ubx_ucenter.c **** 
+ 436:modules/gps/gps_ubx_ucenter.c ****   // Store the reply of the last configuration step and reset
+ 437:modules/gps/gps_ubx_ucenter.c ****   if (nr < GPS_UBX_UCENTER_CONFIG_STEPS) {
+ 498              		.loc 1 437 0
+ 499 00ac 122B     		cmp	r3, #18
+ 438:modules/gps/gps_ubx_ucenter.c ****     gps_ubx_ucenter.replies[nr] = gps_ubx_ucenter.reply;
+ 500              		.loc 1 438 0
+ 501 00ae 9EBF     		ittt	ls
+ 502 00b0 E218     		addls	r2, r4, r3
+ 503 00b2 6178     		ldrbls	r1, [r4, #1]	@ zero_extendqisi2
+ 504 00b4 D174     		strbls	r1, [r2, #19]
+ 439:modules/gps/gps_ubx_ucenter.c ****   }
+ 440:modules/gps/gps_ubx_ucenter.c **** 
+ 441:modules/gps/gps_ubx_ucenter.c ****   switch (nr) {
+ 505              		.loc 1 441 0
+ 506 00b6 122B     		cmp	r3, #18
+ 507 00b8 00F20182 		bhi	.L30
+ 508 00bc DFE813F0 		tbh	[pc, r3, lsl #1]
+ 509              	.L32:
+ 510 00c0 1300     		.2byte	(.L31-.L32)/2
+ 511 00c2 2A00     		.2byte	(.L33-.L32)/2
+ 512 00c4 FF01     		.2byte	(.L30-.L32)/2
+ 513 00c6 FF01     		.2byte	(.L30-.L32)/2
+ 514 00c8 FF01     		.2byte	(.L30-.L32)/2
+ 515 00ca FF01     		.2byte	(.L30-.L32)/2
+ 516 00cc 3B00     		.2byte	(.L34-.L32)/2
+ 517 00ce 8401     		.2byte	(.L35-.L32)/2
+ 518 00d0 8601     		.2byte	(.L36-.L32)/2
+ 519 00d2 8B01     		.2byte	(.L37-.L32)/2
+ 520 00d4 8D01     		.2byte	(.L38-.L32)/2
+ 521 00d6 9001     		.2byte	(.L39-.L32)/2
+ 522 00d8 9201     		.2byte	(.L40-.L32)/2
+ 523 00da 9501     		.2byte	(.L41-.L32)/2
+ 524 00dc BF01     		.2byte	(.L42-.L32)/2
+ 525 00de FF01     		.2byte	(.L30-.L32)/2
+ 526 00e0 FF01     		.2byte	(.L30-.L32)/2
+ 527 00e2 DD01     		.2byte	(.L43-.L32)/2
+ 528 00e4 0902     		.2byte	(.L44-.L32)/2
+ 529              		.p2align 1
+ 530              	.L31:
+ 531              	.LBB41:
+ 532              	.LBB42:
+ 379:modules/gps/gps_ubx_ucenter.c ****       // I2C Interface
+ 533              		.loc 1 379 0
+ 534 00e6 A17C     		ldrb	r1, [r4, #18]	@ zero_extendqisi2
+ 535 00e8 774B     		ldr	r3, .L69
+ 536              	.LVL41:
+ 537 00ea 0029     		cmp	r1, #0
+ 538 00ec 00F0E781 		beq	.L30
+ 539 00f0 0229     		cmp	r1, #2
+ 540 00f2 06D9     		bls	.L45
+ 541 00f4 0329     		cmp	r1, #3
+ 542 00f6 40F0E281 		bne	.L30
+ 398:modules/gps/gps_ubx_ucenter.c ****           gps_ubx_ucenter.port_id, 0x0, 0x0, 0x0, 0x0,
+ 543              		.loc 1 398 0
+ 544 00fa 0022     		movs	r2, #0
+ 545 00fc 986A     		ldr	r0, [r3, #40]
+ 546 00fe 1346     		mov	r3, r2
+ 547 0100 05E0     		b	.L62
+ 548              	.L45:
+ 391:modules/gps/gps_ubx_ucenter.c ****           gps_ubx_ucenter.port_id, 0x0, 0x0,
+ 549              		.loc 1 391 0
+ 550 0102 986A     		ldr	r0, [r3, #40]
+ 551 0104 714B     		ldr	r3, .L69+4
+ 552 0106 D3F81031 		ldr	r3, [r3, #272]
+ 553 010a 4FF40D62 		mov	r2, #2256
+ 554              	.L62:
+ 398:modules/gps/gps_ubx_ucenter.c ****           gps_ubx_ucenter.port_id, 0x0, 0x0, 0x0, 0x0,
+ 555              		.loc 1 398 0
+ 556 010e FFF7FEFF 		bl	UbxSend_CFG_PRT.constprop.7
+ 557              	.LVL42:
+ 558 0112 D4E1     		b	.L30
+ 559              	.LVL43:
+ 560              	.L33:
+ 561              	.LBE42:
+ 562              	.LBE41:
+ 442:modules/gps/gps_ubx_ucenter.c ****     case 0:
+ 443:modules/gps/gps_ubx_ucenter.c ****       // Use old baudrate to issue a baudrate change command
+ 444:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_port();
+ 445:modules/gps/gps_ubx_ucenter.c ****       break;
+ 446:modules/gps/gps_ubx_ucenter.c ****     case 1:
+ 447:modules/gps/gps_ubx_ucenter.c **** #if PRINT_DEBUG_GPS_UBX_UCENTER
+ 448:modules/gps/gps_ubx_ucenter.c ****       if (gps_ubx_ucenter.reply != GPS_UBX_UCENTER_REPLY_ACK) {
+ 449:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("ublox did not acknowledge port configuration.\n");
+ 450:modules/gps/gps_ubx_ucenter.c ****       } else {
+ 451:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("Changed ublox baudrate to: %u\n", UART_SPEED(UBX_GPS_BAUD));
+ 452:modules/gps/gps_ubx_ucenter.c ****       }
+ 453:modules/gps/gps_ubx_ucenter.c **** #endif
+ 454:modules/gps/gps_ubx_ucenter.c ****       // Now the GPS baudrate should have changed
+ 455:modules/gps/gps_ubx_ucenter.c ****       uart_periph_set_baudrate(&(GPS_LINK), UBX_GPS_BAUD);
+ 563              		.loc 1 455 0
+ 564 0114 6D4D     		ldr	r5, .L69+4
+ 565 0116 2846     		mov	r0, r5
+ 566 0118 D5F81011 		ldr	r1, [r5, #272]
+ 567 011c FFF7FEFF 		bl	uart_periph_set_baudrate
+ 568              	.LVL44:
+ 456:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.baud_run = UART_SPEED(UBX_GPS_BAUD);
+ 569              		.loc 1 456 0
+ 570 0120 D5F81031 		ldr	r3, [r5, #272]
+ 457:modules/gps/gps_ubx_ucenter.c ****       UbxSend_MON_GET_VER(gps_ubx_ucenter.dev);
+ 571              		.loc 1 457 0
+ 572 0124 A56A     		ldr	r5, [r4, #40]
+ 573              	.LVL45:
+ 456:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.baud_run = UART_SPEED(UBX_GPS_BAUD);
+ 574              		.loc 1 456 0
+ 575 0126 A360     		str	r3, [r4, #8]
+ 576              	.LBB43:
+ 577              	.LBB44:
+ 239:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 240:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 241:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_ID 0x03
+ 242:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_Platform(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 243:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MinSvs(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 244:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MaxSvs(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+2))
+ 245:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MinCN0(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+3))
+ 246:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_AbsCN0(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+4))
+ 247:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MinELE(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+5))
+ 248:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_DGPSTTR(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+6))
+ 249:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_DGPST0(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+7))
+ 250:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_PRCAGE(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+8))
+ 251:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_CPCAGE(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+9))
+ 252:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MinCLT(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+10)|*((uint8_t*)_ubx_p
+ 253:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_AbsCLT(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+12)|*((uint8_t*)_ubx_p
+ 254:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_MaxDR(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+14))
+ 255:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_NAVOPT(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+15))
+ 256:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_PDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx_pay
+ 257:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_TDOP(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+18)|*((uint8_t*)_ubx_pay
+ 258:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_PACC(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+20)|*((uint8_t*)_ubx_pay
+ 259:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_TACC(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+22)|*((uint8_t*)_ubx_pay
+ 260:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_FACC(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+24)|*((uint8_t*)_ubx_pay
+ 261:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_StaticThres(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+26))
+ 262:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV_reserved(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+27))
+ 263:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 264:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_NAV(struct link_device *dev, uint8_t platform, uint8_t minsvs, uint8
+ 265:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_NAV_ID, 28);
+ 266:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _platform = platform; ubx_send_bytes(dev, 1, (uint8_t*)&_platform);
+ 267:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _minsvs = minsvs; ubx_send_bytes(dev, 1, (uint8_t*)&_minsvs);
+ 268:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxsvs = maxsvs; ubx_send_bytes(dev, 1, (uint8_t*)&_maxsvs);
+ 269:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _mincn0 = mincn0; ubx_send_bytes(dev, 1, (uint8_t*)&_mincn0);
+ 270:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _abscn0 = abscn0; ubx_send_bytes(dev, 1, (uint8_t*)&_abscn0);
+ 271:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _minele = minele; ubx_send_bytes(dev, 1, (uint8_t*)&_minele);
+ 272:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpsttr = dgpsttr; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpsttr);
+ 273:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpst0 = dgpst0; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpst0);
+ 274:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _prcage = prcage; ubx_send_bytes(dev, 1, (uint8_t*)&_prcage);
+ 275:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _cpcage = cpcage; ubx_send_bytes(dev, 1, (uint8_t*)&_cpcage);
+ 276:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _minclt = minclt; ubx_send_bytes(dev, 2, (uint8_t*)&_minclt);
+ 277:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _absclt = absclt; ubx_send_bytes(dev, 2, (uint8_t*)&_absclt);
+ 278:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxdr = maxdr; ubx_send_bytes(dev, 1, (uint8_t*)&_maxdr);
+ 279:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _navopt = navopt; ubx_send_bytes(dev, 1, (uint8_t*)&_navopt);
+ 280:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pdop = pdop; ubx_send_bytes(dev, 2, (uint8_t*)&_pdop);
+ 281:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tdop = tdop; ubx_send_bytes(dev, 2, (uint8_t*)&_tdop);
+ 282:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pacc = pacc; ubx_send_bytes(dev, 2, (uint8_t*)&_pacc);
+ 283:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tacc = tacc; ubx_send_bytes(dev, 2, (uint8_t*)&_tacc);
+ 284:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _facc = facc; ubx_send_bytes(dev, 2, (uint8_t*)&_facc);
+ 285:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _staticthres = staticthres; ubx_send_bytes(dev, 1, (uint8_t*)&_staticthres);
+ 286:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reserved = reserved; ubx_send_bytes(dev, 1, (uint8_t*)&_reserved);
+ 287:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 288:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 289:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 290:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RST_ID 0x04
+ 291:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RST_nav_bbr(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_p
+ 292:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RST_Reset(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+2))
+ 293:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RST_Res(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+3))
+ 294:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 295:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_RST(struct link_device *dev, uint16_t nav_bbr, uint8_t reset, uint8_
+ 296:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_RST_ID, 4);
+ 297:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _nav_bbr = nav_bbr; ubx_send_bytes(dev, 2, (uint8_t*)&_nav_bbr);
+ 298:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reset = reset; ubx_send_bytes(dev, 1, (uint8_t*)&_reset);
+ 299:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res = res; ubx_send_bytes(dev, 1, (uint8_t*)&_res);
+ 300:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 301:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 302:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 303:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RATE_ID 0x08
+ 304:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RATE_Meas(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_pay
+ 305:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RATE_Nav(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+2)|*((uint8_t*)_ubx_payl
+ 306:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_RATE_Time(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_pay
+ 307:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 308:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_RATE(struct link_device *dev, uint16_t meas, uint16_t nav, uint16_t 
+ 309:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_RATE_ID, 6);
+ 310:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _meas = meas; ubx_send_bytes(dev, 2, (uint8_t*)&_meas);
+ 311:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _nav = nav; ubx_send_bytes(dev, 2, (uint8_t*)&_nav);
+ 312:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _time = time; ubx_send_bytes(dev, 2, (uint8_t*)&_time);
+ 313:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 314:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 315:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 316:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_CFG_ID 0x09
+ 317:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_CFG_Clear_mask(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ub
+ 318:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_CFG_Save_mask(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx
+ 319:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_CFG_Load_mask(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_ubx
+ 320:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 321:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_CFG(struct link_device *dev, uint32_t clear_mask, uint32_t save_mask
+ 322:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_CFG_ID, 12);
+ 323:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _clear_mask = clear_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_clear_mask);
+ 324:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _save_mask = save_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_save_mask);
+ 325:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _load_mask = load_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_load_mask);
+ 326:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 327:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 328:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 329:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_ID 0x16
+ 330:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_mode(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 331:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_usage(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 332:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_maxbas(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+2))
+ 333:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_reserved(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+3))
+ 334:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_SBAS_scanmode(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx
+ 335:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 336:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_SBAS(struct link_device *dev, uint8_t mode, uint8_t usage, uint8_t m
+ 337:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_SBAS_ID, 8);
+ 338:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _mode = mode; ubx_send_bytes(dev, 1, (uint8_t*)&_mode);
+ 339:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _usage = usage; ubx_send_bytes(dev, 1, (uint8_t*)&_usage);
+ 340:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxbas = maxbas; ubx_send_bytes(dev, 1, (uint8_t*)&_maxbas);
+ 341:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reserved = reserved; ubx_send_bytes(dev, 1, (uint8_t*)&_reserved);
+ 342:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _scanmode = scanmode; ubx_send_bytes(dev, 4, (uint8_t*)&_scanmode);
+ 343:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 344:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 345:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 346:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_ID 0x24
+ 347:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_mask(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_pay
+ 348:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_dynModel(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+2))
+ 349:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_fixModel(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+3))
+ 350:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_fixedAlt(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_
+ 351:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_fixedAltVar(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+8)|*((uint8_t*)_
+ 352:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_minElev(_ubx_payload) (int8_t)(*((uint8_t*)_ubx_payload+12))
+ 353:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_drLimit(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+13))
+ 354:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_dDop(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+14)|*((uint8_t*)_ubx_pa
+ 355:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_tDop(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+16)|*((uint8_t*)_ubx_pa
+ 356:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_pAcc(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+18)|*((uint8_t*)_ubx_pa
+ 357:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_tAcc(_ubx_payload) (uint16_t)(*((uint8_t*)_ubx_payload+20)|*((uint8_t*)_ubx_pa
+ 358:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_staticHoldThresh(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+22))
+ 359:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_res1(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+23))
+ 360:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_res2(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+24)|*((uint8_t*)_ubx_pa
+ 361:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_res3(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+28)|*((uint8_t*)_ubx_pa
+ 362:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_CFG_NAV5_res4(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+32)|*((uint8_t*)_ubx_pa
+ 363:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 364:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_CFG_NAV5(struct link_device *dev, uint16_t mask, uint8_t dynmodel, uint8
+ 365:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_CFG_ID, UBX_CFG_NAV5_ID, 36);
+ 366:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _mask = mask; ubx_send_bytes(dev, 2, (uint8_t*)&_mask);
+ 367:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dynmodel = dynmodel; ubx_send_bytes(dev, 1, (uint8_t*)&_dynmodel);
+ 368:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _fixmodel = fixmodel; ubx_send_bytes(dev, 1, (uint8_t*)&_fixmodel);
+ 369:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _fixedalt = fixedalt; ubx_send_bytes(dev, 4, (uint8_t*)&_fixedalt);
+ 370:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _fixedaltvar = fixedaltvar; ubx_send_bytes(dev, 4, (uint8_t*)&_fixedaltvar);
+ 371:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _minelev = minelev; ubx_send_bytes(dev, 1, (uint8_t*)&_minelev);
+ 372:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _drlimit = drlimit; ubx_send_bytes(dev, 1, (uint8_t*)&_drlimit);
+ 373:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _ddop = ddop; ubx_send_bytes(dev, 2, (uint8_t*)&_ddop);
+ 374:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tdop = tdop; ubx_send_bytes(dev, 2, (uint8_t*)&_tdop);
+ 375:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pacc = pacc; ubx_send_bytes(dev, 2, (uint8_t*)&_pacc);
+ 376:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tacc = tacc; ubx_send_bytes(dev, 2, (uint8_t*)&_tacc);
+ 377:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _staticholdthresh = staticholdthresh; ubx_send_bytes(dev, 1, (uint8_t*)&_staticholdthresh
+ 378:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res1 = res1; ubx_send_bytes(dev, 1, (uint8_t*)&_res1);
+ 379:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res2 = res2; ubx_send_bytes(dev, 4, (uint8_t*)&_res2);
+ 380:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res3 = res3; ubx_send_bytes(dev, 4, (uint8_t*)&_res3);
+ 381:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res4 = res4; ubx_send_bytes(dev, 4, (uint8_t*)&_res4);
+ 382:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 383:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 384:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 385:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_ID 0x05
+ 386:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 387:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_ACK_ID 0x01
+ 388:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_ACK_ClsID(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 389:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_ACK_MsgID(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 390:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 391:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_ACK_ACK(struct link_device *dev, uint8_t clsid, uint8_t msgid) {
+ 392:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_ACK_ID, UBX_ACK_ACK_ID, 2);
+ 393:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _clsid = clsid; ubx_send_bytes(dev, 1, (uint8_t*)&_clsid);
+ 394:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _msgid = msgid; ubx_send_bytes(dev, 1, (uint8_t*)&_msgid);
+ 395:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 396:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 397:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 398:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_NAK_ID 0x00
+ 399:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_NAK_ClsID(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 400:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_ACK_NAK_MsgID(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 401:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 402:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_ACK_NAK(struct link_device *dev, uint8_t clsid, uint8_t msgid) {
+ 403:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_ACK_ID, UBX_ACK_NAK_ID, 2);
+ 404:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _clsid = clsid; ubx_send_bytes(dev, 1, (uint8_t*)&_clsid);
+ 405:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _msgid = msgid; ubx_send_bytes(dev, 1, (uint8_t*)&_msgid);
+ 406:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 407:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 408:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 409:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_ID 0x02
+ 410:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 411:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_ID 0x10
+ 412:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_iTOW(_ubx_payload) (int32_t)(*((uint8_t*)_ubx_payload+0)|*((uint8_t*)_ubx_paylo
+ 413:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_week(_ubx_payload) (int16_t)(*((uint8_t*)_ubx_payload+4)|*((uint8_t*)_ubx_paylo
+ 414:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_numSV(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+6))
+ 415:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_reserverd1(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+7))
+ 416:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_cpMes(_ubx_payload,_ubx_block) ({ union { uint64_t u; double f; } _f; _f.u = (u
+ 417:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_prMes(_ubx_payload,_ubx_block) ({ union { uint64_t u; double f; } _f; _f.u = (u
+ 418:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_doMes(_ubx_payload,_ubx_block) ({ union { uint32_t u; float f; } _f; _f.u = (ui
+ 419:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_sv(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+28+24*_ubx_block
+ 420:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_mesQI(_ubx_payload,_ubx_block) (int8_t)(*((uint8_t*)_ubx_payload+29+24*_ubx_blo
+ 421:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_cno(_ubx_payload,_ubx_block) (int8_t)(*((uint8_t*)_ubx_payload+30+24*_ubx_block
+ 422:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_RAW_lli(_ubx_payload,_ubx_block) (uint8_t)(*((uint8_t*)_ubx_payload+31+24*_ubx_bloc
+ 423:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 424:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_RXM_RAW(struct link_device *dev, int32_t itow, int16_t week, uint8_t num
+ 425:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_RXM_ID, UBX_RXM_RAW_ID, 32);
+ 426:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _itow = itow; ubx_send_bytes(dev, 4, (uint8_t*)&_itow);
+ 427:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int16_t _week = week; ubx_send_bytes(dev, 2, (uint8_t*)&_week);
+ 428:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _numsv = numsv; ubx_send_bytes(dev, 1, (uint8_t*)&_numsv);
+ 429:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reserverd1 = reserverd1; ubx_send_bytes(dev, 1, (uint8_t*)&_reserverd1);
+ 430:/home/dino/paparazzi/var/include/ubx_protocol.h ****   double _cpmes = cpmes; ubx_send_bytes(dev, 8, (uint8_t*)&_cpmes);
+ 431:/home/dino/paparazzi/var/include/ubx_protocol.h ****   double _prmes = prmes; ubx_send_bytes(dev, 8, (uint8_t*)&_prmes);
+ 432:/home/dino/paparazzi/var/include/ubx_protocol.h ****   float _domes = domes; ubx_send_bytes(dev, 4, (uint8_t*)&_domes);
+ 433:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _sv = sv; ubx_send_bytes(dev, 1, (uint8_t*)&_sv);
+ 434:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _mesqi = mesqi; ubx_send_bytes(dev, 1, (uint8_t*)&_mesqi);
+ 435:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _cno = cno; ubx_send_bytes(dev, 1, (uint8_t*)&_cno);
+ 436:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _lli = lli; ubx_send_bytes(dev, 1, (uint8_t*)&_lli);
+ 437:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 438:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 439:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 440:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_ID 0x11
+ 441:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_chn(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+0))
+ 442:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_svid(_ubx_payload) (uint8_t)(*((uint8_t*)_ubx_payload+1))
+ 443:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd0(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+2)|*((uint8_t*)_ubx_pa
+ 444:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd1(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+6)|*((uint8_t*)_ubx_pa
+ 445:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd2(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+10)|*((uint8_t*)_ubx_p
+ 446:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd3(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+14)|*((uint8_t*)_ubx_p
+ 447:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd4(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+18)|*((uint8_t*)_ubx_p
+ 448:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd5(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+22)|*((uint8_t*)_ubx_p
+ 449:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd6(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+26)|*((uint8_t*)_ubx_p
+ 450:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd7(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+30)|*((uint8_t*)_ubx_p
+ 451:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd8(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+34)|*((uint8_t*)_ubx_p
+ 452:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_RXM_SFRB_dwrd9(_ubx_payload) (uint32_t)(*((uint8_t*)_ubx_payload+38)|*((uint8_t*)_ubx_p
+ 453:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 454:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_RXM_SFRB(struct link_device *dev, uint8_t chn, uint8_t svid, uint32_t dw
+ 455:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_RXM_ID, UBX_RXM_SFRB_ID, 42);
+ 456:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _chn = chn; ubx_send_bytes(dev, 1, (uint8_t*)&_chn);
+ 457:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _svid = svid; ubx_send_bytes(dev, 1, (uint8_t*)&_svid);
+ 458:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd0 = dwrd0; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd0);
+ 459:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd1 = dwrd1; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd1);
+ 460:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd2 = dwrd2; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd2);
+ 461:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd3 = dwrd3; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd3);
+ 462:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd4 = dwrd4; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd4);
+ 463:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd5 = dwrd5; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd5);
+ 464:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd6 = dwrd6; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd6);
+ 465:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd7 = dwrd7; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd7);
+ 466:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd8 = dwrd8; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd8);
+ 467:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _dwrd9 = dwrd9; ubx_send_bytes(dev, 4, (uint8_t*)&_dwrd9);
+ 468:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 469:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 470:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 471:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_MON_ID 0x0A
+ 472:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 473:/home/dino/paparazzi/var/include/ubx_protocol.h **** #define UBX_MON_GET_VER_ID 0x04
+ 474:/home/dino/paparazzi/var/include/ubx_protocol.h **** 
+ 475:/home/dino/paparazzi/var/include/ubx_protocol.h **** static inline void UbxSend_MON_GET_VER(struct link_device *dev) {
+ 476:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_header(dev, UBX_MON_ID, UBX_MON_GET_VER_ID, 0);
+ 578              		.loc 2 476 0
+ 579 0128 2846     		mov	r0, r5
+ 580 012a 0A21     		movs	r1, #10
+ 581 012c 0422     		movs	r2, #4
+ 582 012e 0023     		movs	r3, #0
+ 583 0130 FFF7FEFF 		bl	ubx_header
+ 584              	.LVL46:
+ 585 0134 C0E1     		b	.L61
+ 586              	.LVL47:
+ 587              	.L34:
+ 588              	.LBE44:
+ 589              	.LBE43:
+ 458:modules/gps/gps_ubx_ucenter.c ****       break;
+ 459:modules/gps/gps_ubx_ucenter.c ****     case 2:
+ 460:modules/gps/gps_ubx_ucenter.c ****     case 3:
+ 461:modules/gps/gps_ubx_ucenter.c ****     case 4:
+ 462:modules/gps/gps_ubx_ucenter.c ****     case 5:
+ 463:modules/gps/gps_ubx_ucenter.c ****       // UBX_G5010 takes 0.7 seconds to answer a firmware request
+ 464:modules/gps/gps_ubx_ucenter.c ****       // Version info is important for proper configuration as different firmwares have different s
+ 465:modules/gps/gps_ubx_ucenter.c ****       break;
+ 466:modules/gps/gps_ubx_ucenter.c ****     case 6:
+ 467:modules/gps/gps_ubx_ucenter.c ****       // Send some debugging info: detected baudrate, software version etc...
+ 468:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[0] = (gps_ubx_ucenter.baud_init / 1000);
+ 590              		.loc 1 468 0
+ 591 0136 6168     		ldr	r1, [r4, #4]
+ 592 0138 4FF47A78 		mov	r8, #1000
+ 593 013c B1FBF8F3 		udiv	r3, r1, r8
+ 594              	.LVL48:
+ 595 0140 DAB2     		uxtb	r2, r3
+ 596 0142 E374     		strb	r3, [r4, #19]
+ 469:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[1] = (gps_ubx_ucenter.baud_init - 1000 * gps_ubx_ucenter.replies[0]) 
+ 597              		.loc 1 469 0
+ 598 0144 624B     		ldr	r3, .L69+8
+ 599 0146 03FB0213 		mla	r3, r3, r2, r1
+ 470:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[2] = gps_ubx_ucenter.sw_ver_h;
+ 600              		.loc 1 470 0
+ 601 014a 227B     		ldrb	r2, [r4, #12]	@ zero_extendqisi2
+ 471:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[3] = gps_ubx_ucenter.sw_ver_l;
+ 472:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[4] = gps_ubx_ucenter.hw_ver_h;
+ 473:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[5] = gps_ubx_ucenter.hw_ver_l;
+ 602              		.loc 1 473 0
+ 603 014c 218A     		ldrh	r1, [r4, #16]
+ 470:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[2] = gps_ubx_ucenter.sw_ver_h;
+ 604              		.loc 1 470 0
+ 605 014e 6275     		strb	r2, [r4, #21]
+ 469:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[2] = gps_ubx_ucenter.sw_ver_h;
+ 606              		.loc 1 469 0
+ 607 0150 6427     		movs	r7, #100
+ 608 0152 B3FBF7F3 		udiv	r3, r3, r7
+ 609 0156 2375     		strb	r3, [r4, #20]
+ 471:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[3] = gps_ubx_ucenter.sw_ver_l;
+ 610              		.loc 1 471 0
+ 611 0158 637B     		ldrb	r3, [r4, #13]	@ zero_extendqisi2
+ 612 015a A375     		strb	r3, [r4, #22]
+ 613              	.LBB45:
+ 614              	.LBB46:
+ 335:modules/gps/gps_ubx_ucenter.c ****     UbxSend_CFG_NAV(gps_ubx_ucenter.dev,
+ 615              		.loc 1 335 0
+ 616 015c 042A     		cmp	r2, #4
+ 617              	.LBE46:
+ 618              	.LBE45:
+ 472:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter.replies[5] = gps_ubx_ucenter.hw_ver_l;
+ 619              		.loc 1 472 0
+ 620 015e E389     		ldrh	r3, [r4, #14]
+ 621 0160 E375     		strb	r3, [r4, #23]
+ 622              		.loc 1 473 0
+ 623 0162 2176     		strb	r1, [r4, #24]
+ 624              	.LBB52:
+ 625              	.LBB51:
+ 335:modules/gps/gps_ubx_ucenter.c ****     UbxSend_CFG_NAV(gps_ubx_ucenter.dev,
+ 626              		.loc 1 335 0
+ 627 0164 00F2B680 		bhi	.L47
+ 628 0168 052B     		cmp	r3, #5
+ 629 016a 00F2B380 		bhi	.L47
+ 336:modules/gps/gps_ubx_ucenter.c ****         NAV_DYN_AIRBORNE_2G, 3, 16, 24, 20, 5, 0, 0x3C,
+ 630              		.loc 1 336 0
+ 631 016e 564B     		ldr	r3, .L69
+ 632 0170 9D6A     		ldr	r5, [r3, #40]
+ 633              	.LVL49:
+ 634              	.LBB47:
+ 635              	.LBB48:
+ 265:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _platform = platform; ubx_send_bytes(dev, 1, (uint8_t*)&_platform);
+ 636              		.loc 2 265 0
+ 637 0172 0621     		movs	r1, #6
+ 638 0174 2846     		mov	r0, r5
+ 639 0176 0322     		movs	r2, #3
+ 640 0178 1C23     		movs	r3, #28
+ 641 017a FFF7FEFF 		bl	ubx_header
+ 642              	.LVL50:
+ 266:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _minsvs = minsvs; ubx_send_bytes(dev, 1, (uint8_t*)&_minsvs);
+ 643              		.loc 2 266 0
+ 644 017e 0CAA     		add	r2, sp, #48
+ 645 0180 0623     		movs	r3, #6
+ 646 0182 02F8293D 		strb	r3, [r2, #-41]!
+ 647 0186 2846     		mov	r0, r5
+ 648 0188 0121     		movs	r1, #1
+ 649 018a FFF7FEFF 		bl	ubx_send_bytes
+ 650              	.LVL51:
+ 267:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxsvs = maxsvs; ubx_send_bytes(dev, 1, (uint8_t*)&_maxsvs);
+ 651              		.loc 2 267 0
+ 652 018e 0CAA     		add	r2, sp, #48
+ 653 0190 0323     		movs	r3, #3
+ 654 0192 02F8283D 		strb	r3, [r2, #-40]!
+ 655 0196 2846     		mov	r0, r5
+ 656 0198 0121     		movs	r1, #1
+ 657 019a FFF7FEFF 		bl	ubx_send_bytes
+ 658              	.LVL52:
+ 268:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _mincn0 = mincn0; ubx_send_bytes(dev, 1, (uint8_t*)&_mincn0);
+ 659              		.loc 2 268 0
+ 660 019e 0CAA     		add	r2, sp, #48
+ 661 01a0 1023     		movs	r3, #16
+ 662 01a2 02F8273D 		strb	r3, [r2, #-39]!
+ 663 01a6 2846     		mov	r0, r5
+ 664 01a8 0121     		movs	r1, #1
+ 665 01aa FFF7FEFF 		bl	ubx_send_bytes
+ 666              	.LVL53:
+ 269:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _abscn0 = abscn0; ubx_send_bytes(dev, 1, (uint8_t*)&_abscn0);
+ 667              		.loc 2 269 0
+ 668 01ae 0CAA     		add	r2, sp, #48
+ 669 01b0 1823     		movs	r3, #24
+ 670 01b2 02F8263D 		strb	r3, [r2, #-38]!
+ 671 01b6 2846     		mov	r0, r5
+ 672 01b8 0121     		movs	r1, #1
+ 673 01ba FFF7FEFF 		bl	ubx_send_bytes
+ 674              	.LVL54:
+ 270:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _minele = minele; ubx_send_bytes(dev, 1, (uint8_t*)&_minele);
+ 675              		.loc 2 270 0
+ 676 01be 0CAA     		add	r2, sp, #48
+ 677 01c0 4FF01409 		mov	r9, #20
+ 678 01c4 02F8259D 		strb	r9, [r2, #-37]!
+ 679 01c8 2846     		mov	r0, r5
+ 680 01ca 0121     		movs	r1, #1
+ 681 01cc FFF7FEFF 		bl	ubx_send_bytes
+ 682              	.LVL55:
+ 271:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpsttr = dgpsttr; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpsttr);
+ 683              		.loc 2 271 0
+ 684 01d0 0523     		movs	r3, #5
+ 685 01d2 2846     		mov	r0, r5
+ 686 01d4 0121     		movs	r1, #1
+ 687 01d6 03AA     		add	r2, sp, #12
+ 688 01d8 8DF80C30 		strb	r3, [sp, #12]
+ 272:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpst0 = dgpst0; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpst0);
+ 689              		.loc 2 272 0
+ 690 01dc 0026     		movs	r6, #0
+ 271:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpsttr = dgpsttr; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpsttr);
+ 691              		.loc 2 271 0
+ 692 01de FFF7FEFF 		bl	ubx_send_bytes
+ 693              	.LVL56:
+ 272:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpst0 = dgpst0; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpst0);
+ 694              		.loc 2 272 0
+ 695 01e2 2846     		mov	r0, r5
+ 696 01e4 0121     		movs	r1, #1
+ 697 01e6 0DF10D02 		add	r2, sp, #13
+ 273:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _prcage = prcage; ubx_send_bytes(dev, 1, (uint8_t*)&_prcage);
+ 698              		.loc 2 273 0
+ 699 01ea 4FF03C0A 		mov	r10, #60
+ 272:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dgpst0 = dgpst0; ubx_send_bytes(dev, 1, (uint8_t*)&_dgpst0);
+ 700              		.loc 2 272 0
+ 701 01ee 8DF80D60 		strb	r6, [sp, #13]
+ 702 01f2 FFF7FEFF 		bl	ubx_send_bytes
+ 703              	.LVL57:
+ 273:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _prcage = prcage; ubx_send_bytes(dev, 1, (uint8_t*)&_prcage);
+ 704              		.loc 2 273 0
+ 705 01f6 2846     		mov	r0, r5
+ 706 01f8 0121     		movs	r1, #1
+ 707 01fa 0DF10E02 		add	r2, sp, #14
+ 708 01fe 8DF80EA0 		strb	r10, [sp, #14]
+ 709 0202 FFF7FEFF 		bl	ubx_send_bytes
+ 710              	.LVL58:
+ 274:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _cpcage = cpcage; ubx_send_bytes(dev, 1, (uint8_t*)&_cpcage);
+ 711              		.loc 2 274 0
+ 712 0206 2846     		mov	r0, r5
+ 713 0208 0121     		movs	r1, #1
+ 714 020a 0DF10F02 		add	r2, sp, #15
+ 715 020e 8DF80FA0 		strb	r10, [sp, #15]
+ 716 0212 FFF7FEFF 		bl	ubx_send_bytes
+ 717              	.LVL59:
+ 275:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _minclt = minclt; ubx_send_bytes(dev, 2, (uint8_t*)&_minclt);
+ 718              		.loc 2 275 0
+ 719 0216 0CAA     		add	r2, sp, #48
+ 720 0218 2846     		mov	r0, r5
+ 721 021a 02F8209D 		strb	r9, [r2, #-32]!
+ 722 021e 0121     		movs	r1, #1
+ 723 0220 FFF7FEFF 		bl	ubx_send_bytes
+ 724              	.LVL60:
+ 276:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _absclt = absclt; ubx_send_bytes(dev, 2, (uint8_t*)&_absclt);
+ 725              		.loc 2 276 0
+ 726 0224 0CAA     		add	r2, sp, #48
+ 727 0226 2846     		mov	r0, r5
+ 728 0228 22F8188D 		strh	r8, [r2, #-24]!	@ movhi
+ 729 022c 0221     		movs	r1, #2
+ 730 022e FFF7FEFF 		bl	ubx_send_bytes
+ 731              	.LVL61:
+ 277:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxdr = maxdr; ubx_send_bytes(dev, 1, (uint8_t*)&_maxdr);
+ 732              		.loc 2 277 0
+ 733 0232 0CAA     		add	r2, sp, #48
+ 734 0234 2846     		mov	r0, r5
+ 735 0236 22F8166D 		strh	r6, [r2, #-22]!	@ movhi
+ 736 023a 0221     		movs	r1, #2
+ 737 023c FFF7FEFF 		bl	ubx_send_bytes
+ 738              	.LVL62:
+ 278:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _navopt = navopt; ubx_send_bytes(dev, 1, (uint8_t*)&_navopt);
+ 739              		.loc 2 278 0
+ 740 0240 0CAA     		add	r2, sp, #48
+ 741 0242 2846     		mov	r0, r5
+ 742 0244 02F81F6D 		strb	r6, [r2, #-31]!
+ 743 0248 0121     		movs	r1, #1
+ 744 024a FFF7FEFF 		bl	ubx_send_bytes
+ 745              	.LVL63:
+ 279:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pdop = pdop; ubx_send_bytes(dev, 2, (uint8_t*)&_pdop);
+ 746              		.loc 2 279 0
+ 747 024e 0CAA     		add	r2, sp, #48
+ 748 0250 1723     		movs	r3, #23
+ 749 0252 02F81E3D 		strb	r3, [r2, #-30]!
+ 750 0256 2846     		mov	r0, r5
+ 751 0258 0121     		movs	r1, #1
+ 752 025a FFF7FEFF 		bl	ubx_send_bytes
+ 753              	.LVL64:
+ 280:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tdop = tdop; ubx_send_bytes(dev, 2, (uint8_t*)&_tdop);
+ 754              		.loc 2 280 0
+ 755 025e 0CAA     		add	r2, sp, #48
+ 756 0260 4FF0FA08 		mov	r8, #250
+ 757 0264 22F8148D 		strh	r8, [r2, #-20]!	@ movhi
+ 758 0268 2846     		mov	r0, r5
+ 759 026a 0221     		movs	r1, #2
+ 760 026c FFF7FEFF 		bl	ubx_send_bytes
+ 761              	.LVL65:
+ 281:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pacc = pacc; ubx_send_bytes(dev, 2, (uint8_t*)&_pacc);
+ 762              		.loc 2 281 0
+ 763 0270 0CAA     		add	r2, sp, #48
+ 764 0272 2846     		mov	r0, r5
+ 765 0274 22F8108D 		strh	r8, [r2, #-16]!	@ movhi
+ 766 0278 0221     		movs	r1, #2
+ 767 027a FFF7FEFF 		bl	ubx_send_bytes
+ 768              	.LVL66:
+ 282:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tacc = tacc; ubx_send_bytes(dev, 2, (uint8_t*)&_tacc);
+ 769              		.loc 2 282 0
+ 770 027e 0CAA     		add	r2, sp, #48
+ 771 0280 2846     		mov	r0, r5
+ 772 0282 22F80C7D 		strh	r7, [r2, #-12]!	@ movhi
+ 773 0286 0221     		movs	r1, #2
+ 774 0288 FFF7FEFF 		bl	ubx_send_bytes
+ 775              	.LVL67:
+ 283:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _facc = facc; ubx_send_bytes(dev, 2, (uint8_t*)&_facc);
+ 776              		.loc 2 283 0
+ 777 028c 0CAA     		add	r2, sp, #48
+ 778 028e 4FF49673 		mov	r3, #300
+ 779 0292 22F8083D 		strh	r3, [r2, #-8]!	@ movhi
+ 780 0296 2846     		mov	r0, r5
+ 781 0298 0221     		movs	r1, #2
+ 782 029a FFF7FEFF 		bl	ubx_send_bytes
+ 783              	.LVL68:
+ 284:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _staticthres = staticthres; ubx_send_bytes(dev, 1, (uint8_t*)&_staticthres);
+ 784              		.loc 2 284 0
+ 785 029e 0CAA     		add	r2, sp, #48
+ 786 02a0 0F23     		movs	r3, #15
+ 787 02a2 22F8043D 		strh	r3, [r2, #-4]!	@ movhi
+ 788 02a6 2846     		mov	r0, r5
+ 789 02a8 0221     		movs	r1, #2
+ 790 02aa FFF7FEFF 		bl	ubx_send_bytes
+ 791              	.LVL69:
+ 285:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reserved = reserved; ubx_send_bytes(dev, 1, (uint8_t*)&_reserved);
+ 792              		.loc 2 285 0
+ 793 02ae 0CAA     		add	r2, sp, #48
+ 794 02b0 2846     		mov	r0, r5
+ 795 02b2 02F81C6D 		strb	r6, [r2, #-28]!
+ 796 02b6 0121     		movs	r1, #1
+ 797 02b8 FFF7FEFF 		bl	ubx_send_bytes
+ 798              	.LVL70:
+ 286:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 799              		.loc 2 286 0
+ 800 02bc 0CAA     		add	r2, sp, #48
+ 801 02be 2846     		mov	r0, r5
+ 802 02c0 02F81A6D 		strb	r6, [r2, #-26]!
+ 803 02c4 0121     		movs	r1, #1
+ 804 02c6 F5E0     		b	.L60
+ 805              	.L70:
+ 806              		.align	2
+ 807              	.L69:
+ 808 02c8 00000000 		.word	.LANCHOR0
+ 809 02cc 00000000 		.word	uart4
+ 810 02d0 18FCFFFF 		.word	-1000
+ 811              	.LVL71:
+ 812              	.L47:
+ 813              	.LBE48:
+ 814              	.LBE47:
+ 341:modules/gps/gps_ubx_ucenter.c ****         NAV5_MASK, GPS_UBX_NAV5_DYNAMICS, NAV5_3D_ONLY, IGNORED, IGNORED, NAV5_DEFAULT_MIN_ELEV, RE
+ 815              		.loc 1 341 0
+ 816 02d4 A56A     		ldr	r5, [r4, #40]
+ 817              	.LVL72:
+ 818              	.LBB49:
+ 819              	.LBB50:
+ 365:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _mask = mask; ubx_send_bytes(dev, 2, (uint8_t*)&_mask);
+ 820              		.loc 2 365 0
+ 821 02d6 2422     		movs	r2, #36
+ 822 02d8 1346     		mov	r3, r2
+ 823 02da 2846     		mov	r0, r5
+ 824 02dc 0621     		movs	r1, #6
+ 825 02de FFF7FEFF 		bl	ubx_header
+ 826              	.LVL73:
+ 366:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _dynmodel = dynmodel; ubx_send_bytes(dev, 1, (uint8_t*)&_dynmodel);
+ 827              		.loc 2 366 0
+ 828 02e2 0CAA     		add	r2, sp, #48
+ 829 02e4 4FF00508 		mov	r8, #5
+ 830 02e8 22F81E8D 		strh	r8, [r2, #-30]!	@ movhi
+ 831 02ec 2846     		mov	r0, r5
+ 832 02ee 0221     		movs	r1, #2
+ 833 02f0 FFF7FEFF 		bl	ubx_send_bytes
+ 834              	.LVL74:
+ 367:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _fixmodel = fixmodel; ubx_send_bytes(dev, 1, (uint8_t*)&_fixmodel);
+ 835              		.loc 2 367 0
+ 836 02f4 0723     		movs	r3, #7
+ 837 02f6 2846     		mov	r0, r5
+ 838 02f8 0121     		movs	r1, #1
+ 839 02fa 03AA     		add	r2, sp, #12
+ 840 02fc 8DF80C30 		strb	r3, [sp, #12]
+ 368:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _fixedalt = fixedalt; ubx_send_bytes(dev, 4, (uint8_t*)&_fixedalt);
+ 841              		.loc 2 368 0
+ 842 0300 0227     		movs	r7, #2
+ 367:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _fixmodel = fixmodel; ubx_send_bytes(dev, 1, (uint8_t*)&_fixmodel);
+ 843              		.loc 2 367 0
+ 844 0302 FFF7FEFF 		bl	ubx_send_bytes
+ 845              	.LVL75:
+ 368:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int32_t _fixedalt = fixedalt; ubx_send_bytes(dev, 4, (uint8_t*)&_fixedalt);
+ 846              		.loc 2 368 0
+ 847 0306 2846     		mov	r0, r5
+ 848 0308 0121     		movs	r1, #1
+ 849 030a 0DF10D02 		add	r2, sp, #13
+ 850 030e 8DF80D70 		strb	r7, [sp, #13]
+ 851 0312 FFF7FEFF 		bl	ubx_send_bytes
+ 852              	.LVL76:
+ 369:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _fixedaltvar = fixedaltvar; ubx_send_bytes(dev, 4, (uint8_t*)&_fixedaltvar);
+ 853              		.loc 2 369 0
+ 854 0316 0CAA     		add	r2, sp, #48
+ 855 0318 0026     		movs	r6, #0
+ 856 031a 42F8146D 		str	r6, [r2, #-20]!
+ 857 031e 2846     		mov	r0, r5
+ 858 0320 0421     		movs	r1, #4
+ 859 0322 FFF7FEFF 		bl	ubx_send_bytes
+ 860              	.LVL77:
+ 370:/home/dino/paparazzi/var/include/ubx_protocol.h ****   int8_t _minelev = minelev; ubx_send_bytes(dev, 1, (uint8_t*)&_minelev);
+ 861              		.loc 2 370 0
+ 862 0326 0CAA     		add	r2, sp, #48
+ 863 0328 2846     		mov	r0, r5
+ 864 032a 42F8106D 		str	r6, [r2, #-16]!
+ 865 032e 0421     		movs	r1, #4
+ 866 0330 FFF7FEFF 		bl	ubx_send_bytes
+ 867              	.LVL78:
+ 371:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _drlimit = drlimit; ubx_send_bytes(dev, 1, (uint8_t*)&_drlimit);
+ 868              		.loc 2 371 0
+ 869 0334 2846     		mov	r0, r5
+ 870 0336 0121     		movs	r1, #1
+ 871 0338 0DF10E02 		add	r2, sp, #14
+ 872 033c 8DF80E80 		strb	r8, [sp, #14]
+ 873 0340 FFF7FEFF 		bl	ubx_send_bytes
+ 874              	.LVL79:
+ 372:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _ddop = ddop; ubx_send_bytes(dev, 2, (uint8_t*)&_ddop);
+ 875              		.loc 2 372 0
+ 876 0344 2846     		mov	r0, r5
+ 877 0346 0121     		movs	r1, #1
+ 878 0348 0DF10F02 		add	r2, sp, #15
+ 879 034c 8DF80F60 		strb	r6, [sp, #15]
+ 880 0350 FFF7FEFF 		bl	ubx_send_bytes
+ 881              	.LVL80:
+ 373:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tdop = tdop; ubx_send_bytes(dev, 2, (uint8_t*)&_tdop);
+ 882              		.loc 2 373 0
+ 883 0354 0CAA     		add	r2, sp, #48
+ 884 0356 4FF01908 		mov	r8, #25
+ 885 035a 22F81C8D 		strh	r8, [r2, #-28]!	@ movhi
+ 886 035e 2846     		mov	r0, r5
+ 887 0360 3946     		mov	r1, r7
+ 888 0362 FFF7FEFF 		bl	ubx_send_bytes
+ 889              	.LVL81:
+ 374:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _pacc = pacc; ubx_send_bytes(dev, 2, (uint8_t*)&_pacc);
+ 890              		.loc 2 374 0
+ 891 0366 0CAA     		add	r2, sp, #48
+ 892 0368 2846     		mov	r0, r5
+ 893 036a 22F81A8D 		strh	r8, [r2, #-26]!	@ movhi
+ 894 036e 3946     		mov	r1, r7
+ 895 0370 FFF7FEFF 		bl	ubx_send_bytes
+ 896              	.LVL82:
+ 375:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _tacc = tacc; ubx_send_bytes(dev, 2, (uint8_t*)&_tacc);
+ 897              		.loc 2 375 0
+ 898 0374 0CAA     		add	r2, sp, #48
+ 899 0376 6423     		movs	r3, #100
+ 900 0378 22F8183D 		strh	r3, [r2, #-24]!	@ movhi
+ 901 037c 2846     		mov	r0, r5
+ 902 037e 3946     		mov	r1, r7
+ 903 0380 FFF7FEFF 		bl	ubx_send_bytes
+ 904              	.LVL83:
+ 376:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _staticholdthresh = staticholdthresh; ubx_send_bytes(dev, 1, (uint8_t*)&_staticholdthresh
+ 905              		.loc 2 376 0
+ 906 0384 0CAA     		add	r2, sp, #48
+ 907 0386 4FF49673 		mov	r3, #300
+ 908 038a 22F8163D 		strh	r3, [r2, #-22]!	@ movhi
+ 909 038e 2846     		mov	r0, r5
+ 910 0390 3946     		mov	r1, r7
+ 911 0392 FFF7FEFF 		bl	ubx_send_bytes
+ 912              	.LVL84:
+ 377:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _res1 = res1; ubx_send_bytes(dev, 1, (uint8_t*)&_res1);
+ 913              		.loc 2 377 0
+ 914 0396 0CAA     		add	r2, sp, #48
+ 915 0398 2846     		mov	r0, r5
+ 916 039a 02F8206D 		strb	r6, [r2, #-32]!
+ 917 039e 0121     		movs	r1, #1
+ 918 03a0 FFF7FEFF 		bl	ubx_send_bytes
+ 919              	.LVL85:
+ 378:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res2 = res2; ubx_send_bytes(dev, 4, (uint8_t*)&_res2);
+ 920              		.loc 2 378 0
+ 921 03a4 0CAA     		add	r2, sp, #48
+ 922 03a6 2846     		mov	r0, r5
+ 923 03a8 02F81F6D 		strb	r6, [r2, #-31]!
+ 924 03ac 0121     		movs	r1, #1
+ 925 03ae FFF7FEFF 		bl	ubx_send_bytes
+ 926              	.LVL86:
+ 379:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res3 = res3; ubx_send_bytes(dev, 4, (uint8_t*)&_res3);
+ 927              		.loc 2 379 0
+ 928 03b2 0CAA     		add	r2, sp, #48
+ 929 03b4 2846     		mov	r0, r5
+ 930 03b6 42F80C6D 		str	r6, [r2, #-12]!
+ 931 03ba 0421     		movs	r1, #4
+ 932 03bc FFF7FEFF 		bl	ubx_send_bytes
+ 933              	.LVL87:
+ 380:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _res4 = res4; ubx_send_bytes(dev, 4, (uint8_t*)&_res4);
+ 934              		.loc 2 380 0
+ 935 03c0 0CAA     		add	r2, sp, #48
+ 936 03c2 42F8086D 		str	r6, [r2, #-8]!
+ 937 03c6 6CE0     		b	.L63
+ 938              	.LVL88:
+ 939              	.L35:
+ 940              	.LBE50:
+ 941              	.LBE49:
+ 942              	.LBE51:
+ 943              	.LBE52:
+ 474:modules/gps/gps_ubx_ucenter.c **** #if DEBUG_GPS_UBX_UCENTER
+ 475:modules/gps/gps_ubx_ucenter.c ****       DOWNLINK_SEND_DEBUG(DefaultChannel, DefaultDevice, 6, gps_ubx_ucenter.replies);
+ 476:modules/gps/gps_ubx_ucenter.c **** #endif
+ 477:modules/gps/gps_ubx_ucenter.c ****       // Configure CFG-NAV(5) message
+ 478:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_nav();
+ 479:modules/gps/gps_ubx_ucenter.c ****       break;
+ 480:modules/gps/gps_ubx_ucenter.c ****     case 7:
+ 481:modules/gps/gps_ubx_ucenter.c ****       // Geodetic Position Solution
+ 482:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_POSLLH_ID, 1);
+ 944              		.loc 1 482 0
+ 945 03c8 0220     		movs	r0, #2
+ 946 03ca 00E0     		b	.L64
+ 947              	.L36:
+ 483:modules/gps/gps_ubx_ucenter.c ****       break;
+ 484:modules/gps/gps_ubx_ucenter.c ****     case 8:
+ 485:modules/gps/gps_ubx_ucenter.c ****       // Velocity Solution in NED
+ 486:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_VELNED_ID, 1);
+ 948              		.loc 1 486 0
+ 949 03cc 1220     		movs	r0, #18
+ 950              	.L64:
+ 951 03ce 0121     		movs	r1, #1
+ 952              	.L66:
+ 953 03d0 FFF7FEFF 		bl	gps_ubx_ucenter_enable_msg.constprop.0
+ 954              	.LVL89:
+ 955 03d4 73E0     		b	.L30
+ 956              	.LVL90:
+ 957              	.L37:
+ 487:modules/gps/gps_ubx_ucenter.c ****       break;
+ 488:modules/gps/gps_ubx_ucenter.c ****     case 9:
+ 489:modules/gps/gps_ubx_ucenter.c ****       // Receiver Navigation Status
+ 490:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_STATUS_ID, 1);
+ 958              		.loc 1 490 0
+ 959 03d6 0320     		movs	r0, #3
+ 960 03d8 F9E7     		b	.L64
+ 961              	.L38:
+ 491:modules/gps/gps_ubx_ucenter.c ****       break;
+ 492:modules/gps/gps_ubx_ucenter.c ****     case 10:
+ 493:modules/gps/gps_ubx_ucenter.c ****       // Space Vehicle Information
+ 494:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_SVINFO_ID, 4);
+ 962              		.loc 1 494 0
+ 963 03da 3020     		movs	r0, #48
+ 964 03dc 0421     		movs	r1, #4
+ 965 03de F7E7     		b	.L66
+ 966              	.L39:
+ 495:modules/gps/gps_ubx_ucenter.c ****       break;
+ 496:modules/gps/gps_ubx_ucenter.c ****     case 11:
+ 497:modules/gps/gps_ubx_ucenter.c ****       // Navigation Solution Information
+ 498:modules/gps/gps_ubx_ucenter.c **** #if GPS_UBX_UCENTER_SLOW_NAV_SOL
+ 499:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_SOL_ID, 8);
+ 500:modules/gps/gps_ubx_ucenter.c **** #else
+ 501:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_SOL_ID, 1);
+ 967              		.loc 1 501 0
+ 968 03e0 0620     		movs	r0, #6
+ 969 03e2 F4E7     		b	.L64
+ 970              	.L40:
+ 502:modules/gps/gps_ubx_ucenter.c **** #endif
+ 503:modules/gps/gps_ubx_ucenter.c ****       break;
+ 504:modules/gps/gps_ubx_ucenter.c ****     case 12:
+ 505:modules/gps/gps_ubx_ucenter.c ****       // Disable UTM on old Lea4P
+ 506:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_NAV_ID, UBX_NAV_POSUTM_ID, 0);
+ 971              		.loc 1 506 0
+ 972 03e4 0820     		movs	r0, #8
+ 973 03e6 0021     		movs	r1, #0
+ 974 03e8 F2E7     		b	.L66
+ 975              	.L41:
+ 976              	.LBB53:
+ 977              	.LBB54:
+ 424:modules/gps/gps_ubx_ucenter.c ****                    GPS_SBAS_AUTOSCAN, GPS_SBAS_AUTOSCAN);
+ 978              		.loc 1 424 0
+ 979 03ea A56A     		ldr	r5, [r4, #40]
+ 980              	.LVL91:
+ 981              	.LBB55:
+ 982              	.LBB56:
+ 337:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _mode = mode; ubx_send_bytes(dev, 1, (uint8_t*)&_mode);
+ 983              		.loc 2 337 0
+ 984 03ec 0823     		movs	r3, #8
+ 985              	.LVL92:
+ 986 03ee 2846     		mov	r0, r5
+ 987 03f0 0621     		movs	r1, #6
+ 988 03f2 1622     		movs	r2, #22
+ 989 03f4 FFF7FEFF 		bl	ubx_header
+ 990              	.LVL93:
+ 338:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _usage = usage; ubx_send_bytes(dev, 1, (uint8_t*)&_usage);
+ 991              		.loc 2 338 0
+ 992 03f8 0CAA     		add	r2, sp, #48
+ 993 03fa 0126     		movs	r6, #1
+ 994 03fc 02F8146D 		strb	r6, [r2, #-20]!
+ 995 0400 2846     		mov	r0, r5
+ 996 0402 3146     		mov	r1, r6
+ 997 0404 FFF7FEFF 		bl	ubx_send_bytes
+ 998              	.LVL94:
+ 339:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _maxbas = maxbas; ubx_send_bytes(dev, 1, (uint8_t*)&_maxbas);
+ 999              		.loc 2 339 0
+ 1000 0408 0CAA     		add	r2, sp, #48
+ 1001 040a 0723     		movs	r3, #7
+ 1002 040c 02F8103D 		strb	r3, [r2, #-16]!
+ 1003 0410 2846     		mov	r0, r5
+ 1004 0412 3146     		mov	r1, r6
+ 1005 0414 FFF7FEFF 		bl	ubx_send_bytes
+ 1006              	.LVL95:
+ 340:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint8_t _reserved = reserved; ubx_send_bytes(dev, 1, (uint8_t*)&_reserved);
+ 1007              		.loc 2 340 0
+ 1008 0418 0CAA     		add	r2, sp, #48
+ 1009 041a 2846     		mov	r0, r5
+ 1010 041c 02F80C6D 		strb	r6, [r2, #-12]!
+ 1011 0420 3146     		mov	r1, r6
+ 1012 0422 FFF7FEFF 		bl	ubx_send_bytes
+ 1013              	.LVL96:
+ 341:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _scanmode = scanmode; ubx_send_bytes(dev, 4, (uint8_t*)&_scanmode);
+ 1014              		.loc 2 341 0
+ 1015 0426 0CAA     		add	r2, sp, #48
+ 1016 0428 0027     		movs	r7, #0
+ 1017 042a 02F8087D 		strb	r7, [r2, #-8]!
+ 1018 042e 2846     		mov	r0, r5
+ 1019 0430 3146     		mov	r1, r6
+ 1020 0432 FFF7FEFF 		bl	ubx_send_bytes
+ 1021              	.LVL97:
+ 342:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 1022              		.loc 2 342 0
+ 1023 0436 0CAA     		add	r2, sp, #48
+ 1024 0438 42F8047D 		str	r7, [r2, #-4]!
+ 1025 043c 38E0     		b	.L65
+ 1026              	.LVL98:
+ 1027              	.L42:
+ 1028              	.LBE56:
+ 1029              	.LBE55:
+ 1030              	.LBE54:
+ 1031              	.LBE53:
+ 507:modules/gps/gps_ubx_ucenter.c ****       break;
+ 508:modules/gps/gps_ubx_ucenter.c ****     case 13:
+ 509:modules/gps/gps_ubx_ucenter.c ****       // SBAS Configuration
+ 510:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_config_sbas();
+ 511:modules/gps/gps_ubx_ucenter.c ****       break;
+ 512:modules/gps/gps_ubx_ucenter.c ****     case 14:
+ 513:modules/gps/gps_ubx_ucenter.c ****       // Poll Navigation/Measurement Rate Settings
+ 514:modules/gps/gps_ubx_ucenter.c ****       UbxSend_CFG_RATE(gps_ubx_ucenter.dev, GPS_UBX_UCENTER_RATE, 0x0001, 0x0000);
+ 1032              		.loc 1 514 0
+ 1033 043e A56A     		ldr	r5, [r4, #40]
+ 1034              	.LVL99:
+ 1035              	.LBB57:
+ 1036              	.LBB58:
+ 309:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _meas = meas; ubx_send_bytes(dev, 2, (uint8_t*)&_meas);
+ 1037              		.loc 2 309 0
+ 1038 0440 0621     		movs	r1, #6
+ 1039 0442 0B46     		mov	r3, r1
+ 1040              	.LVL100:
+ 1041 0444 2846     		mov	r0, r5
+ 1042 0446 0822     		movs	r2, #8
+ 1043 0448 FFF7FEFF 		bl	ubx_header
+ 1044              	.LVL101:
+ 310:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _nav = nav; ubx_send_bytes(dev, 2, (uint8_t*)&_nav);
+ 1045              		.loc 2 310 0
+ 1046 044c 0CAA     		add	r2, sp, #48
+ 1047 044e FA23     		movs	r3, #250
+ 1048 0450 22F80C3D 		strh	r3, [r2, #-12]!	@ movhi
+ 1049 0454 2846     		mov	r0, r5
+ 1050 0456 0221     		movs	r1, #2
+ 1051 0458 FFF7FEFF 		bl	ubx_send_bytes
+ 1052              	.LVL102:
+ 311:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint16_t _time = time; ubx_send_bytes(dev, 2, (uint8_t*)&_time);
+ 1053              		.loc 2 311 0
+ 1054 045c 0CAA     		add	r2, sp, #48
+ 1055 045e 0123     		movs	r3, #1
+ 1056 0460 22F8083D 		strh	r3, [r2, #-8]!	@ movhi
+ 1057 0464 2846     		mov	r0, r5
+ 1058 0466 0221     		movs	r1, #2
+ 1059 0468 FFF7FEFF 		bl	ubx_send_bytes
+ 1060              	.LVL103:
+ 312:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 1061              		.loc 2 312 0
+ 1062 046c 0CAA     		add	r2, sp, #48
+ 1063 046e 0023     		movs	r3, #0
+ 1064 0470 22F8043D 		strh	r3, [r2, #-4]!	@ movhi
+ 1065 0474 2846     		mov	r0, r5
+ 1066 0476 0221     		movs	r1, #2
+ 1067 0478 1CE0     		b	.L60
+ 1068              	.LVL104:
+ 1069              	.L43:
+ 1070              	.LBE58:
+ 1071              	.LBE57:
+ 515:modules/gps/gps_ubx_ucenter.c ****       break;
+ 516:modules/gps/gps_ubx_ucenter.c ****     case 15:
+ 517:modules/gps/gps_ubx_ucenter.c ****       // Raw Measurement Data
+ 518:modules/gps/gps_ubx_ucenter.c **** #if USE_GPS_UBX_RXM_RAW
+ 519:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_RXM_ID, UBX_RXM_RAW_ID, 1);
+ 520:modules/gps/gps_ubx_ucenter.c **** #endif
+ 521:modules/gps/gps_ubx_ucenter.c ****       break;
+ 522:modules/gps/gps_ubx_ucenter.c ****     case 16:
+ 523:modules/gps/gps_ubx_ucenter.c ****       // Subframe Buffer
+ 524:modules/gps/gps_ubx_ucenter.c **** #if USE_GPS_UBX_RXM_SFRB
+ 525:modules/gps/gps_ubx_ucenter.c ****       gps_ubx_ucenter_enable_msg(UBX_RXM_ID, UBX_RXM_SFRB_ID, 1);
+ 526:modules/gps/gps_ubx_ucenter.c **** #endif
+ 527:modules/gps/gps_ubx_ucenter.c ****       break;
+ 528:modules/gps/gps_ubx_ucenter.c ****     case 17:
+ 529:modules/gps/gps_ubx_ucenter.c ****       // Try to save on non-ROM devices...
+ 530:modules/gps/gps_ubx_ucenter.c ****       UbxSend_CFG_CFG(gps_ubx_ucenter.dev, 0x00000000, 0xffffffff, 0x00000000);
+ 1072              		.loc 1 530 0
+ 1073 047a A56A     		ldr	r5, [r4, #40]
+ 1074              	.LVL105:
+ 1075              	.LBB59:
+ 1076              	.LBB60:
+ 322:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _clear_mask = clear_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_clear_mask);
+ 1077              		.loc 2 322 0
+ 1078 047c 0C23     		movs	r3, #12
+ 1079              	.LVL106:
+ 1080 047e 2846     		mov	r0, r5
+ 1081 0480 0621     		movs	r1, #6
+ 1082 0482 0922     		movs	r2, #9
+ 1083 0484 FFF7FEFF 		bl	ubx_header
+ 1084              	.LVL107:
+ 323:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _save_mask = save_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_save_mask);
+ 1085              		.loc 2 323 0
+ 1086 0488 0CAA     		add	r2, sp, #48
+ 1087 048a 0026     		movs	r6, #0
+ 1088 048c 42F80C6D 		str	r6, [r2, #-12]!
+ 1089 0490 2846     		mov	r0, r5
+ 1090 0492 0421     		movs	r1, #4
+ 1091 0494 FFF7FEFF 		bl	ubx_send_bytes
+ 1092              	.LVL108:
+ 324:/home/dino/paparazzi/var/include/ubx_protocol.h ****   uint32_t _load_mask = load_mask; ubx_send_bytes(dev, 4, (uint8_t*)&_load_mask);
+ 1093              		.loc 2 324 0
+ 1094 0498 0CAA     		add	r2, sp, #48
+ 1095 049a 4FF0FF33 		mov	r3, #-1
+ 1096 049e 42F8083D 		str	r3, [r2, #-8]!
+ 1097              	.LVL109:
+ 1098              	.L63:
+ 1099 04a2 2846     		mov	r0, r5
+ 1100 04a4 0421     		movs	r1, #4
+ 1101 04a6 FFF7FEFF 		bl	ubx_send_bytes
+ 1102              	.LVL110:
+ 325:/home/dino/paparazzi/var/include/ubx_protocol.h ****   ubx_trailer(dev);
+ 1103              		.loc 2 325 0
+ 1104 04aa 0CAA     		add	r2, sp, #48
+ 1105 04ac 42F8046D 		str	r6, [r2, #-4]!
+ 1106              	.L65:
+ 1107 04b0 2846     		mov	r0, r5
+ 1108 04b2 0421     		movs	r1, #4
+ 1109              	.L60:
+ 1110 04b4 FFF7FEFF 		bl	ubx_send_bytes
+ 1111              	.LVL111:
+ 1112              	.L61:
+ 326:/home/dino/paparazzi/var/include/ubx_protocol.h **** }
+ 1113              		.loc 2 326 0
+ 1114 04b8 2846     		mov	r0, r5
+ 1115 04ba FFF7FEFF 		bl	ubx_trailer
+ 1116              	.LVL112:
+ 1117              	.L30:
+ 1118              	.LBE60:
+ 1119              	.LBE59:
+ 531:modules/gps/gps_ubx_ucenter.c ****       break;
+ 532:modules/gps/gps_ubx_ucenter.c ****     case 18:
+ 533:modules/gps/gps_ubx_ucenter.c **** #if DEBUG_GPS_UBX_UCENTER
+ 534:modules/gps/gps_ubx_ucenter.c ****       // Debug Downlink the result of all configuration steps: see messages
+ 535:modules/gps/gps_ubx_ucenter.c ****       // To view, enable DEBUG message in your telemetry configuration .xml
+ 536:modules/gps/gps_ubx_ucenter.c ****       DOWNLINK_SEND_DEBUG(DefaultChannel, DefaultDevice, GPS_UBX_UCENTER_CONFIG_STEPS, gps_ubx_ucen
+ 537:modules/gps/gps_ubx_ucenter.c ****       for (int i = 0; i < GPS_UBX_UCENTER_CONFIG_STEPS; i++) {
+ 538:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("%u\n", gps_ubx_ucenter.replies[i]);
+ 539:modules/gps/gps_ubx_ucenter.c ****       }
+ 540:modules/gps/gps_ubx_ucenter.c **** #endif
+ 541:modules/gps/gps_ubx_ucenter.c ****       return FALSE;
+ 542:modules/gps/gps_ubx_ucenter.c ****     default:
+ 543:modules/gps/gps_ubx_ucenter.c ****       break;
+ 544:modules/gps/gps_ubx_ucenter.c ****   }
+ 545:modules/gps/gps_ubx_ucenter.c **** 
+ 546:modules/gps/gps_ubx_ucenter.c ****   gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_NONE;
+ 1120              		.loc 1 546 0
+ 1121 04be 0023     		movs	r3, #0
+ 1122 04c0 6370     		strb	r3, [r4, #1]
+ 1123 04c2 03E0     		b	.L18
+ 1124              	.L27:
+ 1125              	.LBE40:
+ 1126              	.LBE39:
+ 103:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt = 0;
+ 1127              		.loc 1 103 0
+ 1128 04c4 0223     		movs	r3, #2
+ 1129 04c6 2370     		strb	r3, [r4]
+ 104:modules/gps/gps_ubx_ucenter.c **** #if PRINT_DEBUG_GPS_UBX_UCENTER
+ 1130              		.loc 1 104 0
+ 1131 04c8 0023     		movs	r3, #0
+ 1132 04ca 04E0     		b	.L68
+ 1133              	.L18:
+ 113:modules/gps/gps_ubx_ucenter.c ****       }
+ 1134              		.loc 1 113 0
+ 1135 04cc A378     		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 1136 04ce 0133     		adds	r3, r3, #1
+ 1137 04d0 01E0     		b	.L68
+ 1138              	.LVL113:
+ 1139              	.L44:
+ 119:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.cnt = 0;
+ 1140              		.loc 1 119 0
+ 1141 04d2 0023     		movs	r3, #0
+ 1142              	.LVL114:
+ 1143 04d4 2370     		strb	r3, [r4]
+ 1144              	.L68:
+ 120:modules/gps/gps_ubx_ucenter.c ****       } else {
+ 1145              		.loc 1 120 0
+ 1146 04d6 A370     		strb	r3, [r4, #2]
+ 1147              	.L14:
+ 130:modules/gps/gps_ubx_ucenter.c **** 
+ 1148              		.loc 1 130 0
+ 1149 04d8 0CB0     		add	sp, sp, #48
+ 1150              		.cfi_def_cfa_offset 32
+ 1151              		@ sp needed
+ 1152 04da BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 1153              		.cfi_endproc
+ 1154              	.LFE335:
+ 1156 04de 00BF     		.section	.text.gps_ubx_ucenter_event,"ax",%progbits
+ 1157              		.align	1
+ 1158              		.global	gps_ubx_ucenter_event
+ 1159              		.thumb
+ 1160              		.thumb_func
+ 1162              	gps_ubx_ucenter_event:
+ 1163              	.LFB336:
+ 137:modules/gps/gps_ubx_ucenter.c ****   // Save processing time inflight
+ 1164              		.loc 1 137 0
+ 1165              		.cfi_startproc
+ 1166              		@ args = 0, pretend = 0, frame = 0
+ 1167              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1168 0000 10B5     		push	{r4, lr}
+ 1169              		.cfi_def_cfa_offset 8
+ 1170              		.cfi_offset 4, -8
+ 1171              		.cfi_offset 14, -4
+ 139:modules/gps/gps_ubx_ucenter.c ****     return;
+ 1172              		.loc 1 139 0
+ 1173 0002 294A     		ldr	r2, .L81
+ 1174 0004 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 1175 0006 002B     		cmp	r3, #0
+ 1176 0008 4CD0     		beq	.L71
+ 144:modules/gps/gps_ubx_ucenter.c ****     case UBX_ACK_ID:
+ 1177              		.loc 1 144 0
+ 1178 000a 284B     		ldr	r3, .L81+4
+ 1179 000c 93F80811 		ldrb	r1, [r3, #264]	@ zero_extendqisi2
+ 1180 0010 0629     		cmp	r1, #6
+ 1181 0012 35D0     		beq	.L73
+ 1182 0014 0A29     		cmp	r1, #10
+ 1183 0016 08D0     		beq	.L74
+ 1184 0018 0529     		cmp	r1, #5
+ 1185 001a 43D1     		bne	.L71
+ 146:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_ACK;
+ 1186              		.loc 1 146 0
+ 1187 001c 93F80731 		ldrb	r3, [r3, #263]	@ zero_extendqisi2
+ 1188 0020 012B     		cmp	r3, #1
+ 150:modules/gps/gps_ubx_ucenter.c ****         DEBUG_PRINT("NACK\n");
+ 1189              		.loc 1 150 0
+ 1190 0022 18BF     		it	ne
+ 1191 0024 0223     		movne	r3, #2
+ 1192 0026 5370     		strb	r3, [r2, #1]
+ 1193 0028 10BD     		pop	{r4, pc}
+ 1194              	.L74:
+ 155:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_VERSION;
+ 1195              		.loc 1 155 0
+ 1196 002a 93F80711 		ldrb	r1, [r3, #263]	@ zero_extendqisi2
+ 1197 002e 0429     		cmp	r1, #4
+ 1198 0030 38D1     		bne	.L71
+ 156:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_h = UBX_MON_VER_c(gps_ubx.msg_buf, 0) - '0';
+ 1199              		.loc 1 156 0
+ 1200 0032 0321     		movs	r1, #3
+ 1201 0034 5170     		strb	r1, [r2, #1]
+ 157:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_l = 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 2) - '0');
+ 1202              		.loc 1 157 0
+ 1203 0036 197A     		ldrb	r1, [r3, #8]	@ zero_extendqisi2
+ 1204 0038 3039     		subs	r1, r1, #48
+ 1205 003a 1173     		strb	r1, [r2, #12]
+ 1206 003c D97A     		ldrb	r1, [r3, #11]	@ zero_extendqisi2
+ 1207 003e A1F13000 		sub	r0, r1, #48
+ 158:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.sw_ver_l += UBX_MON_VER_c(gps_ubx.msg_buf, 3) - '0';
+ 1208              		.loc 1 158 0
+ 1209 0042 997A     		ldrb	r1, [r3, #10]	@ zero_extendqisi2
+ 1210 0044 3039     		subs	r1, r1, #48
+ 1211 0046 01EB8101 		add	r1, r1, r1, lsl #2
+ 159:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_h = UBX_MON_VER_c(gps_ubx.msg_buf, 33) - '0';
+ 1212              		.loc 1 159 0
+ 1213 004a 00EB4101 		add	r1, r0, r1, lsl #1
+ 1214 004e 5173     		strb	r1, [r2, #13]
+ 160:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_h += 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 32) - '0');
+ 1215              		.loc 1 160 0
+ 1216 0050 93F82910 		ldrb	r1, [r3, #41]	@ zero_extendqisi2
+ 1217 0054 A1F13000 		sub	r0, r1, #48
+ 161:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_l = UBX_MON_VER_c(gps_ubx.msg_buf, 37) - '0';
+ 1218              		.loc 1 161 0
+ 1219 0058 93F82810 		ldrb	r1, [r3, #40]	@ zero_extendqisi2
+ 1220 005c 3039     		subs	r1, r1, #48
+ 1221 005e 01EB8101 		add	r1, r1, r1, lsl #2
+ 1222 0062 00EB4101 		add	r1, r0, r1, lsl #1
+ 1223 0066 D181     		strh	r1, [r2, #14]	@ movhi
+ 162:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_l += 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 36) - '0');
+ 1224              		.loc 1 162 0
+ 1225 0068 93F82D10 		ldrb	r1, [r3, #45]	@ zero_extendqisi2
+ 163:modules/gps/gps_ubx_ucenter.c **** 
+ 1226              		.loc 1 163 0
+ 1227 006c 93F82C30 		ldrb	r3, [r3, #44]	@ zero_extendqisi2
+ 1228 0070 303B     		subs	r3, r3, #48
+ 162:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.hw_ver_l += 10 * (UBX_MON_VER_c(gps_ubx.msg_buf, 36) - '0');
+ 1229              		.loc 1 162 0
+ 1230 0072 3039     		subs	r1, r1, #48
+ 163:modules/gps/gps_ubx_ucenter.c **** 
+ 1231              		.loc 1 163 0
+ 1232 0074 03EB8303 		add	r3, r3, r3, lsl #2
+ 1233 0078 01EB4303 		add	r3, r1, r3, lsl #1
+ 1234 007c 1382     		strh	r3, [r2, #16]	@ movhi
+ 1235 007e 10BD     		pop	{r4, pc}
+ 1236              	.L73:
+ 170:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.reply = GPS_UBX_UCENTER_REPLY_CFG_PRT;
+ 1237              		.loc 1 170 0
+ 1238 0080 93F80711 		ldrb	r1, [r3, #263]	@ zero_extendqisi2
+ 1239 0084 71B9     		cbnz	r1, .L71
+ 171:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.port_id = UBX_CFG_PRT_PortId(gps_ubx.msg_buf, 0);
+ 1240              		.loc 1 171 0
+ 1241 0086 0421     		movs	r1, #4
+ 1242 0088 5170     		strb	r1, [r2, #1]
+ 172:modules/gps/gps_ubx_ucenter.c ****         gps_ubx_ucenter.baud_run = UBX_CFG_PRT_Baudrate(gps_ubx.msg_buf, 0);
+ 1243              		.loc 1 172 0
+ 1244 008a 197A     		ldrb	r1, [r3, #8]	@ zero_extendqisi2
+ 1245 008c 9174     		strb	r1, [r2, #18]
+ 173:modules/gps/gps_ubx_ucenter.c **** 
+ 1246              		.loc 1 173 0
+ 1247 008e 997C     		ldrb	r1, [r3, #18]	@ zero_extendqisi2
+ 1248 0090 D87C     		ldrb	r0, [r3, #19]	@ zero_extendqisi2
+ 1249 0092 5C7C     		ldrb	r4, [r3, #17]	@ zero_extendqisi2
+ 1250 0094 0904     		lsls	r1, r1, #16
+ 1251 0096 41EA0060 		orr	r0, r1, r0, lsl #24
+ 1252 009a 197C     		ldrb	r1, [r3, #16]	@ zero_extendqisi2
+ 1253 009c 41EA0423 		orr	r3, r1, r4, lsl #8
+ 1254 00a0 0343     		orrs	r3, r3, r0
+ 1255 00a2 9360     		str	r3, [r2, #8]
+ 1256              	.L71:
+ 1257 00a4 10BD     		pop	{r4, pc}
+ 1258              	.L82:
+ 1259 00a6 00BF     		.align	2
+ 1260              	.L81:
+ 1261 00a8 00000000 		.word	.LANCHOR0
+ 1262 00ac 00000000 		.word	gps_ubx
+ 1263              		.cfi_endproc
+ 1264              	.LFE336:
+ 1266              		.global	gps_ubx_ucenter
+ 1267              		.section	.bss.gps_ubx_ucenter,"aw",%nobits
+ 1268              		.align	2
+ 1269              		.set	.LANCHOR0,. + 0
+ 1272              	gps_ubx_ucenter:
+ 1273 0000 00000000 		.space	44
+ 1273      00000000 
+ 1273      00000000 
+ 1273      00000000 
+ 1273      00000000 
+ 1274              		.text
+ 1275              	.Letext0:
+ 1276              		.file 3 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1277              		.file 4 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1278              		.file 5 "/home/dino/paparazzi/sw/include/std.h"
+ 1279              		.file 6 "./mcu_periph/link_device.h"
+ 1280              		.file 7 "./modules/gps/gps_ubx_ucenter.h"
+ 1281              		.file 8 "./mcu_periph/uart.h"
+ 1282              		.file 9 "./subsystems/gps/gps_ubx.h"
+ 1283              		.file 10 "./subsystems/datalink/transport.h"
+ 1284              		.file 11 "./mcu_periph/sys_time.h"
+ 1285              		.file 12 "./subsystems/datalink/xbee.h"
+ 1286              		.file 13 "./subsystems/datalink/datalink.h"
+ 1287              		.file 14 "./subsystems/datalink/w5100.h"
+ 1288              		.file 15 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 gps_ubx_ucenter.c
+     /tmp/ccXAnelI.s:20     .text.gps_ubx_ucenter_config_port_poll:00000000 $t
+     /tmp/ccXAnelI.s:24     .text.gps_ubx_ucenter_config_port_poll:00000000 gps_ubx_ucenter_config_port_poll
+     /tmp/ccXAnelI.s:67     .text.gps_ubx_ucenter_config_port_poll:0000001c $d
+     /tmp/ccXAnelI.s:74     .text.gps_ubx_ucenter_enable_msg.constprop.0:00000000 $t
+     /tmp/ccXAnelI.s:78     .text.gps_ubx_ucenter_enable_msg.constprop.0:00000000 gps_ubx_ucenter_enable_msg.constprop.0
+     /tmp/ccXAnelI.s:155    .text.gps_ubx_ucenter_enable_msg.constprop.0:0000004c $d
+     /tmp/ccXAnelI.s:160    .text.UbxSend_CFG_PRT.constprop.7:00000000 $t
+     /tmp/ccXAnelI.s:164    .text.UbxSend_CFG_PRT.constprop.7:00000000 UbxSend_CFG_PRT.constprop.7
+     /tmp/ccXAnelI.s:275    .text.gps_ubx_ucenter_init:00000000 $t
+     /tmp/ccXAnelI.s:280    .text.gps_ubx_ucenter_init:00000000 gps_ubx_ucenter_init
+     /tmp/ccXAnelI.s:333    .text.gps_ubx_ucenter_init:0000002c $d
+     /tmp/ccXAnelI.s:339    .text.gps_ubx_ucenter_periodic:00000000 $t
+     /tmp/ccXAnelI.s:344    .text.gps_ubx_ucenter_periodic:00000000 gps_ubx_ucenter_periodic
+     /tmp/ccXAnelI.s:383    .text.gps_ubx_ucenter_periodic:00000022 $d
+     /tmp/ccXAnelI.s:389    .text.gps_ubx_ucenter_periodic:00000028 $t
+     /tmp/ccXAnelI.s:510    .text.gps_ubx_ucenter_periodic:000000c0 $d
+     /tmp/ccXAnelI.s:529    .text.gps_ubx_ucenter_periodic:000000e6 $t
+     /tmp/ccXAnelI.s:808    .text.gps_ubx_ucenter_periodic:000002c8 $d
+     /tmp/ccXAnelI.s:816    .text.gps_ubx_ucenter_periodic:000002d4 $t
+     /tmp/ccXAnelI.s:1157   .text.gps_ubx_ucenter_event:00000000 $t
+     /tmp/ccXAnelI.s:1162   .text.gps_ubx_ucenter_event:00000000 gps_ubx_ucenter_event
+     /tmp/ccXAnelI.s:1261   .text.gps_ubx_ucenter_event:000000a8 $d
+     /tmp/ccXAnelI.s:1272   .bss.gps_ubx_ucenter:00000000 gps_ubx_ucenter
+     /tmp/ccXAnelI.s:1268   .bss.gps_ubx_ucenter:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.ubx_protocol.h.8.c3713cc77ec0e29586732c6ece008de7
+                           .group:00000000 wm4.modules.h.5.3647ee45f49511088e2f33d88288be64
+                           .group:00000000 wm4.modules.h.23.3d04ad9f740a156fcd476d18714df592
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.messages.h.9.c7f125c5dbec47e7d7f58ef9afe50d8b
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.datalink.h.28.0d234a7c203533b2ec538be3e18eddf4
+                           .group:00000000 wm4.dl_protocol.h.5.a12fe27a4b4a3cbb46fbca8acf33e3dd
+                           .group:00000000 wm4.datalink.h.46.36a5e0f36fb7d0784f1e7af767537c84
+                           .group:00000000 wm4.pprz_transport.h.57.167db0ee96032e142f5d6e570b3339aa
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.xbee24.h.29.a6677f8bcb71d3b07e11290a2de0e179
+                           .group:00000000 wm4.xbee.h.41.f36be817f95b74f883aef9324b53817b
+                           .group:00000000 wm4.w5100.h.29.d3529bed8de657ab3944b343be960f10
+                           .group:00000000 wm4.downlink.h.76.41034157e32fc9012166fd95ec7418fc
+                           .group:00000000 wm4.stdio.h.27.3fc80220048df77954e38daec3bb9670
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4.types.h.23.0d949686bbcadd1621462d4fa1f884f9
+                           .group:00000000 wm4.types.h.2.e9cec8c90ab35f77d9f499e06ae02400
+                           .group:00000000 wm4.types.h.81.ded4e8fbe2d299b79c956dc834e43661
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.68.a99a2db1e55915cfd1b035cc1e9fcff1
+
+UNDEFINED SYMBOLS
+ubx_header
+ubx_trailer
+ubx_send_bytes
+uart4
+uart_periph_set_baudrate
+gps_ubx

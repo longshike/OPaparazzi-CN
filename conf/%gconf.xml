@@ -1,0 +1,8 @@
+<gconf>
+  <entry name="left_pane_width" value="480" application="paparazzi center"/>
+  <entry name="height" value="447" application="paparazzi center"/>
+  <entry name="width" value="954" application="paparazzi center"/>
+  <entry name="last target" value="ap" application="paparazzi center"/>
+  <entry name="last session" value="Simulation" application="paparazzi center"/>
+  <entry name="last A/C" value="MY_apogee" application="paparazzi center"/>
+</gconf>

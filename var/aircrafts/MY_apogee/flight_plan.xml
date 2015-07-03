@@ -1,0 +1,185 @@
+<dump>
+  <flight_plan security_height="25" name="Basic" max_dist_from_home="300" lon0="116.2990961" lat0="40.101099" ground_alt="50" alt="100">
+    <header>#include "subsystems/datalink/datalink.h"</header>
+    <waypoints>
+      <waypoint y="-0.5" x="-0.2" name="HOME"/>
+      <waypoint y="28.8" x="-36.1" name="STDBY"/>
+      <waypoint y="68.6" x="-44.1" name="1"/>
+      <waypoint y="-19.2" x="-42.7" name="2"/>
+      <waypoint y="10.0" x="-54.1" name="MOB"/>
+      <waypoint y="99.2" x="-103.3" name="S1"/>
+      <waypoint y="-52.7" x="-8.2" name="S2"/>
+      <waypoint y="120.8" x="-4.2" name="AF" alt="35"/>
+      <waypoint y="100.8" x="-4.2" name="TD" alt="5"/>
+      <waypoint y="134.2" x="-65.6" name="_BASELEG"/>
+      <waypoint y="4.2" x="-37.8" name="CLIMB"/>
+    </waypoints>
+    <exceptions/>
+    <blocks>
+      <block name="Wait GPS" no="0">
+        <set var="kill_throttle" value="1" no="0"/>
+        <while cond="!GpsFixValid()" no="1"/>
+      </block>
+      <block name="Geo init" no="1">
+        <while cond="LessThan(NavBlockTime(), 10)" no="0"/>
+        <call fun="NavSetGroundReferenceHere()" no="2"/>
+      </block>
+      <block name="Holding point" no="2">
+        <set var="kill_throttle" value="1" no="0"/>
+        <attitude vmode="throttle" throttle="0" roll="0" no="1"/>
+      </block>
+      <block strip_icon="takeoff.png" strip_button="Takeoff (wp CLIMB)" name="Takeoff" key="t" group="home" no="3">
+        <exception deroute="Standby" cond="GetPosAlt() > GetAltRef()+25"/>
+        <set var="kill_throttle" value="0" no="0"/>
+        <set var="autopilot_flight_time" value="0" no="1"/>
+        <go wp="CLIMB" vmode="throttle" throttle="1.0" pitch="15" from="HOME" no="2"/>
+      </block>
+      <block strip_icon="home.png" strip_button="Standby" name="Standby" key="Ctrl+a" group="home" no="4">
+        <circle wp="STDBY" radius="nav_radius" no="0"/>
+      </block>
+      <block strip_icon="eight.png" strip_button="Figure 8 (wp 1-2)" name="Figure 8 around wp 1" key="F8" group="base_pattern" no="5">
+        <eight turn_around="2" radius="nav_radius" center="1" no="1"/>
+      </block>
+      <block strip_icon="oval.png" strip_button="Oval (wp 1-2)" name="Oval 1-2" group="base_pattern" no="6">
+        <oval radius="nav_radius" p2="2" p1="1" no="1"/>
+      </block>
+      <block strip_icon="mob.png" strip_button="Circle around here" name="MOB" group="base_pattern" no="7">
+        <call fun="NavSetWaypointHere(WP_MOB)" no="0"/>
+        <set var="nav_radius" value="DEFAULT_CIRCLE_RADIUS" no="1"/>
+        <circle wp="MOB" radius="nav_radius" no="2"/>
+      </block>
+      <block strip_icon="survey.png" strip_button="Survey (wp S1-S2)" name="Survey S1-S2" group="extra_pattern" no="8">
+        <survey_rectangle wp2="S2" wp1="S1" grid="150" no="1"/>
+      </block>
+      <block strip_icon="path.png" strip_button="Path (1,2,S1,S2,STDBY)" name="Path 1,2,S1,S2,STDBY" group="extra_pattern" no="9">
+        <go from="1" hmode="route" wp="2" wpts="1,2 S1" no="0"/>
+        <go from="2" hmode="route" wp="S1" wpts="1,2 S1" no="1"/>
+        <go from="S1" hmode="route" wp="S2" wpts="S1, S2 STDBY" throttle="0.4" pitch="auto" approaching_time="1" no="2"/>
+        <go from="S2" hmode="route" wp="STDBY" wpts="S1, S2 STDBY" throttle="0.4" pitch="auto" approaching_time="1" no="3"/>
+        <deroute block="Standby" no="4"/>
+      </block>
+      <block strip_icon="land-right.png" strip_button="Land right (wp AF-TD)" name="Land Right AF-TD" group="land" no="10">
+        <set var="nav_radius" value="DEFAULT_CIRCLE_RADIUS" no="0"/>
+        <deroute block="land" no="1"/>
+      </block>
+      <block strip_icon="land-left.png" strip_button="Land left (wp AF-TD)" name="Land Left AF-TD" group="land" no="11">
+        <set var="nav_radius" value="-DEFAULT_CIRCLE_RADIUS" no="0"/>
+        <deroute block="land" no="1"/>
+      </block>
+      <block name="land" no="12">
+        <call fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, nav_radius)" no="0"/>
+        <circle wp="_BASELEG" until="NavCircleCount() > 0.5" radius="nav_radius" no="1"/>
+        <circle wp="_BASELEG" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" radius="nav_radius" no="2"/>
+      </block>
+      <block name="final" no="13">
+        <exception deroute="flare" cond="GetAltRef() + 10 > GetPosAlt()"/>
+        <go wp="TD" vmode="glide" hmode="route" from="AF" no="0"/>
+      </block>
+      <block name="flare" no="14">
+        <go wp="TD" vmode="throttle" throttle="0.0" hmode="route" from="AF" approaching_time="0" no="0"/>
+        <attitude vmode="throttle" until="FALSE" throttle="0.0" roll="0.0" no="1"/>
+      </block>
+      <block name="HOME" no="15">
+        <home no="0"/>
+      </block>
+    </blocks>
+  </flight_plan>
+  <stages>
+    <stage block="15" block_name="HOME" stage="0">
+      <home no="0"/>
+    </stage>
+    <stage block="14" block_name="flare" stage="1">
+      <attitude vmode="throttle" until="FALSE" throttle="0.0" roll="0.0" no="1"/>
+    </stage>
+    <stage block="14" block_name="flare" stage="0">
+      <go wp="TD" vmode="throttle" throttle="0.0" hmode="route" from="AF" approaching_time="0" no="0"/>
+    </stage>
+    <stage block="13" block_name="final" stage="0">
+      <go wp="TD" vmode="glide" hmode="route" from="AF" no="0"/>
+    </stage>
+    <stage block="12" block_name="land" stage="2">
+      <circle wp="_BASELEG" until="And(NavQdrCloseTo(DegOfRad(baseleg_out_qdr)-(nav_radius/fabs(nav_radius))*10), 10 > fabs(GetPosAlt() - WaypointAlt(WP__BASELEG)))" radius="nav_radius" no="2"/>
+    </stage>
+    <stage block="12" block_name="land" stage="1">
+      <circle wp="_BASELEG" until="NavCircleCount() > 0.5" radius="nav_radius" no="1"/>
+    </stage>
+    <stage block="12" block_name="land" stage="0">
+      <call fun="nav_compute_baseleg(WP_AF, WP_TD, WP__BASELEG, nav_radius)" no="0"/>
+    </stage>
+    <stage block="11" block_name="Land Left AF-TD" stage="1">
+      <deroute block="land" no="1"/>
+    </stage>
+    <stage block="11" block_name="Land Left AF-TD" stage="0">
+      <set var="nav_radius" value="-DEFAULT_CIRCLE_RADIUS" no="0"/>
+    </stage>
+    <stage block="10" block_name="Land Right AF-TD" stage="1">
+      <deroute block="land" no="1"/>
+    </stage>
+    <stage block="10" block_name="Land Right AF-TD" stage="0">
+      <set var="nav_radius" value="DEFAULT_CIRCLE_RADIUS" no="0"/>
+    </stage>
+    <stage block="9" block_name="Path 1,2,S1,S2,STDBY" stage="4">
+      <deroute block="Standby" no="4"/>
+    </stage>
+    <stage block="9" block_name="Path 1,2,S1,S2,STDBY" stage="3">
+      <go from="S2" hmode="route" wp="STDBY" wpts="S1, S2 STDBY" throttle="0.4" pitch="auto" approaching_time="1" no="3"/>
+    </stage>
+    <stage block="9" block_name="Path 1,2,S1,S2,STDBY" stage="2">
+      <go from="S1" hmode="route" wp="S2" wpts="S1, S2 STDBY" throttle="0.4" pitch="auto" approaching_time="1" no="2"/>
+    </stage>
+    <stage block="9" block_name="Path 1,2,S1,S2,STDBY" stage="1">
+      <go from="2" hmode="route" wp="S1" wpts="1,2 S1" no="1"/>
+    </stage>
+    <stage block="9" block_name="Path 1,2,S1,S2,STDBY" stage="0">
+      <go from="1" hmode="route" wp="2" wpts="1,2 S1" no="0"/>
+    </stage>
+    <stage block="8" block_name="Survey S1-S2" stage="1">
+      <survey_rectangle wp2="S2" wp1="S1" grid="150" no="1"/>
+    </stage>
+    <stage block="7" block_name="MOB" stage="2">
+      <circle wp="MOB" radius="nav_radius" no="2"/>
+    </stage>
+    <stage block="7" block_name="MOB" stage="1">
+      <set var="nav_radius" value="DEFAULT_CIRCLE_RADIUS" no="1"/>
+    </stage>
+    <stage block="7" block_name="MOB" stage="0">
+      <call fun="NavSetWaypointHere(WP_MOB)" no="0"/>
+    </stage>
+    <stage block="6" block_name="Oval 1-2" stage="1">
+      <oval radius="nav_radius" p2="2" p1="1" no="1"/>
+    </stage>
+    <stage block="5" block_name="Figure 8 around wp 1" stage="1">
+      <eight turn_around="2" radius="nav_radius" center="1" no="1"/>
+    </stage>
+    <stage block="4" block_name="Standby" stage="0">
+      <circle wp="STDBY" radius="nav_radius" no="0"/>
+    </stage>
+    <stage block="3" block_name="Takeoff" stage="2">
+      <go wp="CLIMB" vmode="throttle" throttle="1.0" pitch="15" from="HOME" no="2"/>
+    </stage>
+    <stage block="3" block_name="Takeoff" stage="1">
+      <set var="autopilot_flight_time" value="0" no="1"/>
+    </stage>
+    <stage block="3" block_name="Takeoff" stage="0">
+      <set var="kill_throttle" value="0" no="0"/>
+    </stage>
+    <stage block="2" block_name="Holding point" stage="1">
+      <attitude vmode="throttle" throttle="0" roll="0" no="1"/>
+    </stage>
+    <stage block="2" block_name="Holding point" stage="0">
+      <set var="kill_throttle" value="1" no="0"/>
+    </stage>
+    <stage block="1" block_name="Geo init" stage="2">
+      <call fun="NavSetGroundReferenceHere()" no="2"/>
+    </stage>
+    <stage block="1" block_name="Geo init" stage="0">
+      <while cond="LessThan(NavBlockTime(), 10)" no="0"/>
+    </stage>
+    <stage block="0" block_name="Wait GPS" stage="1">
+      <while cond="!GpsFixValid()" no="1"/>
+    </stage>
+    <stage block="0" block_name="Wait GPS" stage="0">
+      <set var="kill_throttle" value="1" no="0"/>
+    </stage>
+  </stages>
+</dump>

@@ -1,0 +1,2739 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"nav_survey_rectangle.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.stateGetPositionEnu_f,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	stateGetPositionEnu_f:
+  25              	.LFB76:
+  26              		.file 1 "./state.h"
+   1:./state.h     **** /*
+   2:./state.h     ****  * Copyright (C) 2011-2012 Felix Ruess <felix.ruess@gmail.com>
+   3:./state.h     ****  *
+   4:./state.h     ****  * This file is part of paparazzi.
+   5:./state.h     ****  *
+   6:./state.h     ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:./state.h     ****  * it under the terms of the GNU General Public License as published by
+   8:./state.h     ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:./state.h     ****  * any later version.
+  10:./state.h     ****  *
+  11:./state.h     ****  * paparazzi is distributed in the hope that it will be useful,
+  12:./state.h     ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:./state.h     ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:./state.h     ****  * GNU General Public License for more details.
+  15:./state.h     ****  *
+  16:./state.h     ****  * You should have received a copy of the GNU General Public License
+  17:./state.h     ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:./state.h     ****  * <http://www.gnu.org/licenses/>.
+  19:./state.h     ****  */
+  20:./state.h     **** 
+  21:./state.h     **** /**
+  22:./state.h     ****  * @file state.h
+  23:./state.h     ****  *
+  24:./state.h     ****  * API to get/set the generic vehicle states.
+  25:./state.h     ****  *
+  26:./state.h     ****  * Also see the @ref state_interface "State Interface" page.
+  27:./state.h     ****  *
+  28:./state.h     ****  * @author Felix Ruess <felix.ruess@gmail.com>
+  29:./state.h     ****  */
+  30:./state.h     **** 
+  31:./state.h     **** #ifndef STATE_H
+  32:./state.h     **** #define STATE_H
+  33:./state.h     **** 
+  34:./state.h     **** #include "math/pprz_algebra_int.h"
+  35:./state.h     **** #include "math/pprz_algebra_float.h"
+  36:./state.h     **** #include "math/pprz_geodetic_int.h"
+  37:./state.h     **** #include "math/pprz_geodetic_float.h"
+  38:./state.h     **** #include "math/pprz_orientation_conversion.h"
+  39:./state.h     **** 
+  40:./state.h     **** #include "std.h"
+  41:./state.h     **** #include <string.h>
+  42:./state.h     **** 
+  43:./state.h     **** /**
+  44:./state.h     ****  * This general state interface holds all the most important vehicle states like
+  45:./state.h     ****  * position, velocity, attitude, etc. It handles coordinate system and
+  46:./state.h     ****  * fixed-/floating-point conversion on the fly when needed.
+  47:./state.h     ****  *
+  48:./state.h     ****  * You can set e.g. the position in any coordinate system you wish:
+  49:./state.h     ****  * stateSetPositionNed_i() to set the position in fixed-point NED coordinates.
+  50:./state.h     ****  * If you need to read the position somewhere else in a different representation,
+  51:./state.h     ****  * call: stateGetPositionLla_f() and only then the LLA float position representation
+  52:./state.h     ****  * is calculated on the fly and returned. It's also only calculated once,
+  53:./state.h     ****  * until a new position is set which invalidates all the other representations again.
+  54:./state.h     ****  */
+  55:./state.h     **** 
+  56:./state.h     **** /**
+  57:./state.h     ****  * @defgroup state_interface State interface
+  58:./state.h     ****  * @{
+  59:./state.h     ****  */
+  60:./state.h     **** 
+  61:./state.h     **** /**
+  62:./state.h     ****  * @defgroup state_position Position representations
+  63:./state.h     ****  * @{
+  64:./state.h     ****  */
+  65:./state.h     **** #define POS_ECEF_I 0
+  66:./state.h     **** #define POS_NED_I  1
+  67:./state.h     **** #define POS_ENU_I  2
+  68:./state.h     **** #define POS_LLA_I  3
+  69:./state.h     **** #define POS_UTM_I  4
+  70:./state.h     **** #define POS_ECEF_F 5
+  71:./state.h     **** #define POS_NED_F  6
+  72:./state.h     **** #define POS_ENU_F  7
+  73:./state.h     **** #define POS_LLA_F  8
+  74:./state.h     **** #define POS_UTM_F  9
+  75:./state.h     **** #define POS_LOCAL_COORD ((1<<POS_NED_I)|(1<<POS_NED_F)|(1<<POS_ENU_I)|(1<<POS_ENU_F))
+  76:./state.h     **** #define POS_GLOBAL_COORD ((1<<POS_ECEF_I)|(1<<POS_ECEF_F)|(1<<POS_LLA_I)|(1<<POS_LLA_F)|(1<<POS_UTM
+  77:./state.h     **** /**@}*/
+  78:./state.h     **** 
+  79:./state.h     **** /**
+  80:./state.h     ****  * @defgroup state_velocity Speed representations
+  81:./state.h     ****  * @{
+  82:./state.h     ****  */
+  83:./state.h     **** #define SPEED_ECEF_I  0
+  84:./state.h     **** #define SPEED_NED_I   1
+  85:./state.h     **** #define SPEED_ENU_I   2
+  86:./state.h     **** #define SPEED_HNORM_I 3
+  87:./state.h     **** #define SPEED_HDIR_I  4
+  88:./state.h     **** #define SPEED_ECEF_F  5
+  89:./state.h     **** #define SPEED_NED_F   6
+  90:./state.h     **** #define SPEED_ENU_F   7
+  91:./state.h     **** #define SPEED_HNORM_F 8
+  92:./state.h     **** #define SPEED_HDIR_F  9
+  93:./state.h     **** #define SPEED_LOCAL_COORD ((1<<SPEED_NED_I)|(1<<SPEED_ENU_I)|(1<<SPEED_NED_F)|(1<<SPEED_ENU_F))
+  94:./state.h     **** /**@}*/
+  95:./state.h     **** 
+  96:./state.h     **** /**
+  97:./state.h     ****  * @defgroup state_acceleration Acceleration representations
+  98:./state.h     ****  * @{
+  99:./state.h     ****  */
+ 100:./state.h     **** #define ACCEL_ECEF_I 0
+ 101:./state.h     **** #define ACCEL_NED_I  1
+ 102:./state.h     **** #define ACCEL_ECEF_F 2
+ 103:./state.h     **** #define ACCEL_NED_F  3
+ 104:./state.h     **** /**@}*/
+ 105:./state.h     **** 
+ 106:./state.h     **** /**
+ 107:./state.h     ****  * @defgroup state_rate Angular rate representations
+ 108:./state.h     ****  * @{
+ 109:./state.h     ****  */
+ 110:./state.h     **** #define RATE_I 0
+ 111:./state.h     **** #define RATE_F 1
+ 112:./state.h     **** /**@}*/
+ 113:./state.h     **** 
+ 114:./state.h     **** /**
+ 115:./state.h     ****  * @defgroup state_wind_airspeed Wind- and airspeed representations
+ 116:./state.h     ****  * @{
+ 117:./state.h     ****  */
+ 118:./state.h     **** #define WINDSPEED_I 0
+ 119:./state.h     **** #define AIRSPEED_I  1
+ 120:./state.h     **** #define WINDSPEED_F 2
+ 121:./state.h     **** #define AIRSPEED_F  3
+ 122:./state.h     **** #define AOA_F       4
+ 123:./state.h     **** #define SIDESLIP_F  5
+ 124:./state.h     **** /**@}*/
+ 125:./state.h     **** 
+ 126:./state.h     **** 
+ 127:./state.h     **** /**
+ 128:./state.h     ****  * Structure holding vehicle state data.
+ 129:./state.h     ****  */
+ 130:./state.h     **** struct State {
+ 131:./state.h     **** 
+ 132:./state.h     ****   /** @addtogroup state_position
+ 133:./state.h     ****    *  @{ */
+ 134:./state.h     **** 
+ 135:./state.h     ****   /**
+ 136:./state.h     ****    * Holds the status bits for all position representations.
+ 137:./state.h     ****    * When the corresponding bit is set the representation
+ 138:./state.h     ****    * is already computed.
+ 139:./state.h     ****    */
+ 140:./state.h     ****   uint16_t pos_status;
+ 141:./state.h     **** 
+ 142:./state.h     ****   /**
+ 143:./state.h     ****    * Position in EarthCenteredEarthFixed coordinates.
+ 144:./state.h     ****    * Units: centimeters
+ 145:./state.h     ****    */
+ 146:./state.h     ****   struct EcefCoor_i ecef_pos_i;
+ 147:./state.h     **** 
+ 148:./state.h     ****   /**
+ 149:./state.h     ****    * Position in Latitude, Longitude and Altitude.
+ 150:./state.h     ****    * Units lat,lon: degrees*1e7
+ 151:./state.h     ****    * Units alt: milimeters above reference ellipsoid
+ 152:./state.h     ****    */
+ 153:./state.h     ****   struct LlaCoor_i lla_pos_i;
+ 154:./state.h     **** 
+ 155:./state.h     ****   /**
+ 156:./state.h     ****    * Definition of the local (flat earth) coordinate system.
+ 157:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 158:./state.h     ****    * in ECEF (EarthCenteredEarthFixed) and LLA (LatitudeLongitudeAlt)
+ 159:./state.h     ****    * coordinates and the roation matrix from ECEF to local frame.
+ 160:./state.h     ****    * (int version)
+ 161:./state.h     ****    */
+ 162:./state.h     ****   struct LtpDef_i ned_origin_i;
+ 163:./state.h     **** 
+ 164:./state.h     ****   /**
+ 165:./state.h     ****    * true if local int coordinate frame is initialsed
+ 166:./state.h     ****    */
+ 167:./state.h     ****   bool_t ned_initialized_i;
+ 168:./state.h     **** 
+ 169:./state.h     ****   /**
+ 170:./state.h     ****    * Position in North East Down coordinates.
+ 171:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 172:./state.h     ****    * Units: m in BFP with INT32_POS_FRAC
+ 173:./state.h     ****    */
+ 174:./state.h     ****   struct NedCoor_i ned_pos_i;
+ 175:./state.h     **** 
+ 176:./state.h     ****   /**
+ 177:./state.h     ****    * Position in East North Up coordinates.
+ 178:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 179:./state.h     ****    * Units: m in BFP with INT32_POS_FRAC
+ 180:./state.h     ****    */
+ 181:./state.h     ****   struct EnuCoor_i enu_pos_i;
+ 182:./state.h     **** 
+ 183:./state.h     ****   /**
+ 184:./state.h     ****    * Position in UTM coordinates.
+ 185:./state.h     ****    * Units x,y: meters.
+ 186:./state.h     ****    * Units z: meters above MSL
+ 187:./state.h     ****    */
+ 188:./state.h     ****   struct UtmCoor_f utm_pos_f;
+ 189:./state.h     **** 
+ 190:./state.h     ****   /**
+ 191:./state.h     ****    * Altitude above ground level.
+ 192:./state.h     ****    * Unit: meters
+ 193:./state.h     ****    */
+ 194:./state.h     ****   float alt_agl_f;
+ 195:./state.h     **** 
+ 196:./state.h     ****   /**
+ 197:./state.h     ****    * Position in Latitude, Longitude and Altitude.
+ 198:./state.h     ****    * Units lat,lon: radians
+ 199:./state.h     ****    * Units alt: meters above reference ellipsoid
+ 200:./state.h     ****    */
+ 201:./state.h     ****   struct LlaCoor_f lla_pos_f;
+ 202:./state.h     **** 
+ 203:./state.h     ****   /**
+ 204:./state.h     ****    * Position in EarthCenteredEarthFixed coordinates.
+ 205:./state.h     ****    * Units: meters
+ 206:./state.h     ****    */
+ 207:./state.h     ****   struct EcefCoor_f ecef_pos_f;
+ 208:./state.h     **** 
+ 209:./state.h     ****   /**
+ 210:./state.h     ****    * Definition of the local (flat earth) coordinate system.
+ 211:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 212:./state.h     ****    * in ECEF (EarthCenteredEarthFixed) and LLA (LatitudeLongitudeAlt)
+ 213:./state.h     ****    * coordinates and the roation matrix from ECEF to local frame.
+ 214:./state.h     ****    * (float version)
+ 215:./state.h     ****    */
+ 216:./state.h     ****   struct LtpDef_f ned_origin_f;
+ 217:./state.h     **** 
+ 218:./state.h     ****   /// True if local float coordinate frame is initialsed
+ 219:./state.h     ****   bool_t ned_initialized_f;
+ 220:./state.h     **** 
+ 221:./state.h     ****   /**
+ 222:./state.h     ****    * Definition of the origin of Utm coordinate system.
+ 223:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 224:./state.h     ****    * in UTM coordinates, used as a reference when ned_origin is not
+ 225:./state.h     ****    * initialized.
+ 226:./state.h     ****    * (float version)
+ 227:./state.h     ****    */
+ 228:./state.h     ****   struct UtmCoor_f utm_origin_f;
+ 229:./state.h     **** 
+ 230:./state.h     ****   /// True if utm origin (float) coordinate frame is initialsed
+ 231:./state.h     ****   bool_t utm_initialized_f;
+ 232:./state.h     **** 
+ 233:./state.h     ****   /**
+ 234:./state.h     ****    * Position in North East Down coordinates.
+ 235:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 236:./state.h     ****    * Units: meters
+ 237:./state.h     ****    */
+ 238:./state.h     ****   struct NedCoor_f ned_pos_f;
+ 239:./state.h     **** 
+ 240:./state.h     ****   /**
+ 241:./state.h     ****    * Position in East North Up coordinates.
+ 242:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 243:./state.h     ****    * Units: meters
+ 244:./state.h     ****    */
+ 245:./state.h     ****   struct EnuCoor_f enu_pos_f;
+ 246:./state.h     ****   /** @}*/
+ 247:./state.h     **** 
+ 248:./state.h     **** 
+ 249:./state.h     ****   /** @addtogroup state_velocity
+ 250:./state.h     ****    *  @{ */
+ 251:./state.h     ****   /**
+ 252:./state.h     ****    * Holds the status bits for all ground speed representations.
+ 253:./state.h     ****    * When the corresponding bit is one the representation
+ 254:./state.h     ****    * is already computed.
+ 255:./state.h     ****    */
+ 256:./state.h     ****   uint16_t speed_status;
+ 257:./state.h     **** 
+ 258:./state.h     ****   /**
+ 259:./state.h     ****    * Velocity in EarthCenteredEarthFixed coordinates.
+ 260:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 261:./state.h     ****    */
+ 262:./state.h     ****   struct EcefCoor_i ecef_speed_i;
+ 263:./state.h     **** 
+ 264:./state.h     ****   /**
+ 265:./state.h     ****    * Velocity in North East Down coordinates.
+ 266:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 267:./state.h     ****    */
+ 268:./state.h     ****   struct NedCoor_i ned_speed_i;
+ 269:./state.h     **** 
+ 270:./state.h     ****   /**
+ 271:./state.h     ****    * Velocity in East North Up coordinates.
+ 272:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 273:./state.h     ****    */
+ 274:./state.h     ****   struct EnuCoor_i enu_speed_i;
+ 275:./state.h     **** 
+ 276:./state.h     ****   /**
+ 277:./state.h     ****    * Norm of horizontal ground speed.
+ 278:./state.h     ****    * Unit: m/s in BFP with #INT32_SPEED_FRAC
+ 279:./state.h     ****    */
+ 280:./state.h     ****   uint32_t h_speed_norm_i;
+ 281:./state.h     **** 
+ 282:./state.h     ****   /**
+ 283:./state.h     ****    * Direction of horizontal ground speed.
+ 284:./state.h     ****    * Unit: rad in BFP with #INT32_ANGLE_FRAC
+ 285:./state.h     ****    * (clockwise, zero=north)
+ 286:./state.h     ****    */
+ 287:./state.h     ****   int32_t h_speed_dir_i;
+ 288:./state.h     **** 
+ 289:./state.h     ****   /**
+ 290:./state.h     ****    * Velocity in EarthCenteredEarthFixed coordinates.
+ 291:./state.h     ****    * Units: m/s
+ 292:./state.h     ****    */
+ 293:./state.h     ****   struct EcefCoor_f ecef_speed_f;
+ 294:./state.h     **** 
+ 295:./state.h     ****   /**
+ 296:./state.h     ****    * @brief speed in North East Down coordinates
+ 297:./state.h     ****    * @details Units: m/s */
+ 298:./state.h     ****   struct NedCoor_f ned_speed_f;
+ 299:./state.h     **** 
+ 300:./state.h     ****   /**
+ 301:./state.h     ****    * Velocity in East North Up coordinates.
+ 302:./state.h     ****    * Units: m/s
+ 303:./state.h     ****    */
+ 304:./state.h     ****   struct EnuCoor_f enu_speed_f;
+ 305:./state.h     **** 
+ 306:./state.h     ****   /**
+ 307:./state.h     ****    * Norm of horizontal ground speed.
+ 308:./state.h     ****    * Unit: m/s
+ 309:./state.h     ****    */
+ 310:./state.h     ****   float h_speed_norm_f;
+ 311:./state.h     **** 
+ 312:./state.h     ****   /**
+ 313:./state.h     ****    * Direction of horizontal ground speed.
+ 314:./state.h     ****    * Unit: rad (clockwise, zero=north)
+ 315:./state.h     ****    */
+ 316:./state.h     ****   float h_speed_dir_f;
+ 317:./state.h     ****   /** @}*/
+ 318:./state.h     **** 
+ 319:./state.h     **** 
+ 320:./state.h     ****   /** @addtogroup state_acceleration
+ 321:./state.h     ****    *  @{ */
+ 322:./state.h     ****   /**
+ 323:./state.h     ****    * Holds the status bits for all acceleration representations.
+ 324:./state.h     ****    * When the corresponding bit is one the representation
+ 325:./state.h     ****    * is already computed.
+ 326:./state.h     ****    */
+ 327:./state.h     ****   uint8_t accel_status;
+ 328:./state.h     **** 
+ 329:./state.h     ****   /**
+ 330:./state.h     ****    * Acceleration in North East Down coordinates.
+ 331:./state.h     ****    * Units: m/s^2 in BFP with #INT32_ACCEL_FRAC
+ 332:./state.h     ****    */
+ 333:./state.h     ****   struct NedCoor_i ned_accel_i;
+ 334:./state.h     **** 
+ 335:./state.h     ****   /**
+ 336:./state.h     ****    * Acceleration in EarthCenteredEarthFixed coordinates.
+ 337:./state.h     ****    * Units: m/s^2 in BFP with INT32_ACCEL_FRAC
+ 338:./state.h     ****    */
+ 339:./state.h     ****   struct EcefCoor_i ecef_accel_i;
+ 340:./state.h     **** 
+ 341:./state.h     ****   /**
+ 342:./state.h     ****    * Acceleration in North East Down coordinates.
+ 343:./state.h     ****    * Units: m/s^2
+ 344:./state.h     ****    */
+ 345:./state.h     ****   struct NedCoor_f ned_accel_f;
+ 346:./state.h     **** 
+ 347:./state.h     ****   /**
+ 348:./state.h     ****    * Acceleration in EarthCenteredEarthFixed coordinates.
+ 349:./state.h     ****    * Units: m/s^2
+ 350:./state.h     ****    */
+ 351:./state.h     ****   struct EcefCoor_f ecef_accel_f;
+ 352:./state.h     ****   /** @}*/
+ 353:./state.h     **** 
+ 354:./state.h     **** 
+ 355:./state.h     ****   /** @defgroup state_attitude Attitude representations
+ 356:./state.h     ****    */
+ 357:./state.h     ****   struct OrientationReps ned_to_body_orientation;
+ 358:./state.h     **** 
+ 359:./state.h     **** 
+ 360:./state.h     ****   /** @addtogroup state_rate
+ 361:./state.h     ****    *  @{ */
+ 362:./state.h     ****   /**
+ 363:./state.h     ****    * Holds the status bits for all angular rate representations.
+ 364:./state.h     ****    * When the corresponding bit is one the representation
+ 365:./state.h     ****    * is already computed.
+ 366:./state.h     ****    */
+ 367:./state.h     ****   uint8_t rate_status;
+ 368:./state.h     **** 
+ 369:./state.h     ****   /**
+ 370:./state.h     ****    * Angular rates in body frame.
+ 371:./state.h     ****    * Units: rad/s in BFP with #INT32_RATE_FRAC
+ 372:./state.h     ****    */
+ 373:./state.h     ****   struct Int32Rates  body_rates_i;
+ 374:./state.h     **** 
+ 375:./state.h     ****   /**
+ 376:./state.h     ****    * Angular rates in body frame.
+ 377:./state.h     ****    * Units: rad/s
+ 378:./state.h     ****    */
+ 379:./state.h     ****   struct FloatRates  body_rates_f;
+ 380:./state.h     ****   /** @}*/
+ 381:./state.h     **** 
+ 382:./state.h     **** 
+ 383:./state.h     ****   /** @addtogroup state_wind_airspeed
+ 384:./state.h     ****    *  @{ */
+ 385:./state.h     ****   /**
+ 386:./state.h     ****    * Holds the status bits for all wind- and airspeed representations.
+ 387:./state.h     ****    * When the corresponding bit is one the representation
+ 388:./state.h     ****    * is already computed.
+ 389:./state.h     ****    */
+ 390:./state.h     ****   uint8_t wind_air_status;
+ 391:./state.h     **** 
+ 392:./state.h     ****   /**
+ 393:./state.h     ****    * Horizontal windspeed in north/east.
+ 394:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 395:./state.h     ****    */
+ 396:./state.h     ****   struct Int32Vect2 h_windspeed_i;
+ 397:./state.h     **** 
+ 398:./state.h     ****   /**
+ 399:./state.h     ****    * Norm of horizontal ground speed.
+ 400:./state.h     ****    * @details Unit: m/s in BFP with #INT32_SPEED_FRAC
+ 401:./state.h     ****    */
+ 402:./state.h     ****   int32_t airspeed_i;
+ 403:./state.h     **** 
+ 404:./state.h     ****   /**
+ 405:./state.h     ****    * Horizontal windspeed.
+ 406:./state.h     ****    * Units: m/s with x=north, y=east
+ 407:./state.h     ****    */
+ 408:./state.h     ****   struct FloatVect2 h_windspeed_f;
+ 409:./state.h     **** 
+ 410:./state.h     ****   /**
+ 411:./state.h     ****    * Norm of relative air speed.
+ 412:./state.h     ****    * Unit: m/s
+ 413:./state.h     ****    */
+ 414:./state.h     ****   float airspeed_f;
+ 415:./state.h     **** 
+ 416:./state.h     ****   /**
+ 417:./state.h     ****    * Angle of attack
+ 418:./state.h     ****    * Unit: rad
+ 419:./state.h     ****    */
+ 420:./state.h     ****   float angle_of_attack_f;
+ 421:./state.h     **** 
+ 422:./state.h     ****   /**
+ 423:./state.h     ****    * Sideslip angle
+ 424:./state.h     ****    * Unit: rad
+ 425:./state.h     ****    */
+ 426:./state.h     ****   float sideslip_f;
+ 427:./state.h     **** 
+ 428:./state.h     ****   /** @}*/
+ 429:./state.h     **** 
+ 430:./state.h     **** };
+ 431:./state.h     **** 
+ 432:./state.h     **** extern struct State state;
+ 433:./state.h     **** 
+ 434:./state.h     **** extern void stateInit(void);
+ 435:./state.h     **** 
+ 436:./state.h     **** /** @addtogroup state_position
+ 437:./state.h     ****  *  @{ */
+ 438:./state.h     **** 
+ 439:./state.h     **** /// Set the local (flat earth) coordinate frame origin (int).
+ 440:./state.h     **** static inline void stateSetLocalOrigin_i(struct LtpDef_i *ltp_def)
+ 441:./state.h     **** {
+ 442:./state.h     ****   memcpy(&state.ned_origin_i, ltp_def, sizeof(struct LtpDef_i));
+ 443:./state.h     ****   /* convert to float */
+ 444:./state.h     ****   ECEF_FLOAT_OF_BFP(state.ned_origin_f.ecef, state.ned_origin_i.ecef);
+ 445:./state.h     ****   LLA_FLOAT_OF_BFP(state.ned_origin_f.lla, state.ned_origin_i.lla);
+ 446:./state.h     ****   HIGH_RES_RMAT_FLOAT_OF_BFP(state.ned_origin_f.ltp_of_ecef, state.ned_origin_i.ltp_of_ecef);
+ 447:./state.h     ****   state.ned_origin_f.hmsl = M_OF_MM(state.ned_origin_i.hmsl);
+ 448:./state.h     **** 
+ 449:./state.h     ****   /* clear bits for all local frame representations */
+ 450:./state.h     ****   state.pos_status &= ~(POS_LOCAL_COORD);
+ 451:./state.h     ****   state.speed_status &= ~(SPEED_LOCAL_COORD);
+ 452:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_I);
+ 453:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_F);
+ 454:./state.h     **** 
+ 455:./state.h     ****   state.ned_initialized_i = TRUE;
+ 456:./state.h     ****   state.ned_initialized_f = TRUE;
+ 457:./state.h     **** }
+ 458:./state.h     **** 
+ 459:./state.h     **** /// Set the local (flat earth) coordinate frame origin from UTM (float).
+ 460:./state.h     **** static inline void stateSetLocalUtmOrigin_f(struct UtmCoor_f *utm_def)
+ 461:./state.h     **** {
+ 462:./state.h     ****   memcpy(&state.utm_origin_f, utm_def, sizeof(struct UtmCoor_f));
+ 463:./state.h     ****   state.utm_initialized_f = TRUE;
+ 464:./state.h     **** 
+ 465:./state.h     ****   /* clear bits for all local frame representations */
+ 466:./state.h     ****   state.pos_status &= ~(POS_LOCAL_COORD);
+ 467:./state.h     ****   state.speed_status &= ~(SPEED_LOCAL_COORD);
+ 468:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_I);
+ 469:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_F);
+ 470:./state.h     **** }
+ 471:./state.h     **** /*******************************************************************************
+ 472:./state.h     ****  *                                                                             *
+ 473:./state.h     ****  * Set and Get functions for the POSITION representations                      *
+ 474:./state.h     ****  *                                                                             *
+ 475:./state.h     ****  ******************************************************************************/
+ 476:./state.h     **** 
+ 477:./state.h     **** /************* declaration of transformation functions ************/
+ 478:./state.h     **** extern void stateCalcPositionEcef_i(void);
+ 479:./state.h     **** extern void stateCalcPositionNed_i(void);
+ 480:./state.h     **** extern void stateCalcPositionEnu_i(void);
+ 481:./state.h     **** extern void stateCalcPositionLla_i(void);
+ 482:./state.h     **** extern void stateCalcPositionUtm_f(void);
+ 483:./state.h     **** extern void stateCalcPositionEcef_f(void);
+ 484:./state.h     **** extern void stateCalcPositionNed_f(void);
+ 485:./state.h     **** extern void stateCalcPositionEnu_f(void);
+ 486:./state.h     **** extern void stateCalcPositionLla_f(void);
+ 487:./state.h     **** 
+ 488:./state.h     **** /*********************** validity test functions ******************/
+ 489:./state.h     **** 
+ 490:./state.h     **** /// Test if local coordinates are valid.
+ 491:./state.h     **** static inline bool_t stateIsLocalCoordinateValid(void)
+ 492:./state.h     **** {
+ 493:./state.h     ****   return ((state.ned_initialized_i || state.ned_initialized_f || state.utm_initialized_f)
+ 494:./state.h     ****           && (state.pos_status & (POS_LOCAL_COORD)));
+ 495:./state.h     **** }
+ 496:./state.h     **** 
+ 497:./state.h     **** /// Test if global coordinates are valid.
+ 498:./state.h     **** static inline bool_t stateIsGlobalCoordinateValid(void)
+ 499:./state.h     **** {
+ 500:./state.h     ****   return ((state.pos_status & (POS_GLOBAL_COORD)) || stateIsLocalCoordinateValid());
+ 501:./state.h     **** }
+ 502:./state.h     **** 
+ 503:./state.h     **** /************************ Set functions ****************************/
+ 504:./state.h     **** 
+ 505:./state.h     **** /// Set position from ECEF coordinates (int).
+ 506:./state.h     **** static inline void stateSetPositionEcef_i(struct EcefCoor_i *ecef_pos)
+ 507:./state.h     **** {
+ 508:./state.h     ****   VECT3_COPY(state.ecef_pos_i, *ecef_pos);
+ 509:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 510:./state.h     ****   state.pos_status = (1 << POS_ECEF_I);
+ 511:./state.h     **** }
+ 512:./state.h     **** 
+ 513:./state.h     **** /// Set position from local NED coordinates (int).
+ 514:./state.h     **** static inline void stateSetPositionNed_i(struct NedCoor_i *ned_pos)
+ 515:./state.h     **** {
+ 516:./state.h     ****   VECT3_COPY(state.ned_pos_i, *ned_pos);
+ 517:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 518:./state.h     ****   state.pos_status = (1 << POS_NED_I);
+ 519:./state.h     **** }
+ 520:./state.h     **** 
+ 521:./state.h     **** /// Set position from local ENU coordinates (int).
+ 522:./state.h     **** static inline void stateSetPositionEnu_i(struct EnuCoor_i *enu_pos)
+ 523:./state.h     **** {
+ 524:./state.h     ****   VECT3_COPY(state.enu_pos_i, *enu_pos);
+ 525:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 526:./state.h     ****   state.pos_status = (1 << POS_ENU_I);
+ 527:./state.h     **** }
+ 528:./state.h     **** 
+ 529:./state.h     **** /// Set position from LLA coordinates (int).
+ 530:./state.h     **** static inline void stateSetPositionLla_i(struct LlaCoor_i *lla_pos)
+ 531:./state.h     **** {
+ 532:./state.h     ****   LLA_COPY(state.lla_pos_i, *lla_pos);
+ 533:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 534:./state.h     ****   state.pos_status = (1 << POS_LLA_I);
+ 535:./state.h     **** }
+ 536:./state.h     **** 
+ 537:./state.h     **** /// Set multiple position coordinates (int).
+ 538:./state.h     **** static inline void stateSetPosition_i(
+ 539:./state.h     ****   struct EcefCoor_i *ecef_pos,
+ 540:./state.h     ****   struct NedCoor_i *ned_pos,
+ 541:./state.h     ****   struct EnuCoor_i *enu_pos,
+ 542:./state.h     ****   struct LlaCoor_i *lla_pos)
+ 543:./state.h     **** {
+ 544:./state.h     ****   /* clear all status bit */
+ 545:./state.h     ****   state.pos_status = 0;
+ 546:./state.h     ****   if (ecef_pos != NULL) {
+ 547:./state.h     ****     VECT3_COPY(state.ecef_pos_i, *ecef_pos);
+ 548:./state.h     ****     state.pos_status |= (1 << POS_ECEF_I);
+ 549:./state.h     ****   }
+ 550:./state.h     ****   if (ned_pos != NULL) {
+ 551:./state.h     ****     VECT3_COPY(state.ned_pos_i, *ned_pos);
+ 552:./state.h     ****     state.pos_status |= (1 << POS_NED_I);
+ 553:./state.h     ****   }
+ 554:./state.h     ****   if (enu_pos != NULL) {
+ 555:./state.h     ****     VECT3_COPY(state.enu_pos_i, *enu_pos);
+ 556:./state.h     ****     state.pos_status |= (1 << POS_ENU_I);
+ 557:./state.h     ****   }
+ 558:./state.h     ****   if (lla_pos != NULL) {
+ 559:./state.h     ****     LLA_COPY(state.lla_pos_i, *lla_pos);
+ 560:./state.h     ****     state.pos_status |= (1 << POS_LLA_I);
+ 561:./state.h     ****   }
+ 562:./state.h     **** }
+ 563:./state.h     **** 
+ 564:./state.h     **** /// Set position from UTM coordinates (float).
+ 565:./state.h     **** static inline void stateSetPositionUtm_f(struct UtmCoor_f *utm_pos)
+ 566:./state.h     **** {
+ 567:./state.h     ****   memcpy(&state.utm_pos_f, utm_pos, sizeof(struct UtmCoor_f));
+ 568:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 569:./state.h     ****   state.pos_status = (1 << POS_UTM_F);
+ 570:./state.h     **** }
+ 571:./state.h     **** 
+ 572:./state.h     **** /// Set position from ECEF coordinates (float).
+ 573:./state.h     **** static inline void stateSetPositionEcef_f(struct EcefCoor_f *ecef_pos)
+ 574:./state.h     **** {
+ 575:./state.h     ****   VECT3_COPY(state.ecef_pos_f, *ecef_pos);
+ 576:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 577:./state.h     ****   state.pos_status = (1 << POS_ECEF_F);
+ 578:./state.h     **** }
+ 579:./state.h     **** 
+ 580:./state.h     **** /// Set position from local NED coordinates (float).
+ 581:./state.h     **** static inline void stateSetPositionNed_f(struct NedCoor_f *ned_pos)
+ 582:./state.h     **** {
+ 583:./state.h     ****   VECT3_COPY(state.ned_pos_f, *ned_pos);
+ 584:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 585:./state.h     ****   state.pos_status = (1 << POS_NED_F);
+ 586:./state.h     **** }
+ 587:./state.h     **** 
+ 588:./state.h     **** /// Set position from local ENU coordinates (float).
+ 589:./state.h     **** static inline void stateSetPositionEnu_f(struct EnuCoor_f *enu_pos)
+ 590:./state.h     **** {
+ 591:./state.h     ****   VECT3_COPY(state.enu_pos_f, *enu_pos);
+ 592:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 593:./state.h     ****   state.pos_status = (1 << POS_ENU_F);
+ 594:./state.h     **** }
+ 595:./state.h     **** 
+ 596:./state.h     **** /// Set position from LLA coordinates (float).
+ 597:./state.h     **** static inline void stateSetPositionLla_f(struct LlaCoor_f *lla_pos)
+ 598:./state.h     **** {
+ 599:./state.h     ****   LLA_COPY(state.lla_pos_f, *lla_pos);
+ 600:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 601:./state.h     ****   state.pos_status = (1 << POS_LLA_F);
+ 602:./state.h     **** }
+ 603:./state.h     **** 
+ 604:./state.h     **** /// Set multiple position coordinates (float).
+ 605:./state.h     **** static inline void stateSetPosition_f(
+ 606:./state.h     ****   struct EcefCoor_f *ecef_pos,
+ 607:./state.h     ****   struct NedCoor_f *ned_pos,
+ 608:./state.h     ****   struct EnuCoor_f *enu_pos,
+ 609:./state.h     ****   struct LlaCoor_f *lla_pos,
+ 610:./state.h     ****   struct UtmCoor_f *utm_pos)
+ 611:./state.h     **** {
+ 612:./state.h     ****   /* clear all status bit */
+ 613:./state.h     ****   state.pos_status = 0;
+ 614:./state.h     ****   if (ecef_pos != NULL) {
+ 615:./state.h     ****     VECT3_COPY(state.ecef_pos_f, *ecef_pos);
+ 616:./state.h     ****     state.pos_status |= (1 << POS_ECEF_F);
+ 617:./state.h     ****   }
+ 618:./state.h     ****   if (ned_pos != NULL) {
+ 619:./state.h     ****     VECT3_COPY(state.ned_pos_f, *ned_pos);
+ 620:./state.h     ****     state.pos_status |= (1 << POS_NED_F);
+ 621:./state.h     ****   }
+ 622:./state.h     ****   if (enu_pos != NULL) {
+ 623:./state.h     ****     VECT3_COPY(state.enu_pos_f, *enu_pos);
+ 624:./state.h     ****     state.pos_status |= (1 << POS_ENU_F);
+ 625:./state.h     ****   }
+ 626:./state.h     ****   if (lla_pos != NULL) {
+ 627:./state.h     ****     LLA_COPY(state.lla_pos_f, *lla_pos);
+ 628:./state.h     ****     state.pos_status |= (1 << POS_LLA_F);
+ 629:./state.h     ****   }
+ 630:./state.h     ****   if (utm_pos != NULL) {
+ 631:./state.h     ****     memcpy(&state.utm_pos_f, utm_pos, sizeof(struct UtmCoor_f));
+ 632:./state.h     ****     state.pos_status |= (1 << POS_UTM_F);
+ 633:./state.h     ****   }
+ 634:./state.h     **** }
+ 635:./state.h     **** 
+ 636:./state.h     **** /************************ Get functions ****************************/
+ 637:./state.h     **** 
+ 638:./state.h     **** /// Get position in ECEF coordinates (int).
+ 639:./state.h     **** static inline struct EcefCoor_i *stateGetPositionEcef_i(void)
+ 640:./state.h     **** {
+ 641:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ECEF_I)) {
+ 642:./state.h     ****     stateCalcPositionEcef_i();
+ 643:./state.h     ****   }
+ 644:./state.h     ****   return &state.ecef_pos_i;
+ 645:./state.h     **** }
+ 646:./state.h     **** 
+ 647:./state.h     **** /// Get position in local NED coordinates (int).
+ 648:./state.h     **** static inline struct NedCoor_i *stateGetPositionNed_i(void)
+ 649:./state.h     **** {
+ 650:./state.h     ****   if (!bit_is_set(state.pos_status, POS_NED_I)) {
+ 651:./state.h     ****     stateCalcPositionNed_i();
+ 652:./state.h     ****   }
+ 653:./state.h     ****   return &state.ned_pos_i;
+ 654:./state.h     **** }
+ 655:./state.h     **** 
+ 656:./state.h     **** /// Get position in local ENU coordinates (int).
+ 657:./state.h     **** static inline struct EnuCoor_i *stateGetPositionEnu_i(void)
+ 658:./state.h     **** {
+ 659:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ENU_I)) {
+ 660:./state.h     ****     stateCalcPositionEnu_i();
+ 661:./state.h     ****   }
+ 662:./state.h     ****   return &state.enu_pos_i;
+ 663:./state.h     **** }
+ 664:./state.h     **** 
+ 665:./state.h     **** /// Get position in LLA coordinates (int).
+ 666:./state.h     **** static inline struct LlaCoor_i *stateGetPositionLla_i(void)
+ 667:./state.h     **** {
+ 668:./state.h     ****   if (!bit_is_set(state.pos_status, POS_LLA_I)) {
+ 669:./state.h     ****     stateCalcPositionLla_i();
+ 670:./state.h     ****   }
+ 671:./state.h     ****   return &state.lla_pos_i;
+ 672:./state.h     **** }
+ 673:./state.h     **** 
+ 674:./state.h     **** /// Get position in UTM coordinates (float).
+ 675:./state.h     **** static inline struct UtmCoor_f *stateGetPositionUtm_f(void)
+ 676:./state.h     **** {
+ 677:./state.h     ****   if (!bit_is_set(state.pos_status, POS_UTM_F)) {
+ 678:./state.h     ****     stateCalcPositionUtm_f();
+ 679:./state.h     ****   }
+ 680:./state.h     ****   return &state.utm_pos_f;
+ 681:./state.h     **** }
+ 682:./state.h     **** 
+ 683:./state.h     **** /// Get position in ECEF coordinates (float).
+ 684:./state.h     **** static inline struct EcefCoor_f *stateGetPositionEcef_f(void)
+ 685:./state.h     **** {
+ 686:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ECEF_F)) {
+ 687:./state.h     ****     stateCalcPositionEcef_f();
+ 688:./state.h     ****   }
+ 689:./state.h     ****   return &state.ecef_pos_f;
+ 690:./state.h     **** }
+ 691:./state.h     **** 
+ 692:./state.h     **** /// Get position in local NED coordinates (float).
+ 693:./state.h     **** static inline struct NedCoor_f *stateGetPositionNed_f(void)
+ 694:./state.h     **** {
+ 695:./state.h     ****   if (!bit_is_set(state.pos_status, POS_NED_F)) {
+ 696:./state.h     ****     stateCalcPositionNed_f();
+ 697:./state.h     ****   }
+ 698:./state.h     ****   return &state.ned_pos_f;
+ 699:./state.h     **** }
+ 700:./state.h     **** 
+ 701:./state.h     **** /// Get position in local ENU coordinates (float).
+ 702:./state.h     **** static inline struct EnuCoor_f *stateGetPositionEnu_f(void)
+ 703:./state.h     **** {
+  27              		.loc 1 703 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31 0000 08B5     		push	{r3, lr}
+  32              		.cfi_def_cfa_offset 8
+  33              		.cfi_offset 3, -8
+  34              		.cfi_offset 14, -4
+ 704:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ENU_F)) {
+  35              		.loc 1 704 0
+  36 0002 044B     		ldr	r3, .L4
+  37 0004 1B88     		ldrh	r3, [r3]
+  38 0006 1B06     		lsls	r3, r3, #24
+  39 0008 01D4     		bmi	.L2
+ 705:./state.h     ****     stateCalcPositionEnu_f();
+  40              		.loc 1 705 0
+  41 000a FFF7FEFF 		bl	stateCalcPositionEnu_f
+  42              	.LVL0:
+  43              	.L2:
+ 706:./state.h     ****   }
+ 707:./state.h     ****   return &state.enu_pos_f;
+ 708:./state.h     **** }
+  44              		.loc 1 708 0
+  45 000e 0248     		ldr	r0, .L4+4
+  46 0010 08BD     		pop	{r3, pc}
+  47              	.L5:
+  48 0012 00BF     		.align	2
+  49              	.L4:
+  50 0014 00000000 		.word	state
+  51 0018 08010000 		.word	state+264
+  52              		.cfi_endproc
+  53              	.LFE76:
+  55              		.section	.text.stateGetHorizontalSpeedDir_f,"ax",%progbits
+  56              		.align	1
+  57              		.thumb
+  58              		.thumb_func
+  60              	stateGetHorizontalSpeedDir_f:
+  61              	.LFB95:
+ 709:./state.h     **** 
+ 710:./state.h     **** /// Get position in LLA coordinates (float).
+ 711:./state.h     **** static inline struct LlaCoor_f *stateGetPositionLla_f(void)
+ 712:./state.h     **** {
+ 713:./state.h     ****   if (!bit_is_set(state.pos_status, POS_LLA_F)) {
+ 714:./state.h     ****     stateCalcPositionLla_f();
+ 715:./state.h     ****   }
+ 716:./state.h     ****   return &state.lla_pos_f;
+ 717:./state.h     **** }
+ 718:./state.h     **** 
+ 719:./state.h     **** /** @}*/
+ 720:./state.h     **** 
+ 721:./state.h     **** 
+ 722:./state.h     **** 
+ 723:./state.h     **** /******************************************************************************
+ 724:./state.h     ****  *                                                                            *
+ 725:./state.h     ****  * Set and Get functions for the SPEED representations                        *
+ 726:./state.h     ****  *                                                                            *
+ 727:./state.h     ****  *****************************************************************************/
+ 728:./state.h     **** /** @addtogroup state_velocity
+ 729:./state.h     ****  *  @{ */
+ 730:./state.h     **** 
+ 731:./state.h     **** /************* declaration of transformation functions ************/
+ 732:./state.h     **** extern void stateCalcSpeedNed_i(void);
+ 733:./state.h     **** extern void stateCalcSpeedEnu_i(void);
+ 734:./state.h     **** extern void stateCalcSpeedEcef_i(void);
+ 735:./state.h     **** extern void stateCalcHorizontalSpeedNorm_i(void);
+ 736:./state.h     **** extern void stateCalcHorizontalSpeedDir_i(void);
+ 737:./state.h     **** extern void stateCalcSpeedNed_f(void);
+ 738:./state.h     **** extern void stateCalcSpeedEnu_f(void);
+ 739:./state.h     **** extern void stateCalcSpeedEcef_f(void);
+ 740:./state.h     **** extern void stateCalcHorizontalSpeedNorm_f(void);
+ 741:./state.h     **** extern void stateCalcHorizontalSpeedDir_f(void);
+ 742:./state.h     **** 
+ 743:./state.h     **** /************************ Set functions ****************************/
+ 744:./state.h     **** 
+ 745:./state.h     **** /// Set ground speed in local NED coordinates (int).
+ 746:./state.h     **** static inline void stateSetSpeedNed_i(struct NedCoor_i *ned_speed)
+ 747:./state.h     **** {
+ 748:./state.h     ****   VECT3_COPY(state.ned_speed_i, *ned_speed);
+ 749:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 750:./state.h     ****   state.speed_status = (1 << SPEED_NED_I);
+ 751:./state.h     **** }
+ 752:./state.h     **** 
+ 753:./state.h     **** /// Set ground speed in local ENU coordinates (int).
+ 754:./state.h     **** static inline void stateSetSpeedEnu_i(struct EnuCoor_i *enu_speed)
+ 755:./state.h     **** {
+ 756:./state.h     ****   VECT3_COPY(state.enu_speed_i, *enu_speed);
+ 757:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 758:./state.h     ****   state.speed_status = (1 << SPEED_ENU_I);
+ 759:./state.h     **** }
+ 760:./state.h     **** 
+ 761:./state.h     **** /// Set ground speed in ECEF coordinates (int).
+ 762:./state.h     **** static inline void stateSetSpeedEcef_i(struct EcefCoor_i *ecef_speed)
+ 763:./state.h     **** {
+ 764:./state.h     ****   VECT3_COPY(state.ecef_speed_i, *ecef_speed);
+ 765:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 766:./state.h     ****   state.speed_status = (1 << SPEED_ECEF_I);
+ 767:./state.h     **** }
+ 768:./state.h     **** 
+ 769:./state.h     **** /// Set multiple speed coordinates (int).
+ 770:./state.h     **** static inline void stateSetSpeed_i(
+ 771:./state.h     ****   struct EcefCoor_i *ecef_speed,
+ 772:./state.h     ****   struct NedCoor_i *ned_speed,
+ 773:./state.h     ****   struct EnuCoor_i *enu_speed)
+ 774:./state.h     **** {
+ 775:./state.h     ****   /* clear all status bit */
+ 776:./state.h     ****   state.speed_status = 0;
+ 777:./state.h     ****   if (ecef_speed != NULL) {
+ 778:./state.h     ****     VECT3_COPY(state.ecef_speed_i, *ecef_speed);
+ 779:./state.h     ****     state.speed_status |= (1 << SPEED_ECEF_I);
+ 780:./state.h     ****   }
+ 781:./state.h     ****   if (ned_speed != NULL) {
+ 782:./state.h     ****     VECT3_COPY(state.ned_speed_i, *ned_speed);
+ 783:./state.h     ****     state.speed_status |= (1 << SPEED_NED_I);
+ 784:./state.h     ****   }
+ 785:./state.h     ****   if (enu_speed != NULL) {
+ 786:./state.h     ****     VECT3_COPY(state.enu_speed_i, *enu_speed);
+ 787:./state.h     ****     state.speed_status |= (1 << SPEED_ENU_I);
+ 788:./state.h     ****   }
+ 789:./state.h     **** }
+ 790:./state.h     **** 
+ 791:./state.h     **** /// Set ground speed in local NED coordinates (float).
+ 792:./state.h     **** static inline void stateSetSpeedNed_f(struct NedCoor_f *ned_speed)
+ 793:./state.h     **** {
+ 794:./state.h     ****   VECT3_COPY(state.ned_speed_f, *ned_speed);
+ 795:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 796:./state.h     ****   state.speed_status = (1 << SPEED_NED_F);
+ 797:./state.h     **** }
+ 798:./state.h     **** 
+ 799:./state.h     **** /// Set ground speed in local ENU coordinates (float).
+ 800:./state.h     **** static inline void stateSetSpeedEnu_f(struct EnuCoor_f *enu_speed)
+ 801:./state.h     **** {
+ 802:./state.h     ****   VECT3_COPY(state.enu_speed_f, *enu_speed);
+ 803:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 804:./state.h     ****   state.speed_status = (1 << SPEED_ENU_F);
+ 805:./state.h     **** }
+ 806:./state.h     **** 
+ 807:./state.h     **** /// Set ground speed in ECEF coordinates (float).
+ 808:./state.h     **** static inline void stateSetSpeedEcef_f(struct EcefCoor_f *ecef_speed)
+ 809:./state.h     **** {
+ 810:./state.h     ****   VECT3_COPY(state.ecef_speed_f, *ecef_speed);
+ 811:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 812:./state.h     ****   state.speed_status = (1 << SPEED_ECEF_F);
+ 813:./state.h     **** }
+ 814:./state.h     **** 
+ 815:./state.h     **** /// Set multiple speed coordinates (float).
+ 816:./state.h     **** static inline void stateSetSpeed_f(
+ 817:./state.h     ****   struct EcefCoor_f *ecef_speed,
+ 818:./state.h     ****   struct NedCoor_f *ned_speed,
+ 819:./state.h     ****   struct EnuCoor_f *enu_speed)
+ 820:./state.h     **** {
+ 821:./state.h     ****   /* clear all status bit */
+ 822:./state.h     ****   state.speed_status = 0;
+ 823:./state.h     ****   if (ecef_speed != NULL) {
+ 824:./state.h     ****     VECT3_COPY(state.ecef_speed_f, *ecef_speed);
+ 825:./state.h     ****     state.speed_status |= (1 << SPEED_ECEF_F);
+ 826:./state.h     ****   }
+ 827:./state.h     ****   if (ned_speed != NULL) {
+ 828:./state.h     ****     VECT3_COPY(state.ned_speed_f, *ned_speed);
+ 829:./state.h     ****     state.speed_status |= (1 << SPEED_NED_F);
+ 830:./state.h     ****   }
+ 831:./state.h     ****   if (enu_speed != NULL) {
+ 832:./state.h     ****     VECT3_COPY(state.enu_speed_f, *enu_speed);
+ 833:./state.h     ****     state.speed_status |= (1 << SPEED_ENU_F);
+ 834:./state.h     ****   }
+ 835:./state.h     **** }
+ 836:./state.h     **** 
+ 837:./state.h     **** /************************ Get functions ****************************/
+ 838:./state.h     **** 
+ 839:./state.h     **** /// Get ground speed in local NED coordinates (int).
+ 840:./state.h     **** static inline struct NedCoor_i *stateGetSpeedNed_i(void)
+ 841:./state.h     **** {
+ 842:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_NED_I)) {
+ 843:./state.h     ****     stateCalcSpeedNed_i();
+ 844:./state.h     ****   }
+ 845:./state.h     ****   return &state.ned_speed_i;
+ 846:./state.h     **** }
+ 847:./state.h     **** 
+ 848:./state.h     **** /// Get ground speed in local ENU coordinates (int).
+ 849:./state.h     **** static inline struct EnuCoor_i *stateGetSpeedEnu_i(void)
+ 850:./state.h     **** {
+ 851:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ENU_I)) {
+ 852:./state.h     ****     stateCalcSpeedEnu_i();
+ 853:./state.h     ****   }
+ 854:./state.h     ****   return &state.enu_speed_i;
+ 855:./state.h     **** }
+ 856:./state.h     **** 
+ 857:./state.h     **** /// Get ground speed in ECEF coordinates (int).
+ 858:./state.h     **** static inline struct EcefCoor_i *stateGetSpeedEcef_i(void)
+ 859:./state.h     **** {
+ 860:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ECEF_I)) {
+ 861:./state.h     ****     stateCalcSpeedEcef_i();
+ 862:./state.h     ****   }
+ 863:./state.h     ****   return &state.ecef_speed_i;
+ 864:./state.h     **** }
+ 865:./state.h     **** 
+ 866:./state.h     **** /// Get norm of horizontal ground speed (int).
+ 867:./state.h     **** static inline uint32_t *stateGetHorizontalSpeedNorm_i(void)
+ 868:./state.h     **** {
+ 869:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HNORM_I)) {
+ 870:./state.h     ****     stateCalcHorizontalSpeedNorm_i();
+ 871:./state.h     ****   }
+ 872:./state.h     ****   return &state.h_speed_norm_i;
+ 873:./state.h     **** }
+ 874:./state.h     **** 
+ 875:./state.h     **** /// Get dir of horizontal ground speed (int).
+ 876:./state.h     **** static inline int32_t *stateGetHorizontalSpeedDir_i(void)
+ 877:./state.h     **** {
+ 878:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HDIR_I)) {
+ 879:./state.h     ****     stateCalcHorizontalSpeedDir_i();
+ 880:./state.h     ****   }
+ 881:./state.h     ****   return &state.h_speed_dir_i;
+ 882:./state.h     **** }
+ 883:./state.h     **** 
+ 884:./state.h     **** /// Get ground speed in local NED coordinates (float).
+ 885:./state.h     **** static inline struct NedCoor_f *stateGetSpeedNed_f(void)
+ 886:./state.h     **** {
+ 887:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_NED_F)) {
+ 888:./state.h     ****     stateCalcSpeedNed_f();
+ 889:./state.h     ****   }
+ 890:./state.h     ****   return &state.ned_speed_f;
+ 891:./state.h     **** }
+ 892:./state.h     **** 
+ 893:./state.h     **** /// Get ground speed in local ENU coordinates (float).
+ 894:./state.h     **** static inline struct EnuCoor_f *stateGetSpeedEnu_f(void)
+ 895:./state.h     **** {
+ 896:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ENU_F)) {
+ 897:./state.h     ****     stateCalcSpeedEnu_f();
+ 898:./state.h     ****   }
+ 899:./state.h     ****   return &state.enu_speed_f;
+ 900:./state.h     **** }
+ 901:./state.h     **** 
+ 902:./state.h     **** /// Get ground speed in ECEF coordinates (float).
+ 903:./state.h     **** static inline struct EcefCoor_f *stateGetSpeedEcef_f(void)
+ 904:./state.h     **** {
+ 905:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ECEF_F)) {
+ 906:./state.h     ****     stateCalcSpeedEcef_f();
+ 907:./state.h     ****   }
+ 908:./state.h     ****   return &state.ecef_speed_f;
+ 909:./state.h     **** }
+ 910:./state.h     **** 
+ 911:./state.h     **** /// Get norm of horizontal ground speed (float).
+ 912:./state.h     **** static inline float *stateGetHorizontalSpeedNorm_f(void)
+ 913:./state.h     **** {
+ 914:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HNORM_F)) {
+ 915:./state.h     ****     stateCalcHorizontalSpeedNorm_f();
+ 916:./state.h     ****   }
+ 917:./state.h     ****   return &state.h_speed_norm_f;
+ 918:./state.h     **** }
+ 919:./state.h     **** 
+ 920:./state.h     **** /// Get dir of horizontal ground speed (float).
+ 921:./state.h     **** static inline float *stateGetHorizontalSpeedDir_f(void)
+ 922:./state.h     **** {
+  62              		.loc 1 922 0
+  63              		.cfi_startproc
+  64              		@ args = 0, pretend = 0, frame = 0
+  65              		@ frame_needed = 0, uses_anonymous_args = 0
+  66 0000 08B5     		push	{r3, lr}
+  67              		.cfi_def_cfa_offset 8
+  68              		.cfi_offset 3, -8
+  69              		.cfi_offset 14, -4
+ 923:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HDIR_F)) {
+  70              		.loc 1 923 0
+  71 0002 044B     		ldr	r3, .L8
+  72 0004 B3F81431 		ldrh	r3, [r3, #276]
+  73 0008 9B05     		lsls	r3, r3, #22
+  74 000a 01D4     		bmi	.L7
+ 924:./state.h     ****     stateCalcHorizontalSpeedDir_f();
+  75              		.loc 1 924 0
+  76 000c FFF7FEFF 		bl	stateCalcHorizontalSpeedDir_f
+  77              	.LVL1:
+  78              	.L7:
+ 925:./state.h     ****   }
+ 926:./state.h     ****   return &state.h_speed_dir_f;
+ 927:./state.h     **** }
+  79              		.loc 1 927 0
+  80 0010 0148     		ldr	r0, .L8+4
+  81 0012 08BD     		pop	{r3, pc}
+  82              	.L9:
+  83              		.align	2
+  84              	.L8:
+  85 0014 00000000 		.word	state
+  86 0018 6C010000 		.word	state+364
+  87              		.cfi_endproc
+  88              	.LFE95:
+  90              		.global	__aeabi_f2d
+  91              		.global	__aeabi_dmul
+  92              		.global	__aeabi_dadd
+  93              		.global	__aeabi_dcmpgt
+  94              		.global	__aeabi_dsub
+  95              		.global	__aeabi_dcmplt
+  96              		.global	__aeabi_d2f
+  97              		.section	.text.nav_survey_rectangle_init,"ax",%progbits
+  98              		.align	1
+  99              		.global	nav_survey_rectangle_init
+ 100              		.thumb
+ 101              		.thumb_func
+ 103              	nav_survey_rectangle_init:
+ 104              	.LFB179:
+ 105              		.file 2 "subsystems/navigation/nav_survey_rectangle.c"
+   1:subsystems/navigation/nav_survey_rectangle.c **** /*
+   2:subsystems/navigation/nav_survey_rectangle.c ****  * Copyright (C) 2007-2009  ENAC, Pascal Brisset, Antoine Drouin
+   3:subsystems/navigation/nav_survey_rectangle.c ****  *
+   4:subsystems/navigation/nav_survey_rectangle.c ****  * This file is part of paparazzi.
+   5:subsystems/navigation/nav_survey_rectangle.c ****  *
+   6:subsystems/navigation/nav_survey_rectangle.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/navigation/nav_survey_rectangle.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/navigation/nav_survey_rectangle.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/navigation/nav_survey_rectangle.c ****  * any later version.
+  10:subsystems/navigation/nav_survey_rectangle.c ****  *
+  11:subsystems/navigation/nav_survey_rectangle.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/navigation/nav_survey_rectangle.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/navigation/nav_survey_rectangle.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/navigation/nav_survey_rectangle.c ****  * GNU General Public License for more details.
+  15:subsystems/navigation/nav_survey_rectangle.c ****  *
+  16:subsystems/navigation/nav_survey_rectangle.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/navigation/nav_survey_rectangle.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/navigation/nav_survey_rectangle.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/navigation/nav_survey_rectangle.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/navigation/nav_survey_rectangle.c ****  */
+  21:subsystems/navigation/nav_survey_rectangle.c **** 
+  22:subsystems/navigation/nav_survey_rectangle.c **** /**
+  23:subsystems/navigation/nav_survey_rectangle.c ****  * @file subsystems/navigation/nav_survey_rectangle.c
+  24:subsystems/navigation/nav_survey_rectangle.c ****  *
+  25:subsystems/navigation/nav_survey_rectangle.c ****  * Automatic survey of a rectangle for fixedwings.
+  26:subsystems/navigation/nav_survey_rectangle.c ****  *
+  27:subsystems/navigation/nav_survey_rectangle.c ****  * Rectangle is defined by two points, sweep can be south-north or west-east.
+  28:subsystems/navigation/nav_survey_rectangle.c ****  */
+  29:subsystems/navigation/nav_survey_rectangle.c **** 
+  30:subsystems/navigation/nav_survey_rectangle.c **** #include "subsystems/navigation/nav_survey_rectangle.h"
+  31:subsystems/navigation/nav_survey_rectangle.c **** #include "state.h"
+  32:subsystems/navigation/nav_survey_rectangle.c **** 
+  33:subsystems/navigation/nav_survey_rectangle.c **** static struct point survey_from;
+  34:subsystems/navigation/nav_survey_rectangle.c **** static struct point survey_to;
+  35:subsystems/navigation/nav_survey_rectangle.c **** static bool_t survey_uturn __attribute__((unused)) = FALSE;
+  36:subsystems/navigation/nav_survey_rectangle.c **** static survey_orientation_t survey_orientation = NS;
+  37:subsystems/navigation/nav_survey_rectangle.c **** 
+  38:subsystems/navigation/nav_survey_rectangle.c **** #define SurveyGoingNorth() ((survey_orientation == NS) && (survey_to.y > survey_from.y))
+  39:subsystems/navigation/nav_survey_rectangle.c **** #define SurveyGoingSouth() ((survey_orientation == NS) && (survey_to.y < survey_from.y))
+  40:subsystems/navigation/nav_survey_rectangle.c **** #define SurveyGoingEast() ((survey_orientation == WE) && (survey_to.x > survey_from.x))
+  41:subsystems/navigation/nav_survey_rectangle.c **** #define SurveyGoingWest() ((survey_orientation == WE) && (survey_to.x < survey_from.x))
+  42:subsystems/navigation/nav_survey_rectangle.c **** 
+  43:subsystems/navigation/nav_survey_rectangle.c **** #include "generated/flight_plan.h"
+  44:subsystems/navigation/nav_survey_rectangle.c **** 
+  45:subsystems/navigation/nav_survey_rectangle.c **** #ifndef LINE_START_FUNCTION
+  46:subsystems/navigation/nav_survey_rectangle.c **** #define LINE_START_FUNCTION {}
+  47:subsystems/navigation/nav_survey_rectangle.c **** #endif
+  48:subsystems/navigation/nav_survey_rectangle.c **** #ifndef LINE_STOP_FUNCTION
+  49:subsystems/navigation/nav_survey_rectangle.c **** #define LINE_STOP_FUNCTION {}
+  50:subsystems/navigation/nav_survey_rectangle.c **** #endif
+  51:subsystems/navigation/nav_survey_rectangle.c **** 
+  52:subsystems/navigation/nav_survey_rectangle.c **** 
+  53:subsystems/navigation/nav_survey_rectangle.c **** void nav_survey_rectangle_init(uint8_t wp1, uint8_t wp2, float grid, survey_orientation_t so)
+  54:subsystems/navigation/nav_survey_rectangle.c **** {
+ 106              		.loc 2 54 0
+ 107              		.cfi_startproc
+ 108              		@ args = 0, pretend = 0, frame = 16
+ 109              		@ frame_needed = 0, uses_anonymous_args = 0
+ 110              	.LVL2:
+ 111 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 112              		.cfi_def_cfa_offset 36
+ 113              		.cfi_offset 4, -36
+ 114              		.cfi_offset 5, -32
+ 115              		.cfi_offset 6, -28
+ 116              		.cfi_offset 7, -24
+ 117              		.cfi_offset 8, -20
+ 118              		.cfi_offset 9, -16
+ 119              		.cfi_offset 10, -12
+ 120              		.cfi_offset 11, -8
+ 121              		.cfi_offset 14, -4
+  55:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_west = Min(WaypointX(wp1), WaypointX(wp2));
+ 122              		.loc 2 55 0
+ 123 0004 AE4C     		ldr	r4, .L59+24
+  56:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 124              		.loc 2 56 0
+ 125 0006 AF4E     		ldr	r6, .L59+28
+  57:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_south = Min(WaypointY(wp1), WaypointY(wp2));
+ 126              		.loc 2 57 0
+ 127 0008 AF4D     		ldr	r5, .L59+32
+ 128 000a B04F     		ldr	r7, .L59+36
+  54:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_west = Min(WaypointX(wp1), WaypointX(wp2));
+ 129              		.loc 2 54 0
+ 130 000c 9346     		mov	fp, r2	@ float
+  55:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 131              		.loc 2 55 0
+ 132 000e 0C22     		movs	r2, #12
+ 133              	.LVL3:
+ 134 0010 02FB0141 		mla	r1, r2, r1, r4
+ 135              	.LVL4:
+ 136 0014 02FB0040 		mla	r0, r2, r0, r4
+ 137              	.LVL5:
+ 138 0018 91ED007A 		flds	s14, [r1]
+ 139 001c D0ED007A 		flds	s15, [r0]
+ 140 0020 AB4C     		ldr	r4, .L59+40
+  58:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 141              		.loc 2 58 0
+ 142 0022 AC4A     		ldr	r2, .L59+44
+  55:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 143              		.loc 2 55 0
+ 144 0024 F4EEC77A 		fcmpes	s15, s14
+ 145 0028 F1EE10FA 		fmstat
+ 146 002c 54BF     		ite	pl
+ 147 002e F0EE476A 		fcpyspl	s13, s14
+ 148 0032 F0EE676A 		fcpysmi	s13, s15
+  56:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_south = Min(WaypointY(wp1), WaypointY(wp2));
+ 149              		.loc 2 56 0
+ 150 0036 D8BF     		it	le
+ 151 0038 F0EE477A 		fcpysle	s15, s14
+  55:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 152              		.loc 2 55 0
+ 153 003c C4ED006A 		fsts	s13, [r4]
+  56:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_south = Min(WaypointY(wp1), WaypointY(wp2));
+ 154              		.loc 2 56 0
+ 155 0040 C6ED007A 		fsts	s15, [r6]
+  57:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 156              		.loc 2 57 0
+ 157 0044 D0ED017A 		flds	s15, [r0, #4]
+ 158 0048 91ED017A 		flds	s14, [r1, #4]
+  59:subsystems/navigation/nav_survey_rectangle.c ****   survey_orientation = so;
+ 159              		.loc 2 59 0
+ 160 004c A249     		ldr	r1, .L59+48
+  57:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 161              		.loc 2 57 0
+ 162 004e F4EEC77A 		fcmpes	s15, s14
+ 163 0052 F1EE10FA 		fmstat
+ 164 0056 54BF     		ite	pl
+ 165 0058 F0EE476A 		fcpyspl	s13, s14
+ 166 005c F0EE676A 		fcpysmi	s13, s15
+  58:subsystems/navigation/nav_survey_rectangle.c ****   survey_orientation = so;
+ 167              		.loc 2 58 0
+ 168 0060 D8BF     		it	le
+ 169 0062 F0EE477A 		fcpysle	s15, s14
+  54:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_west = Min(WaypointX(wp1), WaypointX(wp2));
+ 170              		.loc 2 54 0
+ 171 0066 85B0     		sub	sp, sp, #20
+ 172              		.cfi_def_cfa_offset 56
+  57:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 173              		.loc 2 57 0
+ 174 0068 C5ED006A 		fsts	s13, [r5]
+  58:subsystems/navigation/nav_survey_rectangle.c ****   survey_orientation = so;
+ 175              		.loc 2 58 0
+ 176 006c C2ED007A 		fsts	s15, [r2]
+ 177              		.loc 2 59 0
+ 178 0070 0B70     		strb	r3, [r1]
+ 179 0072 9246     		mov	r10, r2
+  60:subsystems/navigation/nav_survey_rectangle.c **** 
+  61:subsystems/navigation/nav_survey_rectangle.c ****   if (survey_orientation == NS) {
+ 180              		.loc 2 61 0
+ 181 0074 002B     		cmp	r3, #0
+ 182 0076 40F08D80 		bne	.L15
+  62:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.x = survey_to.x = Min(Max(stateGetPositionEnu_f()->x, nav_survey_west + grid / 2.),
+ 183              		.loc 2 62 0
+ 184 007a FFF7FEFF 		bl	stateGetPositionEnu_f
+ 185              	.LVL6:
+ 186 007e 8046     		mov	r8, r0
+ 187 0080 5846     		mov	r0, fp	@ float
+ 188 0082 FFF7FEFF 		bl	__aeabi_f2d
+ 189              	.LVL7:
+ 190 0086 0022     		movs	r2, #0
+ 191 0088 944B     		ldr	r3, .L59+52
+ 192 008a FFF7FEFF 		bl	__aeabi_dmul
+ 193              	.LVL8:
+ 194 008e CDE90201 		strd	r0, [sp, #8]
+ 195 0092 2068     		ldr	r0, [r4]	@ float
+ 196 0094 FFF7FEFF 		bl	__aeabi_f2d
+ 197              	.LVL9:
+ 198 0098 DDE90223 		ldrd	r2, [sp, #8]
+ 199 009c FFF7FEFF 		bl	__aeabi_dadd
+ 200              	.LVL10:
+ 201 00a0 CDE90001 		strd	r0, [sp]
+ 202 00a4 D8F80000 		ldr	r0, [r8]	@ float
+ 203 00a8 FFF7FEFF 		bl	__aeabi_f2d
+ 204              	.LVL11:
+ 205 00ac DDE90023 		ldrd	r2, [sp]
+ 206 00b0 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 207              	.LVL12:
+ 208 00b4 30B1     		cbz	r0, .L16
+ 209              		.loc 2 62 0 is_stmt 0 discriminator 1
+ 210 00b6 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 211              	.LVL13:
+ 212 00ba 0068     		ldr	r0, [r0]	@ float
+ 213 00bc FFF7FEFF 		bl	__aeabi_f2d
+ 214              	.LVL14:
+ 215 00c0 CDE90001 		strd	r0, [sp]
+ 216              	.L16:
+ 217              		.loc 2 62 0 discriminator 4
+ 218 00c4 3068     		ldr	r0, [r6]	@ float
+ 219 00c6 FFF7FEFF 		bl	__aeabi_f2d
+ 220              	.LVL15:
+ 221 00ca DDE90223 		ldrd	r2, [sp, #8]
+ 222 00ce FFF7FEFF 		bl	__aeabi_dsub
+ 223              	.LVL16:
+ 224 00d2 8046     		mov	r8, r0
+ 225 00d4 8946     		mov	r9, r1
+ 226 00d6 4246     		mov	r2, r8
+ 227 00d8 DDE90001 		ldrd	r0, [sp]
+ 228 00dc 4B46     		mov	r3, r9
+ 229 00de FFF7FEFF 		bl	__aeabi_dcmplt
+ 230              	.LVL17:
+ 231 00e2 B8B1     		cbz	r0, .L53
+ 232              		.loc 2 62 0 discriminator 5
+ 233 00e4 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 234              	.LVL18:
+ 235 00e8 0646     		mov	r6, r0
+ 236 00ea 2068     		ldr	r0, [r4]	@ float
+ 237 00ec FFF7FEFF 		bl	__aeabi_f2d
+ 238              	.LVL19:
+ 239 00f0 DDE90223 		ldrd	r2, [sp, #8]
+ 240 00f4 FFF7FEFF 		bl	__aeabi_dadd
+ 241              	.LVL20:
+ 242 00f8 8046     		mov	r8, r0
+ 243 00fa 8946     		mov	r9, r1
+ 244 00fc 3068     		ldr	r0, [r6]	@ float
+ 245 00fe FFF7FEFF 		bl	__aeabi_f2d
+ 246              	.LVL21:
+ 247 0102 4246     		mov	r2, r8
+ 248 0104 4B46     		mov	r3, r9
+ 249 0106 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 250              	.LVL22:
+ 251 010a 18B1     		cbz	r0, .L53
+ 252              		.loc 2 62 0 discriminator 7
+ 253 010c FFF7FEFF 		bl	stateGetPositionEnu_f
+ 254              	.LVL23:
+ 255 0110 0068     		ldr	r0, [r0]	@ float
+ 256 0112 03E0     		b	.L22
+ 257              	.L53:
+ 258              		.loc 2 62 0 discriminator 6
+ 259 0114 4046     		mov	r0, r8
+ 260 0116 4946     		mov	r1, r9
+ 261 0118 FFF7FEFF 		bl	__aeabi_d2f
+ 262              	.LVL24:
+ 263              	.L22:
+ 264              		.loc 2 62 0 discriminator 12
+ 265 011c 704C     		ldr	r4, .L59+56
+ 266 011e 3860     		str	r0, [r7]	@ float
+ 267 0120 2060     		str	r0, [r4]	@ float
+  63:subsystems/navigation/nav_survey_rectangle.c ****                                       nav_survey_east - grid / 2.);
+  64:subsystems/navigation/nav_survey_rectangle.c ****     if (stateGetPositionEnu_f()->y > nav_survey_north || (stateGetPositionEnu_f()->y > nav_survey_s
+ 268              		.loc 2 64 0 is_stmt 1 discriminator 12
+ 269 0122 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 270              	.LVL25:
+ 271 0126 DAED007A 		flds	s15, [r10]
+ 272 012a 90ED017A 		flds	s14, [r0, #4]
+ 273 012e B4EEE77A 		fcmpes	s14, s15
+ 274 0132 F1EE10FA 		fmstat
+ 275 0136 05DD     		ble	.L55
+ 276              	.L29:
+  65:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI / 2. && (*stateGetHorizontalSpeedDir_f()) < 3 *
+  66:subsystems/navigation/nav_survey_rectangle.c ****       survey_to.y = nav_survey_south;
+ 277              		.loc 2 66 0
+ 278 0138 2B68     		ldr	r3, [r5]	@ float
+ 279 013a 7B60     		str	r3, [r7, #4]	@ float
+  67:subsystems/navigation/nav_survey_rectangle.c ****       survey_from.y = nav_survey_north;
+ 280              		.loc 2 67 0
+ 281 013c DAF80030 		ldr	r3, [r10]	@ float
+ 282 0140 6360     		str	r3, [r4, #4]	@ float
+ 283 0142 A8E0     		b	.L25
+ 284              	.L55:
+  64:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI / 2. && (*stateGetHorizontalSpeedDir_f()) < 3 *
+ 285              		.loc 2 64 0 discriminator 1
+ 286 0144 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 287              	.LVL26:
+ 288 0148 D5ED007A 		flds	s15, [r5]
+ 289 014c 90ED017A 		flds	s14, [r0, #4]
+ 290 0150 B4EEE77A 		fcmpes	s14, s15
+ 291 0154 F1EE10FA 		fmstat
+ 292 0158 16DD     		ble	.L26
+  65:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI / 2. && (*stateGetHorizontalSpeedDir_f()) < 3 *
+ 293              		.loc 2 65 0
+ 294 015a FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 295              	.LVL27:
+ 296 015e 0068     		ldr	r0, [r0]	@ float
+ 297 0160 FFF7FEFF 		bl	__aeabi_f2d
+ 298              	.LVL28:
+ 299 0164 50A3     		adr	r3, .L59
+ 300 0166 D3E90023 		ldrd	r2, [r3]
+ 301 016a FFF7FEFF 		bl	__aeabi_dcmpgt
+ 302              	.LVL29:
+ 303 016e 58B1     		cbz	r0, .L26
+  65:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI / 2. && (*stateGetHorizontalSpeedDir_f()) < 3 *
+ 304              		.loc 2 65 0 is_stmt 0 discriminator 1
+ 305 0170 FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 306              	.LVL30:
+ 307 0174 0068     		ldr	r0, [r0]	@ float
+ 308 0176 FFF7FEFF 		bl	__aeabi_f2d
+ 309              	.LVL31:
+ 310 017a 4DA3     		adr	r3, .L59+8
+ 311 017c D3E90023 		ldrd	r2, [r3]
+ 312 0180 FFF7FEFF 		bl	__aeabi_dcmplt
+ 313              	.LVL32:
+ 314 0184 0028     		cmp	r0, #0
+ 315 0186 D7D1     		bne	.L29
+ 316              	.L26:
+  68:subsystems/navigation/nav_survey_rectangle.c ****     } else {
+  69:subsystems/navigation/nav_survey_rectangle.c ****       survey_from.y = nav_survey_south;
+ 317              		.loc 2 69 0 is_stmt 1
+ 318 0188 2B68     		ldr	r3, [r5]	@ float
+ 319 018a 6360     		str	r3, [r4, #4]	@ float
+  70:subsystems/navigation/nav_survey_rectangle.c ****       survey_to.y = nav_survey_north;
+ 320              		.loc 2 70 0
+ 321 018c DAF80030 		ldr	r3, [r10]	@ float
+ 322 0190 7B60     		str	r3, [r7, #4]	@ float
+ 323 0192 80E0     		b	.L25
+ 324              	.LVL33:
+ 325              	.L15:
+  71:subsystems/navigation/nav_survey_rectangle.c ****     }
+  72:subsystems/navigation/nav_survey_rectangle.c ****   } else { /* survey_orientation == WE */
+  73:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.y = survey_to.y = Min(Max(stateGetPositionEnu_f()->y, nav_survey_south + grid / 2.)
+ 326              		.loc 2 73 0
+ 327 0194 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 328              	.LVL34:
+ 329 0198 8046     		mov	r8, r0
+ 330 019a 5846     		mov	r0, fp	@ float
+ 331 019c FFF7FEFF 		bl	__aeabi_f2d
+ 332              	.LVL35:
+ 333 01a0 0022     		movs	r2, #0
+ 334 01a2 4E4B     		ldr	r3, .L59+52
+ 335 01a4 FFF7FEFF 		bl	__aeabi_dmul
+ 336              	.LVL36:
+ 337 01a8 CDE90201 		strd	r0, [sp, #8]
+ 338 01ac 2868     		ldr	r0, [r5]	@ float
+ 339 01ae FFF7FEFF 		bl	__aeabi_f2d
+ 340              	.LVL37:
+ 341 01b2 DDE90223 		ldrd	r2, [sp, #8]
+ 342 01b6 FFF7FEFF 		bl	__aeabi_dadd
+ 343              	.LVL38:
+ 344 01ba CDE90001 		strd	r0, [sp]
+ 345 01be D8F80400 		ldr	r0, [r8, #4]	@ float
+ 346 01c2 FFF7FEFF 		bl	__aeabi_f2d
+ 347              	.LVL39:
+ 348 01c6 DDE90023 		ldrd	r2, [sp]
+ 349 01ca FFF7FEFF 		bl	__aeabi_dcmpgt
+ 350              	.LVL40:
+ 351 01ce 30B1     		cbz	r0, .L30
+ 352              		.loc 2 73 0 is_stmt 0 discriminator 1
+ 353 01d0 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 354              	.LVL41:
+ 355 01d4 4068     		ldr	r0, [r0, #4]	@ float
+ 356 01d6 FFF7FEFF 		bl	__aeabi_f2d
+ 357              	.LVL42:
+ 358 01da CDE90001 		strd	r0, [sp]
+ 359              	.L30:
+ 360              		.loc 2 73 0 discriminator 4
+ 361 01de DAF80000 		ldr	r0, [r10]	@ float
+ 362 01e2 FFF7FEFF 		bl	__aeabi_f2d
+ 363              	.LVL43:
+ 364 01e6 DDE90223 		ldrd	r2, [sp, #8]
+ 365 01ea FFF7FEFF 		bl	__aeabi_dsub
+ 366              	.LVL44:
+ 367 01ee 8046     		mov	r8, r0
+ 368 01f0 8946     		mov	r9, r1
+ 369 01f2 4246     		mov	r2, r8
+ 370 01f4 DDE90001 		ldrd	r0, [sp]
+ 371 01f8 4B46     		mov	r3, r9
+ 372 01fa FFF7FEFF 		bl	__aeabi_dcmplt
+ 373              	.LVL45:
+ 374 01fe C0B1     		cbz	r0, .L56
+ 375              		.loc 2 73 0 discriminator 5
+ 376 0200 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 377              	.LVL46:
+ 378 0204 8246     		mov	r10, r0
+ 379 0206 2868     		ldr	r0, [r5]	@ float
+ 380 0208 FFF7FEFF 		bl	__aeabi_f2d
+ 381              	.LVL47:
+ 382 020c DDE90223 		ldrd	r2, [sp, #8]
+ 383 0210 FFF7FEFF 		bl	__aeabi_dadd
+ 384              	.LVL48:
+ 385 0214 8046     		mov	r8, r0
+ 386 0216 8946     		mov	r9, r1
+ 387 0218 DAF80400 		ldr	r0, [r10, #4]	@ float
+ 388 021c FFF7FEFF 		bl	__aeabi_f2d
+ 389              	.LVL49:
+ 390 0220 4246     		mov	r2, r8
+ 391 0222 4B46     		mov	r3, r9
+ 392 0224 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 393              	.LVL50:
+ 394 0228 18B1     		cbz	r0, .L56
+ 395              		.loc 2 73 0 discriminator 7
+ 396 022a FFF7FEFF 		bl	stateGetPositionEnu_f
+ 397              	.LVL51:
+ 398 022e 4068     		ldr	r0, [r0, #4]	@ float
+ 399 0230 03E0     		b	.L36
+ 400              	.L56:
+ 401              		.loc 2 73 0 discriminator 6
+ 402 0232 4046     		mov	r0, r8
+ 403 0234 4946     		mov	r1, r9
+ 404 0236 FFF7FEFF 		bl	__aeabi_d2f
+ 405              	.LVL52:
+ 406              	.L36:
+ 407              		.loc 2 73 0 discriminator 12
+ 408 023a 294D     		ldr	r5, .L59+56
+ 409 023c 7860     		str	r0, [r7, #4]	@ float
+ 410 023e 6860     		str	r0, [r5, #4]	@ float
+  74:subsystems/navigation/nav_survey_rectangle.c ****                                       nav_survey_north - grid / 2.);
+  75:subsystems/navigation/nav_survey_rectangle.c ****     if (stateGetPositionEnu_f()->x > nav_survey_east || (stateGetPositionEnu_f()->x > nav_survey_we
+ 411              		.loc 2 75 0 is_stmt 1 discriminator 12
+ 412 0240 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 413              	.LVL53:
+ 414 0244 D6ED007A 		flds	s15, [r6]
+ 415 0248 90ED007A 		flds	s14, [r0]
+ 416 024c B4EEE77A 		fcmpes	s14, s15
+ 417 0250 F1EE10FA 		fmstat
+ 418 0254 04DD     		ble	.L58
+ 419              	.L41:
+  76:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI)) {
+  77:subsystems/navigation/nav_survey_rectangle.c ****       survey_to.x = nav_survey_west;
+ 420              		.loc 2 77 0
+ 421 0256 2368     		ldr	r3, [r4]	@ float
+ 422 0258 3B60     		str	r3, [r7]	@ float
+  78:subsystems/navigation/nav_survey_rectangle.c ****       survey_from.x = nav_survey_east;
+ 423              		.loc 2 78 0
+ 424 025a 3368     		ldr	r3, [r6]	@ float
+ 425 025c 2B60     		str	r3, [r5]	@ float
+ 426 025e 1AE0     		b	.L25
+ 427              	.L58:
+  75:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI)) {
+ 428              		.loc 2 75 0 discriminator 1
+ 429 0260 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 430              	.LVL54:
+ 431 0264 D4ED007A 		flds	s15, [r4]
+ 432 0268 90ED007A 		flds	s14, [r0]
+ 433 026c B4EEE77A 		fcmpes	s14, s15
+ 434 0270 F1EE10FA 		fmstat
+ 435 0274 0BDD     		ble	.L39
+  76:subsystems/navigation/nav_survey_rectangle.c ****         && (*stateGetHorizontalSpeedDir_f()) > M_PI)) {
+ 436              		.loc 2 76 0
+ 437 0276 FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 438              	.LVL55:
+ 439 027a 0068     		ldr	r0, [r0]	@ float
+ 440 027c FFF7FEFF 		bl	__aeabi_f2d
+ 441              	.LVL56:
+ 442 0280 0DA3     		adr	r3, .L59+16
+ 443 0282 D3E90023 		ldrd	r2, [r3]
+ 444 0286 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 445              	.LVL57:
+ 446 028a 0028     		cmp	r0, #0
+ 447 028c E3D1     		bne	.L41
+ 448              	.L39:
+  79:subsystems/navigation/nav_survey_rectangle.c ****     } else {
+  80:subsystems/navigation/nav_survey_rectangle.c ****       survey_from.x = nav_survey_west;
+ 449              		.loc 2 80 0
+ 450 028e 2368     		ldr	r3, [r4]	@ float
+ 451 0290 2B60     		str	r3, [r5]	@ float
+  81:subsystems/navigation/nav_survey_rectangle.c ****       survey_to.x = nav_survey_east;
+ 452              		.loc 2 81 0
+ 453 0292 3368     		ldr	r3, [r6]	@ float
+ 454 0294 3B60     		str	r3, [r7]	@ float
+ 455              	.L25:
+  82:subsystems/navigation/nav_survey_rectangle.c ****     }
+  83:subsystems/navigation/nav_survey_rectangle.c ****   }
+  84:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_shift = grid;
+ 456              		.loc 2 84 0
+ 457 0296 134B     		ldr	r3, .L59+60
+ 458 0298 C3F800B0 		str	fp, [r3]	@ float
+  85:subsystems/navigation/nav_survey_rectangle.c ****   survey_uturn = FALSE;
+ 459              		.loc 2 85 0
+ 460 029c 124B     		ldr	r3, .L59+64
+ 461 029e 0022     		movs	r2, #0
+ 462 02a0 1A70     		strb	r2, [r3]
+  86:subsystems/navigation/nav_survey_rectangle.c ****   LINE_START_FUNCTION;
+  87:subsystems/navigation/nav_survey_rectangle.c **** }
+ 463              		.loc 2 87 0
+ 464 02a2 05B0     		add	sp, sp, #20
+ 465              		.cfi_def_cfa_offset 36
+ 466              		@ sp needed
+ 467 02a4 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 468              	.LVL58:
+ 469              	.L60:
+ 470              		.align	3
+ 471              	.L59:
+ 472 02a8 182D4454 		.word	1413754136
+ 473 02ac FB21F93F 		.word	1073291771
+ 474 02b0 D221337F 		.word	2134057426
+ 475 02b4 7CD91240 		.word	1074977148
+ 476 02b8 182D4454 		.word	1413754136
+ 477 02bc FB210940 		.word	1074340347
+ 478 02c0 00000000 		.word	waypoints
+ 479 02c4 00000000 		.word	nav_survey_east
+ 480 02c8 00000000 		.word	nav_survey_south
+ 481 02cc 00000000 		.word	.LANCHOR1
+ 482 02d0 00000000 		.word	nav_survey_west
+ 483 02d4 00000000 		.word	nav_survey_north
+ 484 02d8 00000000 		.word	.LANCHOR0
+ 485 02dc 0000E03F 		.word	1071644672
+ 486 02e0 00000000 		.word	.LANCHOR2
+ 487 02e4 00000000 		.word	nav_survey_shift
+ 488 02e8 00000000 		.word	.LANCHOR3
+ 489              		.cfi_endproc
+ 490              	.LFE179:
+ 492              		.section	.text.nav_survey_rectangle,"ax",%progbits
+ 493              		.align	1
+ 494              		.global	nav_survey_rectangle
+ 495              		.thumb
+ 496              		.thumb_func
+ 498              	nav_survey_rectangle:
+ 499              	.LFB180:
+  88:subsystems/navigation/nav_survey_rectangle.c **** 
+  89:subsystems/navigation/nav_survey_rectangle.c **** 
+  90:subsystems/navigation/nav_survey_rectangle.c **** void nav_survey_rectangle(uint8_t wp1, uint8_t wp2)
+  91:subsystems/navigation/nav_survey_rectangle.c **** {
+ 500              		.loc 2 91 0
+ 501              		.cfi_startproc
+ 502              		@ args = 0, pretend = 0, frame = 8
+ 503              		@ frame_needed = 0, uses_anonymous_args = 0
+ 504              	.LVL59:
+ 505 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 506              		.cfi_def_cfa_offset 36
+ 507              		.cfi_offset 4, -36
+ 508              		.cfi_offset 5, -32
+ 509              		.cfi_offset 6, -28
+ 510              		.cfi_offset 7, -24
+ 511              		.cfi_offset 8, -20
+ 512              		.cfi_offset 9, -16
+ 513              		.cfi_offset 10, -12
+ 514              		.cfi_offset 11, -8
+ 515              		.cfi_offset 14, -4
+  92:subsystems/navigation/nav_survey_rectangle.c ****   static float survey_radius;
+  93:subsystems/navigation/nav_survey_rectangle.c **** 
+  94:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_active = TRUE;
+ 516              		.loc 2 94 0
+ 517 0004 C84B     		ldr	r3, .L177
+  95:subsystems/navigation/nav_survey_rectangle.c **** 
+  96:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_west = Min(WaypointX(wp1), WaypointX(wp2));
+ 518              		.loc 2 96 0
+ 519 0006 C94C     		ldr	r4, .L177+4
+  97:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+  98:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_south = Min(WaypointY(wp1), WaypointY(wp2));
+  99:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 100:subsystems/navigation/nav_survey_rectangle.c **** 
+ 101:subsystems/navigation/nav_survey_rectangle.c ****   /* Update the current segment from corners' coordinates*/
+ 102:subsystems/navigation/nav_survey_rectangle.c ****   if (SurveyGoingNorth()) {
+ 520              		.loc 2 102 0
+ 521 0008 C94D     		ldr	r5, .L177+8
+  99:subsystems/navigation/nav_survey_rectangle.c **** 
+ 522              		.loc 2 99 0
+ 523 000a CA4F     		ldr	r7, .L177+12
+ 524              		.loc 2 102 0
+ 525 000c 95F800C0 		ldrb	ip, [r5]	@ zero_extendqisi2
+  94:subsystems/navigation/nav_survey_rectangle.c **** 
+ 526              		.loc 2 94 0
+ 527 0010 0122     		movs	r2, #1
+  91:subsystems/navigation/nav_survey_rectangle.c ****   static float survey_radius;
+ 528              		.loc 2 91 0
+ 529 0012 2DED048B 		fstmfdd	sp!, {d8, d9}
+ 530              		.cfi_def_cfa_offset 52
+ 531              		.cfi_offset 80, -52
+ 532              		.cfi_offset 81, -48
+ 533              		.cfi_offset 82, -44
+ 534              		.cfi_offset 83, -40
+  94:subsystems/navigation/nav_survey_rectangle.c **** 
+ 535              		.loc 2 94 0
+ 536 0016 1A70     		strb	r2, [r3]
+  96:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 537              		.loc 2 96 0
+ 538 0018 0C23     		movs	r3, #12
+ 539 001a 03FB0042 		mla	r2, r3, r0, r4
+ 540 001e 03FB0141 		mla	r1, r3, r1, r4
+ 541              	.LVL60:
+ 542 0022 91ED007A 		flds	s14, [r1]
+ 543 0026 D2ED007A 		flds	s15, [r2]
+ 544 002a C34B     		ldr	r3, .L177+16
+ 545 002c F4EEC77A 		fcmpes	s15, s14
+ 546 0030 F1EE10FA 		fmstat
+  91:subsystems/navigation/nav_survey_rectangle.c ****   static float survey_radius;
+ 547              		.loc 2 91 0
+ 548 0034 83B0     		sub	sp, sp, #12
+ 549              		.cfi_def_cfa_offset 64
+  96:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_east = Max(WaypointX(wp1), WaypointX(wp2));
+ 550              		.loc 2 96 0
+ 551 0036 54BF     		ite	pl
+ 552 0038 F0EE476A 		fcpyspl	s13, s14
+ 553 003c F0EE676A 		fcpysmi	s13, s15
+ 554 0040 C3ED006A 		fsts	s13, [r3]
+ 555 0044 0193     		str	r3, [sp, #4]
+  97:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_south = Min(WaypointY(wp1), WaypointY(wp2));
+ 556              		.loc 2 97 0
+ 557 0046 BD4B     		ldr	r3, .L177+20
+ 558 0048 D8BF     		it	le
+ 559 004a F0EE477A 		fcpysle	s15, s14
+ 560 004e C3ED007A 		fsts	s15, [r3]
+  98:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 561              		.loc 2 98 0
+ 562 0052 92ED017A 		flds	s14, [r2, #4]
+ 563 0056 D1ED015A 		flds	s11, [r1, #4]
+ 564 005a B4EEE57A 		fcmpes	s14, s11
+ 565 005e F1EE10FA 		fmstat
+ 566 0062 9946     		mov	r9, r3
+ 567 0064 B64B     		ldr	r3, .L177+24
+ 568 0066 54BF     		ite	pl
+ 569 0068 B0EE656A 		fcpyspl	s12, s11
+ 570 006c B0EE476A 		fcpysmi	s12, s14
+  99:subsystems/navigation/nav_survey_rectangle.c **** 
+ 571              		.loc 2 99 0
+ 572 0070 D8BF     		it	le
+ 573 0072 B0EE657A 		fcpysle	s14, s11
+  91:subsystems/navigation/nav_survey_rectangle.c ****   static float survey_radius;
+ 574              		.loc 2 91 0
+ 575 0076 8246     		mov	r10, r0
+  98:subsystems/navigation/nav_survey_rectangle.c ****   nav_survey_north = Max(WaypointY(wp1), WaypointY(wp2));
+ 576              		.loc 2 98 0
+ 577 0078 83ED006A 		fsts	s12, [r3]
+ 578 007c 9846     		mov	r8, r3
+  99:subsystems/navigation/nav_survey_rectangle.c **** 
+ 579              		.loc 2 99 0
+ 580 007e 87ED007A 		fsts	s14, [r7]
+ 581              		.loc 2 102 0
+ 582 0082 BCF1000F 		cmp	ip, #0
+ 583 0086 15D1     		bne	.L66
+ 584              		.loc 2 102 0 is_stmt 0 discriminator 1
+ 585 0088 AE4A     		ldr	r2, .L177+28
+ 586 008a AF4B     		ldr	r3, .L177+32
+ 587 008c D2ED016A 		flds	s13, [r2, #4]
+ 588 0090 D3ED017A 		flds	s15, [r3, #4]
+ 589 0094 F4EEE76A 		fcmpes	s13, s15
+ 590 0098 F1EE10FA 		fmstat
+ 591 009c 04DD     		ble	.L161
+ 103:subsystems/navigation/nav_survey_rectangle.c ****     survey_to.y = nav_survey_north;
+ 592              		.loc 2 103 0 is_stmt 1
+ 593 009e 82ED017A 		fsts	s14, [r2, #4]
+ 104:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.y = nav_survey_south;
+ 594              		.loc 2 104 0
+ 595 00a2 83ED016A 		fsts	s12, [r3, #4]
+ 596 00a6 1DE0     		b	.L69
+ 597              	.L161:
+ 105:subsystems/navigation/nav_survey_rectangle.c ****   } else if (SurveyGoingSouth()) {
+ 598              		.loc 2 105 0 discriminator 1
+ 599 00a8 1CD5     		bpl	.L69
+ 106:subsystems/navigation/nav_survey_rectangle.c ****     survey_to.y = nav_survey_south;
+ 600              		.loc 2 106 0
+ 601 00aa 82ED016A 		fsts	s12, [r2, #4]
+ 107:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.y = nav_survey_north;
+ 602              		.loc 2 107 0
+ 603 00ae 83ED017A 		fsts	s14, [r3, #4]
+ 604 00b2 17E0     		b	.L69
+ 605              	.L66:
+ 108:subsystems/navigation/nav_survey_rectangle.c ****   } else if (SurveyGoingEast()) {
+ 606              		.loc 2 108 0
+ 607 00b4 BCF1010F 		cmp	ip, #1
+ 608 00b8 14D1     		bne	.L69
+ 609              		.loc 2 108 0 is_stmt 0 discriminator 1
+ 610 00ba A24A     		ldr	r2, .L177+28
+ 611 00bc A24B     		ldr	r3, .L177+32
+ 612 00be 92ED006A 		flds	s12, [r2]
+ 613 00c2 93ED007A 		flds	s14, [r3]
+ 614 00c6 B4EEC76A 		fcmpes	s12, s14
+ 615 00ca F1EE10FA 		fmstat
+ 616 00ce 04DD     		ble	.L162
+ 109:subsystems/navigation/nav_survey_rectangle.c ****     survey_to.x = nav_survey_east;
+ 617              		.loc 2 109 0 is_stmt 1
+ 618 00d0 C2ED007A 		fsts	s15, [r2]
+ 110:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.x = nav_survey_west;
+ 619              		.loc 2 110 0
+ 620 00d4 C3ED006A 		fsts	s13, [r3]
+ 621 00d8 04E0     		b	.L69
+ 622              	.L162:
+ 111:subsystems/navigation/nav_survey_rectangle.c ****   } else if (SurveyGoingWest()) {
+ 112:subsystems/navigation/nav_survey_rectangle.c ****     survey_to.x = nav_survey_west;
+ 623              		.loc 2 112 0 discriminator 1
+ 624 00da 44BF     		itt	mi
+ 625 00dc C2ED006A 		fstsmi	s13, [r2]
+ 113:subsystems/navigation/nav_survey_rectangle.c ****     survey_from.x = nav_survey_east;
+ 626              		.loc 2 113 0 discriminator 1
+ 627 00e0 C3ED007A 		fstsmi	s15, [r3]
+ 628              	.L69:
+ 114:subsystems/navigation/nav_survey_rectangle.c ****   }
+ 115:subsystems/navigation/nav_survey_rectangle.c **** 
+ 116:subsystems/navigation/nav_survey_rectangle.c ****   if (! survey_uturn) { /* S-N, N-S, W-E or E-W straight route */
+ 629              		.loc 2 116 0
+ 630 00e4 994E     		ldr	r6, .L177+36
+ 631 00e6 0096     		str	r6, [sp]
+ 632 00e8 3378     		ldrb	r3, [r6]	@ zero_extendqisi2
+ 633 00ea 002B     		cmp	r3, #0
+ 634 00ec 40F01481 		bne	.L74
+ 117:subsystems/navigation/nav_survey_rectangle.c ****     if ((stateGetPositionEnu_f()->y < nav_survey_north && SurveyGoingNorth()) ||
+ 635              		.loc 2 117 0
+ 636 00f0 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 637              	.LVL61:
+ 638 00f4 D7ED007A 		flds	s15, [r7]
+ 639 00f8 90ED017A 		flds	s14, [r0, #4]
+ 640 00fc DFF844B2 		ldr	fp, .L177+28
+ 641 0100 914E     		ldr	r6, .L177+32
+ 642 0102 B4EEE77A 		fcmpes	s14, s15
+ 643 0106 F1EE10FA 		fmstat
+ 644 010a 13D5     		bpl	.L75
+ 645              		.loc 2 117 0 is_stmt 0 discriminator 1
+ 646 010c 2978     		ldrb	r1, [r5]	@ zero_extendqisi2
+ 647 010e 89B9     		cbnz	r1, .L75
+ 648              		.loc 2 117 0 discriminator 3
+ 649 0110 9BED017A 		flds	s14, [fp, #4]
+ 650 0114 D6ED017A 		flds	s15, [r6, #4]
+ 651 0118 B4EEE77A 		fcmpes	s14, s15
+ 652 011c F1EE10FA 		fmstat
+ 653 0120 08DD     		ble	.L75
+ 654              	.L81:
+ 118:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->y > nav_survey_south && SurveyGoingSouth()) ||
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x < nav_survey_east && SurveyGoingEast()) ||
+ 120:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 121:subsystems/navigation/nav_survey_rectangle.c ****       /* Continue ... */
+ 122:subsystems/navigation/nav_survey_rectangle.c ****       nav_route_xy(survey_from.x, survey_from.y, survey_to.x, survey_to.y);
+ 655              		.loc 2 122 0 is_stmt 1
+ 656 0122 3068     		ldr	r0, [r6]	@ float
+ 657 0124 7168     		ldr	r1, [r6, #4]	@ float
+ 658 0126 DBF80020 		ldr	r2, [fp]	@ float
+ 659 012a DBF80430 		ldr	r3, [fp, #4]	@ float
+ 660 012e FFF7FEFF 		bl	nav_route_xy
+ 661              	.LVL62:
+ 662 0132 65E2     		b	.L78
+ 663              	.L75:
+ 118:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->y > nav_survey_south && SurveyGoingSouth()) ||
+ 664              		.loc 2 118 0 discriminator 5
+ 665 0134 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 666              	.LVL63:
+ 117:subsystems/navigation/nav_survey_rectangle.c ****     if ((stateGetPositionEnu_f()->y < nav_survey_north && SurveyGoingNorth()) ||
+ 667              		.loc 2 117 0 discriminator 5
+ 668 0138 D8ED007A 		flds	s15, [r8]
+ 669 013c 90ED017A 		flds	s14, [r0, #4]
+ 670 0140 B4EEE77A 		fcmpes	s14, s15
+ 671 0144 F1EE10FA 		fmstat
+ 672 0148 0ADD     		ble	.L79
+ 118:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->y > nav_survey_south && SurveyGoingSouth()) ||
+ 673              		.loc 2 118 0
+ 674 014a 2978     		ldrb	r1, [r5]	@ zero_extendqisi2
+ 675 014c 41B9     		cbnz	r1, .L79
+ 118:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->y > nav_survey_south && SurveyGoingSouth()) ||
+ 676              		.loc 2 118 0 is_stmt 0 discriminator 1
+ 677 014e 9BED017A 		flds	s14, [fp, #4]
+ 678 0152 D6ED017A 		flds	s15, [r6, #4]
+ 679 0156 B4EEE77A 		fcmpes	s14, s15
+ 680 015a F1EE10FA 		fmstat
+ 681 015e E0D4     		bmi	.L81
+ 682              	.L79:
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 683              		.loc 2 119 0 is_stmt 1 discriminator 3
+ 684 0160 FFF7FEFF 		bl	stateGetPositionEnu_f
+ 685              	.LVL64:
+ 118:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->y > nav_survey_south && SurveyGoingSouth()) ||
+ 686              		.loc 2 118 0 discriminator 3
+ 687 0164 D9ED007A 		flds	s15, [r9]
+ 688 0168 90ED007A 		flds	s14, [r0]
+ 689 016c B4EEE77A 		fcmpes	s14, s15
+ 690 0170 F1EE10FA 		fmstat
+ 691 0174 0BD5     		bpl	.L82
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 692              		.loc 2 119 0
+ 693 0176 2978     		ldrb	r1, [r5]	@ zero_extendqisi2
+ 694 0178 0129     		cmp	r1, #1
+ 695 017a 08D1     		bne	.L82
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 696              		.loc 2 119 0 is_stmt 0 discriminator 1
+ 697 017c 9BED007A 		flds	s14, [fp]
+ 698 0180 D6ED007A 		flds	s15, [r6]
+ 699 0184 B4EEE77A 		fcmpes	s14, s15
+ 700 0188 F1EE10FA 		fmstat
+ 701 018c C9DC     		bgt	.L81
+ 702              	.L82:
+ 120:subsystems/navigation/nav_survey_rectangle.c ****       /* Continue ... */
+ 703              		.loc 2 120 0 is_stmt 1 discriminator 3
+ 704 018e FFF7FEFF 		bl	stateGetPositionEnu_f
+ 705              	.LVL65:
+ 706 0192 019B     		ldr	r3, [sp, #4]
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 707              		.loc 2 119 0 discriminator 3
+ 708 0194 D0ED007A 		flds	s15, [r0]
+ 120:subsystems/navigation/nav_survey_rectangle.c ****       /* Continue ... */
+ 709              		.loc 2 120 0 discriminator 3
+ 710 0198 93ED006A 		flds	s12, [r3]
+ 119:subsystems/navigation/nav_survey_rectangle.c ****         (stateGetPositionEnu_f()->x > nav_survey_west && SurveyGoingWest())) {
+ 711              		.loc 2 119 0 discriminator 3
+ 712 019c F4EEC67A 		fcmpes	s15, s12
+ 713 01a0 F1EE10FA 		fmstat
+ 714 01a4 0BDD     		ble	.L84
+ 120:subsystems/navigation/nav_survey_rectangle.c ****       /* Continue ... */
+ 715              		.loc 2 120 0
+ 716 01a6 2978     		ldrb	r1, [r5]	@ zero_extendqisi2
+ 717 01a8 0129     		cmp	r1, #1
+ 718 01aa 08D1     		bne	.L84
+ 120:subsystems/navigation/nav_survey_rectangle.c ****       /* Continue ... */
+ 719              		.loc 2 120 0 is_stmt 0 discriminator 1
+ 720 01ac 9BED007A 		flds	s14, [fp]
+ 721 01b0 D6ED007A 		flds	s15, [r6]
+ 722 01b4 B4EEE77A 		fcmpes	s14, s15
+ 723 01b8 F1EE10FA 		fmstat
+ 724 01bc B1D4     		bmi	.L81
+ 725              	.L84:
+ 123:subsystems/navigation/nav_survey_rectangle.c ****     } else {
+ 124:subsystems/navigation/nav_survey_rectangle.c ****       if (survey_orientation == NS) {
+ 726              		.loc 2 124 0 is_stmt 1
+ 727 01be 2D78     		ldrb	r5, [r5]	@ zero_extendqisi2
+ 728 01c0 6349     		ldr	r1, .L177+40
+ 729 01c2 B6EE009A 		fconsts	s18, #96
+ 730 01c6 002D     		cmp	r5, #0
+ 731 01c8 4DD1     		bne	.L86
+ 732              	.LBB2:
+ 125:subsystems/navigation/nav_survey_rectangle.c ****         /* North or South limit reached, prepare U-turn and next leg */
+ 126:subsystems/navigation/nav_survey_rectangle.c ****         float x0 = survey_from.x; /* Current longitude */
+ 733              		.loc 2 126 0
+ 734 01ca D6ED007A 		flds	s15, [r6]
+ 735              	.LVL66:
+ 127:subsystems/navigation/nav_survey_rectangle.c ****         if (x0 + nav_survey_shift < nav_survey_west || x0 + nav_survey_shift > nav_survey_east) {
+ 736              		.loc 2 127 0
+ 737 01ce 91ED007A 		flds	s14, [r1]
+ 738 01d2 77EE876A 		fadds	s13, s15, s14
+ 739 01d6 F4EEC66A 		fcmpes	s13, s12
+ 740 01da F1EE10FA 		fmstat
+ 741 01de 06D4     		bmi	.L87
+ 742              		.loc 2 127 0 is_stmt 0 discriminator 1
+ 743 01e0 99ED006A 		flds	s12, [r9]
+ 744 01e4 F4EEC66A 		fcmpes	s13, s12
+ 745 01e8 F1EE10FA 		fmstat
+ 746 01ec 05DD     		ble	.L88
+ 747              	.L87:
+ 128:subsystems/navigation/nav_survey_rectangle.c ****           x0 += nav_survey_shift / 2;
+ 748              		.loc 2 128 0 is_stmt 1
+ 749 01ee E7EE097A 		vfma.f32	s15, s14, s18
+ 750              	.LVL67:
+ 129:subsystems/navigation/nav_survey_rectangle.c ****           nav_survey_shift = -nav_survey_shift;
+ 751              		.loc 2 129 0
+ 752 01f2 B1EE477A 		fnegs	s14, s14
+ 753 01f6 81ED007A 		fsts	s14, [r1]
+ 754              	.L88:
+ 130:subsystems/navigation/nav_survey_rectangle.c ****         }
+ 131:subsystems/navigation/nav_survey_rectangle.c **** 
+ 132:subsystems/navigation/nav_survey_rectangle.c ****         x0 = x0 + nav_survey_shift; /* Longitude of next leg */
+ 755              		.loc 2 132 0
+ 756 01fa D1ED008A 		flds	s17, [r1]
+ 133:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.x = survey_to.x = x0;
+ 134:subsystems/navigation/nav_survey_rectangle.c **** 
+ 135:subsystems/navigation/nav_survey_rectangle.c ****         /* Swap South and North extremities */
+ 136:subsystems/navigation/nav_survey_rectangle.c ****         float tmp = survey_from.y;
+ 137:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.y = survey_to.y;
+ 757              		.loc 2 137 0
+ 758 01fe 9BED018A 		flds	s16, [fp, #4]
+ 136:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.y = survey_to.y;
+ 759              		.loc 2 136 0
+ 760 0202 D6ED019A 		flds	s19, [r6, #4]
+ 761              		.loc 2 137 0
+ 762 0206 86ED018A 		fsts	s16, [r6, #4]
+ 132:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.x = survey_to.x = x0;
+ 763              		.loc 2 132 0
+ 764 020a 77EEA87A 		fadds	s15, s15, s17
+ 765              	.LVL68:
+ 138:subsystems/navigation/nav_survey_rectangle.c ****         survey_to.y = tmp;
+ 766              		.loc 2 138 0
+ 767 020e CBED019A 		fsts	s19, [fp, #4]
+ 133:subsystems/navigation/nav_survey_rectangle.c **** 
+ 768              		.loc 2 133 0
+ 769 0212 C6ED007A 		fsts	s15, [r6]
+ 139:subsystems/navigation/nav_survey_rectangle.c **** 
+ 140:subsystems/navigation/nav_survey_rectangle.c ****         /** Do half a circle around WP 0 */
+ 141:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].x = x0 - nav_survey_shift / 2.;
+ 770              		.loc 2 141 0
+ 771 0216 17EE900A 		fmrs	r0, s15
+ 133:subsystems/navigation/nav_survey_rectangle.c **** 
+ 772              		.loc 2 133 0
+ 773 021a CBED007A 		fsts	s15, [fp]
+ 774              		.loc 2 141 0
+ 775 021e FFF7FEFF 		bl	__aeabi_f2d
+ 776              	.LVL69:
+ 777 0222 8046     		mov	r8, r0
+ 778 0224 18EE900A 		fmrs	r0, s17
+ 779 0228 8946     		mov	r9, r1
+ 780 022a FFF7FEFF 		bl	__aeabi_f2d
+ 781              	.LVL70:
+ 782 022e 0022     		movs	r2, #0
+ 783 0230 484B     		ldr	r3, .L177+44
+ 784 0232 FFF7FEFF 		bl	__aeabi_dmul
+ 785              	.LVL71:
+ 786 0236 0B46     		mov	r3, r1
+ 787 0238 0246     		mov	r2, r0
+ 788 023a 4946     		mov	r1, r9
+ 789 023c 4046     		mov	r0, r8
+ 790 023e FFF7FEFF 		bl	__aeabi_dsub
+ 791              	.LVL72:
+ 792 0242 FFF7FEFF 		bl	__aeabi_d2f
+ 793              	.LVL73:
+ 142:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].y = survey_from.y;
+ 143:subsystems/navigation/nav_survey_rectangle.c **** 
+ 144:subsystems/navigation/nav_survey_rectangle.c ****         /* Computes the right direction for the circle */
+ 145:subsystems/navigation/nav_survey_rectangle.c ****         survey_radius = nav_survey_shift / 2.;
+ 794              		.loc 2 145 0
+ 795 0246 68EE898A 		fmuls	s17, s17, s18
+ 146:subsystems/navigation/nav_survey_rectangle.c ****         if (SurveyGoingNorth()) {
+ 796              		.loc 2 146 0
+ 797 024a F4EEC89A 		fcmpes	s19, s16
+ 798 024e F1EE10FA 		fmstat
+ 799 0252 414B     		ldr	r3, .L177+48
+ 141:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].y = survey_from.y;
+ 800              		.loc 2 141 0
+ 801 0254 2060     		str	r0, [r4]	@ float
+ 147:subsystems/navigation/nav_survey_rectangle.c ****           survey_radius = -survey_radius;
+ 802              		.loc 2 147 0
+ 803 0256 C8BF     		it	gt
+ 804 0258 F1EE688A 		fnegsgt	s17, s17
+ 142:subsystems/navigation/nav_survey_rectangle.c **** 
+ 805              		.loc 2 142 0
+ 806 025c 84ED018A 		fsts	s16, [r4, #4]
+ 807              		.loc 2 147 0
+ 808 0260 C3ED008A 		fsts	s17, [r3]
+ 809 0264 52E0     		b	.L91
+ 810              	.LVL74:
+ 811              	.L86:
+ 812              	.LBE2:
+ 813              	.LBB3:
+ 148:subsystems/navigation/nav_survey_rectangle.c ****         }
+ 149:subsystems/navigation/nav_survey_rectangle.c ****       } else { /* (survey_orientation == WE) */
+ 150:subsystems/navigation/nav_survey_rectangle.c ****         /* East or West limit reached, prepare U-turn and next leg */
+ 151:subsystems/navigation/nav_survey_rectangle.c ****         /* There is a y0 declared in math.h (for ARM) !!! */
+ 152:subsystems/navigation/nav_survey_rectangle.c ****         float my_y0 = survey_from.y; /* Current latitude */
+ 814              		.loc 2 152 0
+ 815 0266 D6ED017A 		flds	s15, [r6, #4]
+ 816              	.LVL75:
+ 153:subsystems/navigation/nav_survey_rectangle.c ****         if (my_y0 + nav_survey_shift < nav_survey_south || my_y0 + nav_survey_shift > nav_survey_no
+ 817              		.loc 2 153 0
+ 818 026a 91ED007A 		flds	s14, [r1]
+ 819 026e 98ED006A 		flds	s12, [r8]
+ 820 0272 77EE876A 		fadds	s13, s15, s14
+ 821 0276 F4EEC66A 		fcmpes	s13, s12
+ 822 027a F1EE10FA 		fmstat
+ 823 027e 06D4     		bmi	.L92
+ 824              		.loc 2 153 0 is_stmt 0 discriminator 1
+ 825 0280 97ED006A 		flds	s12, [r7]
+ 826 0284 F4EEC66A 		fcmpes	s13, s12
+ 827 0288 F1EE10FA 		fmstat
+ 828 028c 05DD     		ble	.L93
+ 829              	.L92:
+ 154:subsystems/navigation/nav_survey_rectangle.c ****           my_y0 += nav_survey_shift / 2;
+ 830              		.loc 2 154 0 is_stmt 1
+ 831 028e E7EE097A 		vfma.f32	s15, s14, s18
+ 832              	.LVL76:
+ 155:subsystems/navigation/nav_survey_rectangle.c ****           nav_survey_shift = -nav_survey_shift;
+ 833              		.loc 2 155 0
+ 834 0292 B1EE477A 		fnegs	s14, s14
+ 835 0296 81ED007A 		fsts	s14, [r1]
+ 836              	.L93:
+ 156:subsystems/navigation/nav_survey_rectangle.c ****         }
+ 157:subsystems/navigation/nav_survey_rectangle.c **** 
+ 158:subsystems/navigation/nav_survey_rectangle.c ****         my_y0 = my_y0 + nav_survey_shift; /* Longitude of next leg */
+ 837              		.loc 2 158 0
+ 838 029a 91ED008A 		flds	s16, [r1]
+ 159:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.y = survey_to.y = my_y0;
+ 160:subsystems/navigation/nav_survey_rectangle.c **** 
+ 161:subsystems/navigation/nav_survey_rectangle.c ****         /* Swap West and East extremities */
+ 162:subsystems/navigation/nav_survey_rectangle.c ****         float tmp = survey_from.x;
+ 839              		.loc 2 162 0
+ 840 029e D6ED009A 		flds	s19, [r6]
+ 163:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.x = survey_to.x;
+ 841              		.loc 2 163 0
+ 842 02a2 DBED008A 		flds	s17, [fp]
+ 164:subsystems/navigation/nav_survey_rectangle.c ****         survey_to.x = tmp;
+ 843              		.loc 2 164 0
+ 844 02a6 CBED009A 		fsts	s19, [fp]
+ 158:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.y = survey_to.y = my_y0;
+ 845              		.loc 2 158 0
+ 846 02aa 77EE887A 		fadds	s15, s15, s16
+ 847              	.LVL77:
+ 163:subsystems/navigation/nav_survey_rectangle.c ****         survey_from.x = survey_to.x;
+ 848              		.loc 2 163 0
+ 849 02ae C6ED008A 		fsts	s17, [r6]
+ 159:subsystems/navigation/nav_survey_rectangle.c **** 
+ 850              		.loc 2 159 0
+ 851 02b2 CBED017A 		fsts	s15, [fp, #4]
+ 852 02b6 C6ED017A 		fsts	s15, [r6, #4]
+ 165:subsystems/navigation/nav_survey_rectangle.c **** 
+ 166:subsystems/navigation/nav_survey_rectangle.c ****         /** Do half a circle around WP 0 */
+ 167:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].x = survey_from.x;
+ 168:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].y = my_y0 - nav_survey_shift / 2.;
+ 853              		.loc 2 168 0
+ 854 02ba 17EE900A 		fmrs	r0, s15
+ 167:subsystems/navigation/nav_survey_rectangle.c ****         waypoints[0].y = my_y0 - nav_survey_shift / 2.;
+ 855              		.loc 2 167 0
+ 856 02be C4ED008A 		fsts	s17, [r4]
+ 857              		.loc 2 168 0
+ 858 02c2 FFF7FEFF 		bl	__aeabi_f2d
+ 859              	.LVL78:
+ 860 02c6 8046     		mov	r8, r0
+ 861 02c8 18EE100A 		fmrs	r0, s16
+ 862 02cc 8946     		mov	r9, r1
+ 863 02ce FFF7FEFF 		bl	__aeabi_f2d
+ 864              	.LVL79:
+ 865 02d2 0022     		movs	r2, #0
+ 866 02d4 1F4B     		ldr	r3, .L177+44
+ 867 02d6 FFF7FEFF 		bl	__aeabi_dmul
+ 868              	.LVL80:
+ 869 02da 0B46     		mov	r3, r1
+ 870 02dc 0246     		mov	r2, r0
+ 871 02de 4946     		mov	r1, r9
+ 872 02e0 4046     		mov	r0, r8
+ 873 02e2 FFF7FEFF 		bl	__aeabi_dsub
+ 874              	.LVL81:
+ 875 02e6 FFF7FEFF 		bl	__aeabi_d2f
+ 876              	.LVL82:
+ 169:subsystems/navigation/nav_survey_rectangle.c **** 
+ 170:subsystems/navigation/nav_survey_rectangle.c ****         /* Computes the right direction for the circle */
+ 171:subsystems/navigation/nav_survey_rectangle.c ****         survey_radius = nav_survey_shift / 2.;
+ 877              		.loc 2 171 0
+ 878 02ea 28EE098A 		fmuls	s16, s16, s18
+ 879 02ee 1A4B     		ldr	r3, .L177+48
+ 168:subsystems/navigation/nav_survey_rectangle.c **** 
+ 880              		.loc 2 168 0
+ 881 02f0 6060     		str	r0, [r4, #4]	@ float
+ 172:subsystems/navigation/nav_survey_rectangle.c ****         if (SurveyGoingWest()) {
+ 882              		.loc 2 172 0
+ 883 02f2 012D     		cmp	r5, #1
+ 171:subsystems/navigation/nav_survey_rectangle.c ****         if (SurveyGoingWest()) {
+ 884              		.loc 2 171 0
+ 885 02f4 83ED008A 		fsts	s16, [r3]
+ 886              		.loc 2 172 0
+ 887 02f8 08D1     		bne	.L91
+ 888              		.loc 2 172 0 is_stmt 0 discriminator 1
+ 889 02fa F4EEE89A 		fcmpes	s19, s17
+ 890 02fe F1EE10FA 		fmstat
+ 173:subsystems/navigation/nav_survey_rectangle.c ****           survey_radius = -survey_radius;
+ 891              		.loc 2 173 0 is_stmt 1 discriminator 1
+ 892 0302 44BF     		itt	mi
+ 893 0304 B1EE488A 		fnegsmi	s16, s16
+ 894 0308 83ED008A 		fstsmi	s16, [r3]
+ 895              	.LVL83:
+ 896              	.L91:
+ 897              	.LBE3:
+ 174:subsystems/navigation/nav_survey_rectangle.c ****         }
+ 175:subsystems/navigation/nav_survey_rectangle.c ****       }
+ 176:subsystems/navigation/nav_survey_rectangle.c **** 
+ 177:subsystems/navigation/nav_survey_rectangle.c ****       nav_in_segment = FALSE;
+ 898              		.loc 2 177 0
+ 899 030c 134B     		ldr	r3, .L177+52
+ 900 030e 0022     		movs	r2, #0
+ 901 0310 1A70     		strb	r2, [r3]
+ 178:subsystems/navigation/nav_survey_rectangle.c ****       survey_uturn = TRUE;
+ 902              		.loc 2 178 0
+ 903 0312 0123     		movs	r3, #1
+ 904 0314 009A     		ldr	r2, [sp]
+ 905 0316 78E0     		b	.L168
+ 906              	.LVL84:
+ 907              	.L74:
+ 179:subsystems/navigation/nav_survey_rectangle.c ****       LINE_STOP_FUNCTION;
+ 180:subsystems/navigation/nav_survey_rectangle.c ****     }
+ 181:subsystems/navigation/nav_survey_rectangle.c ****   } else { /* U-turn */
+ 182:subsystems/navigation/nav_survey_rectangle.c ****     if ((SurveyGoingNorth() && NavCourseCloseTo(0)) ||
+ 908              		.loc 2 182 0
+ 909 0318 BCF1000F 		cmp	ip, #0
+ 910 031c 20D0     		beq	.L97
+ 911              	.LVL85:
+ 912              	.L100:
+ 913 031e 2F78     		ldrb	r7, [r5]	@ zero_extendqisi2
+ 914 0320 002F     		cmp	r7, #0
+ 915 0322 74D0     		beq	.L98
+ 916 0324 AEE0     		b	.L99
+ 917              	.L178:
+ 918 0326 00BF     		.align	2
+ 919              	.L177:
+ 920 0328 00000000 		.word	nav_survey_active
+ 921 032c 00000000 		.word	waypoints
+ 922 0330 00000000 		.word	.LANCHOR0
+ 923 0334 00000000 		.word	nav_survey_north
+ 924 0338 00000000 		.word	nav_survey_west
+ 925 033c 00000000 		.word	nav_survey_east
+ 926 0340 00000000 		.word	nav_survey_south
+ 927 0344 00000000 		.word	.LANCHOR1
+ 928 0348 00000000 		.word	.LANCHOR2
+ 929 034c 00000000 		.word	.LANCHOR3
+ 930 0350 00000000 		.word	nav_survey_shift
+ 931 0354 0000E03F 		.word	1071644672
+ 932 0358 00000000 		.word	.LANCHOR4
+ 933 035c 00000000 		.word	nav_in_segment
+ 934              	.LVL86:
+ 935              	.L97:
+ 936              		.loc 2 182 0 is_stmt 0 discriminator 1
+ 937 0360 B74B     		ldr	r3, .L179+16
+ 938 0362 93ED017A 		flds	s14, [r3, #4]
+ 939 0366 B74B     		ldr	r3, .L179+20
+ 940 0368 D3ED017A 		flds	s15, [r3, #4]
+ 941 036c B4EEE77A 		fcmpes	s14, s15
+ 942 0370 F1EE10FA 		fmstat
+ 943 0374 D3DD     		ble	.L100
+ 944 0376 CDF804C0 		str	ip, [sp, #4]
+ 945              	.LBB4:
+ 946              		.loc 2 182 0 discriminator 3
+ 947 037a FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 948              	.LVL87:
+ 949 037e 0068     		ldr	r0, [r0]	@ float
+ 950 0380 FFF7FEFF 		bl	__aeabi_f2d
+ 951              	.LVL88:
+ 952 0384 AAA3     		adr	r3, .L179
+ 953 0386 D3E90023 		ldrd	r2, [r3]
+ 954 038a FFF7FEFF 		bl	__aeabi_dmul
+ 955              	.LVL89:
+ 956 038e 0246     		mov	r2, r0
+ 957 0390 0B46     		mov	r3, r1
+ 958 0392 0020     		movs	r0, #0
+ 959 0394 0021     		movs	r1, #0
+ 960 0396 FFF7FEFF 		bl	__aeabi_dsub
+ 961              	.LVL90:
+ 962 039a FFF7FEFF 		bl	__aeabi_d2f
+ 963              	.LVL91:
+ 964              	.LBB5:
+ 965 039e DDF804C0 		ldr	ip, [sp, #4]
+ 966              	.LBE5:
+ 967 03a2 07EE900A 		fmsr	s15, r0
+ 968              	.LVL92:
+ 969              	.L102:
+ 970              	.LBB6:
+ 971              		.loc 2 182 0 discriminator 5
+ 972 03a6 F5EEC07A 		fcmpezs	s15
+ 973 03aa F1EE10FA 		fmstat
+ 974 03ae 5FFA8CF3 		uxtb	r3, ip
+ 975              	.LVL93:
+ 976 03b2 9FEDA57A 		flds	s14, .L179+24
+ 977 03b6 11D5     		bpl	.L104
+ 978              	.LVL94:
+ 979 03b8 0CF1010C 		add	ip, ip, #1
+ 980              	.LVL95:
+ 981              		.loc 2 182 0 discriminator 7
+ 982 03bc BCF5807F 		cmp	ip, #256
+ 983 03c0 02D0     		beq	.L169
+ 984              	.LVL96:
+ 985              		.loc 2 182 0 discriminator 8
+ 986 03c2 77EE877A 		fadds	s15, s15, s14
+ 987              	.LVL97:
+ 988 03c6 EEE7     		b	.L102
+ 989              	.LVL98:
+ 990              	.L169:
+ 991 03c8 0023     		movs	r3, #0
+ 992              	.LVL99:
+ 993 03ca 07E0     		b	.L104
+ 994              	.LVL100:
+ 995              	.L107:
+ 996              		.loc 2 182 0 discriminator 10
+ 997 03cc 0133     		adds	r3, r3, #1
+ 998              	.LVL101:
+ 999 03ce 13F0FF03 		ands	r3, r3, #255
+ 1000              	.LVL102:
+ 1001 03d2 08D0     		beq	.L111
+ 1002              		.loc 2 182 0 discriminator 12
+ 1003 03d4 DFED9C6A 		flds	s13, .L179+24
+ 1004 03d8 77EEE67A 		fsubs	s15, s15, s13
+ 1005              	.LVL103:
+ 1006              	.L104:
+ 1007              		.loc 2 182 0 discriminator 9
+ 1008 03dc F4EEC77A 		fcmpes	s15, s14
+ 1009 03e0 F1EE10FA 		fmstat
+ 1010 03e4 F2DA     		bge	.L107
+ 1011              	.LVL104:
+ 1012              	.L111:
+ 1013              	.LBE6:
+ 1014              		.loc 2 182 0
+ 1015 03e6 9FED997A 		flds	s14, .L179+28
+ 1016 03ea F4EEC77A 		fcmpes	s15, s14
+ 1017 03ee F1EE10FA 		fmstat
+ 1018 03f2 06DC     		bgt	.L108
+ 1019              		.loc 2 182 0 discriminator 15
+ 1020 03f4 B2EE047A 		fconsts	s14, #36
+ 1021 03f8 F4EEC77A 		fcmpes	s15, s14
+ 1022 03fc F1EE10FA 		fmstat
+ 1023 0400 8DD5     		bpl	.L100
+ 1024              	.LVL105:
+ 1025              	.L108:
+ 1026              	.LBE4:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingEast() && NavCourseCloseTo(90)) ||
+ 185:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 186:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 187:subsystems/navigation/nav_survey_rectangle.c ****       survey_uturn = FALSE;
+ 1027              		.loc 2 187 0 is_stmt 1
+ 1028 0402 009A     		ldr	r2, [sp]
+ 1029 0404 0023     		movs	r3, #0
+ 1030 0406 1370     		strb	r3, [r2]
+ 188:subsystems/navigation/nav_survey_rectangle.c ****       nav_in_circle = FALSE;
+ 1031              		.loc 2 188 0
+ 1032 0408 914A     		ldr	r2, .L179+32
+ 1033              	.L168:
+ 1034 040a 1370     		strb	r3, [r2]
+ 1035 040c F8E0     		b	.L78
+ 1036              	.L98:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1037              		.loc 2 183 0
+ 1038 040e 8C4B     		ldr	r3, .L179+16
+ 1039 0410 93ED017A 		flds	s14, [r3, #4]
+ 1040 0414 8B4B     		ldr	r3, .L179+20
+ 1041 0416 D3ED017A 		flds	s15, [r3, #4]
+ 1042 041a B4EEE77A 		fcmpes	s14, s15
+ 1043 041e F1EE10FA 		fmstat
+ 1044 0422 2FD5     		bpl	.L99
+ 1045              	.LBB7:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1046              		.loc 2 183 0 is_stmt 0 discriminator 1
+ 1047 0424 FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 1048              	.LVL106:
+ 1049 0428 0068     		ldr	r0, [r0]	@ float
+ 1050 042a FFF7FEFF 		bl	__aeabi_f2d
+ 1051              	.LVL107:
+ 1052 042e 80A3     		adr	r3, .L179
+ 1053 0430 D3E90023 		ldrd	r2, [r3]
+ 1054 0434 FFF7FEFF 		bl	__aeabi_dmul
+ 1055              	.LVL108:
+ 1056 0438 0B46     		mov	r3, r1
+ 1057 043a 0246     		mov	r2, r0
+ 1058 043c 8549     		ldr	r1, .L179+36
+ 1059 043e 0020     		movs	r0, #0
+ 1060 0440 FFF7FEFF 		bl	__aeabi_dsub
+ 1061              	.LVL109:
+ 1062 0444 FFF7FEFF 		bl	__aeabi_d2f
+ 1063              	.LVL110:
+ 1064 0448 07EE900A 		fmsr	s15, r0
+ 1065              	.LVL111:
+ 1066              	.LBB8:
+ 1067 044c 3B46     		mov	r3, r7
+ 1068              	.LVL112:
+ 1069              	.L115:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1070              		.loc 2 183 0 discriminator 3
+ 1071 044e F5EEC07A 		fcmpezs	s15
+ 1072 0452 F1EE10FA 		fmstat
+ 1073 0456 DAB2     		uxtb	r2, r3
+ 1074              	.LVL113:
+ 1075 0458 9FED7B7A 		flds	s14, .L179+24
+ 1076 045c 16D4     		bmi	.L170
+ 1077              	.LVL114:
+ 1078              	.L117:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1079              		.loc 2 183 0 discriminator 7
+ 1080 045e F4EEC77A 		fcmpes	s15, s14
+ 1081 0462 F1EE10FA 		fmstat
+ 1082 0466 1ADA     		bge	.L120
+ 1083              	.LVL115:
+ 1084              	.L123:
+ 1085              	.LBE8:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1086              		.loc 2 183 0
+ 1087 0468 9FED787A 		flds	s14, .L179+28
+ 1088 046c F4EEC77A 		fcmpes	s15, s14
+ 1089 0470 F1EE10FA 		fmstat
+ 1090 0474 C5DC     		bgt	.L108
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1091              		.loc 2 183 0 discriminator 13
+ 1092 0476 B2EE047A 		fconsts	s14, #36
+ 1093 047a F4EEC77A 		fcmpes	s15, s14
+ 1094 047e F1EE10FA 		fmstat
+ 1095 0482 BED4     		bmi	.L108
+ 1096              	.LVL116:
+ 1097              	.L99:
+ 1098              	.LBE7:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1099              		.loc 2 183 0
+ 1100 0484 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 1101 0486 012B     		cmp	r3, #1
+ 1102 0488 4FD1     		bne	.L113
+ 1103 048a 11E0     		b	.L171
+ 1104              	.LVL117:
+ 1105              	.L170:
+ 1106 048c 0133     		adds	r3, r3, #1
+ 1107              	.LVL118:
+ 1108              	.LBB10:
+ 1109              	.LBB9:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1110              		.loc 2 183 0 discriminator 5
+ 1111 048e B3F5807F 		cmp	r3, #256
+ 1112 0492 02D0     		beq	.L172
+ 1113              	.LVL119:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1114              		.loc 2 183 0 discriminator 6
+ 1115 0494 77EE877A 		fadds	s15, s15, s14
+ 1116              	.LVL120:
+ 1117 0498 D9E7     		b	.L115
+ 1118              	.LVL121:
+ 1119              	.L172:
+ 1120 049a 0022     		movs	r2, #0
+ 1121              	.LVL122:
+ 1122 049c DFE7     		b	.L117
+ 1123              	.LVL123:
+ 1124              	.L120:
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1125              		.loc 2 183 0 discriminator 8
+ 1126 049e 0132     		adds	r2, r2, #1
+ 1127              	.LVL124:
+ 1128 04a0 12F0FF02 		ands	r2, r2, #255
+ 1129              	.LVL125:
+ 1130 04a4 E0D0     		beq	.L123
+ 183:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingSouth() && NavCourseCloseTo(180)) ||
+ 1131              		.loc 2 183 0 discriminator 10
+ 1132 04a6 DFED686A 		flds	s13, .L179+24
+ 1133 04aa 77EEE67A 		fsubs	s15, s15, s13
+ 1134              	.LVL126:
+ 1135 04ae D6E7     		b	.L117
+ 1136              	.LVL127:
+ 1137              	.L171:
+ 1138              	.LBE9:
+ 1139              	.LBE10:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1140              		.loc 2 184 0 is_stmt 1
+ 1141 04b0 634B     		ldr	r3, .L179+16
+ 1142 04b2 93ED007A 		flds	s14, [r3]
+ 1143 04b6 634B     		ldr	r3, .L179+20
+ 1144 04b8 D3ED007A 		flds	s15, [r3]
+ 1145 04bc B4EEE77A 		fcmpes	s14, s15
+ 1146 04c0 F1EE10FA 		fmstat
+ 1147 04c4 31DD     		ble	.L113
+ 1148              	.LBB11:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1149              		.loc 2 184 0 is_stmt 0 discriminator 1
+ 1150 04c6 FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 1151              	.LVL128:
+ 1152 04ca 0068     		ldr	r0, [r0]	@ float
+ 1153 04cc FFF7FEFF 		bl	__aeabi_f2d
+ 1154              	.LVL129:
+ 1155 04d0 57A3     		adr	r3, .L179
+ 1156 04d2 D3E90023 		ldrd	r2, [r3]
+ 1157 04d6 FFF7FEFF 		bl	__aeabi_dmul
+ 1158              	.LVL130:
+ 1159 04da 0246     		mov	r2, r0
+ 1160 04dc 0B46     		mov	r3, r1
+ 1161 04de 0020     		movs	r0, #0
+ 1162 04e0 5D49     		ldr	r1, .L179+40
+ 1163 04e2 FFF7FEFF 		bl	__aeabi_dsub
+ 1164              	.LVL131:
+ 1165 04e6 FFF7FEFF 		bl	__aeabi_d2f
+ 1166              	.LVL132:
+ 1167 04ea 07EE900A 		fmsr	s15, r0
+ 1168              	.LVL133:
+ 1169              	.LBB12:
+ 1170 04ee 0022     		movs	r2, #0
+ 1171              	.LVL134:
+ 1172              	.L127:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1173              		.loc 2 184 0 discriminator 3
+ 1174 04f0 F5EEC07A 		fcmpezs	s15
+ 1175 04f4 F1EE10FA 		fmstat
+ 1176 04f8 D3B2     		uxtb	r3, r2
+ 1177              	.LVL135:
+ 1178 04fa 9FED537A 		flds	s14, .L179+24
+ 1179 04fe 18D4     		bmi	.L173
+ 1180              	.LVL136:
+ 1181              	.L129:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1182              		.loc 2 184 0 discriminator 7
+ 1183 0500 F4EEC77A 		fcmpes	s15, s14
+ 1184 0504 F1EE10FA 		fmstat
+ 1185 0508 1CDA     		bge	.L132
+ 1186              	.LVL137:
+ 1187              	.L135:
+ 1188              	.LBE12:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1189              		.loc 2 184 0
+ 1190 050a 9FED507A 		flds	s14, .L179+28
+ 1191 050e F4EEC77A 		fcmpes	s15, s14
+ 1192 0512 F1EE10FA 		fmstat
+ 1193 0516 3FF774AF 		bgt	.L108
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1194              		.loc 2 184 0 discriminator 13
+ 1195 051a B2EE047A 		fconsts	s14, #36
+ 1196 051e F4EEC77A 		fcmpes	s15, s14
+ 1197 0522 F1EE10FA 		fmstat
+ 1198 0526 3FF56CAF 		bmi	.L108
+ 1199              	.LVL138:
+ 1200              	.L113:
+ 1201              	.LBE11:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1202              		.loc 2 184 0
+ 1203 052a 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 1204 052c 012B     		cmp	r3, #1
+ 1205 052e 61D1     		bne	.L125
+ 1206 0530 11E0     		b	.L174
+ 1207              	.LVL139:
+ 1208              	.L173:
+ 1209 0532 0132     		adds	r2, r2, #1
+ 1210              	.LVL140:
+ 1211              	.LBB14:
+ 1212              	.LBB13:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1213              		.loc 2 184 0 discriminator 5
+ 1214 0534 B2F5807F 		cmp	r2, #256
+ 1215 0538 02D0     		beq	.L175
+ 1216              	.LVL141:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1217              		.loc 2 184 0 discriminator 6
+ 1218 053a 77EE877A 		fadds	s15, s15, s14
+ 1219              	.LVL142:
+ 1220 053e D7E7     		b	.L127
+ 1221              	.LVL143:
+ 1222              	.L175:
+ 1223 0540 0023     		movs	r3, #0
+ 1224              	.LVL144:
+ 1225 0542 DDE7     		b	.L129
+ 1226              	.LVL145:
+ 1227              	.L132:
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1228              		.loc 2 184 0 discriminator 8
+ 1229 0544 0133     		adds	r3, r3, #1
+ 1230              	.LVL146:
+ 1231 0546 13F0FF03 		ands	r3, r3, #255
+ 1232              	.LVL147:
+ 1233 054a DED0     		beq	.L135
+ 184:subsystems/navigation/nav_survey_rectangle.c ****         (SurveyGoingWest() && NavCourseCloseTo(270))) {
+ 1234              		.loc 2 184 0 discriminator 10
+ 1235 054c DFED3E6A 		flds	s13, .L179+24
+ 1236 0550 77EEE67A 		fsubs	s15, s15, s13
+ 1237              	.LVL148:
+ 1238 0554 D4E7     		b	.L129
+ 1239              	.LVL149:
+ 1240              	.L174:
+ 1241              	.LBE13:
+ 1242              	.LBE14:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1243              		.loc 2 185 0 is_stmt 1
+ 1244 0556 3A4B     		ldr	r3, .L179+16
+ 1245 0558 93ED007A 		flds	s14, [r3]
+ 1246 055c 394B     		ldr	r3, .L179+20
+ 1247 055e D3ED007A 		flds	s15, [r3]
+ 1248 0562 B4EEE77A 		fcmpes	s14, s15
+ 1249 0566 F1EE10FA 		fmstat
+ 1250 056a 43D5     		bpl	.L125
+ 1251              	.LBB15:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1252              		.loc 2 185 0 is_stmt 0 discriminator 1
+ 1253 056c FFF7FEFF 		bl	stateGetHorizontalSpeedDir_f
+ 1254              	.LVL150:
+ 1255 0570 0068     		ldr	r0, [r0]	@ float
+ 1256 0572 FFF7FEFF 		bl	__aeabi_f2d
+ 1257              	.LVL151:
+ 1258 0576 2EA3     		adr	r3, .L179
+ 1259 0578 D3E90023 		ldrd	r2, [r3]
+ 1260 057c FFF7FEFF 		bl	__aeabi_dmul
+ 1261              	.LVL152:
+ 1262 0580 0246     		mov	r2, r0
+ 1263 0582 0B46     		mov	r3, r1
+ 1264 0584 2CA1     		adr	r1, .L179+8
+ 1265 0586 D1E90001 		ldrd	r0, [r1]
+ 1266 058a FFF7FEFF 		bl	__aeabi_dsub
+ 1267              	.LVL153:
+ 1268 058e FFF7FEFF 		bl	__aeabi_d2f
+ 1269              	.LVL154:
+ 1270 0592 07EE900A 		fmsr	s15, r0
+ 1271              	.LVL155:
+ 1272              	.LBB16:
+ 1273 0596 0022     		movs	r2, #0
+ 1274              	.LVL156:
+ 1275              	.L137:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1276              		.loc 2 185 0 discriminator 2
+ 1277 0598 F5EEC07A 		fcmpezs	s15
+ 1278 059c F1EE10FA 		fmstat
+ 1279 05a0 D3B2     		uxtb	r3, r2
+ 1280              	.LVL157:
+ 1281 05a2 9FED297A 		flds	s14, .L179+24
+ 1282 05a6 10D5     		bpl	.L139
+ 1283              	.LVL158:
+ 1284 05a8 0132     		adds	r2, r2, #1
+ 1285              	.LVL159:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1286              		.loc 2 185 0 discriminator 4
+ 1287 05aa B2F5807F 		cmp	r2, #256
+ 1288 05ae 02D0     		beq	.L176
+ 1289              	.LVL160:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1290              		.loc 2 185 0 discriminator 5
+ 1291 05b0 77EE877A 		fadds	s15, s15, s14
+ 1292              	.LVL161:
+ 1293 05b4 F0E7     		b	.L137
+ 1294              	.LVL162:
+ 1295              	.L176:
+ 1296 05b6 0023     		movs	r3, #0
+ 1297              	.LVL163:
+ 1298 05b8 07E0     		b	.L139
+ 1299              	.LVL164:
+ 1300              	.L142:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1301              		.loc 2 185 0 discriminator 7
+ 1302 05ba 0133     		adds	r3, r3, #1
+ 1303              	.LVL165:
+ 1304 05bc 13F0FF03 		ands	r3, r3, #255
+ 1305              	.LVL166:
+ 1306 05c0 08D0     		beq	.L145
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1307              		.loc 2 185 0 discriminator 9
+ 1308 05c2 DFED216A 		flds	s13, .L179+24
+ 1309 05c6 77EEE67A 		fsubs	s15, s15, s13
+ 1310              	.LVL167:
+ 1311              	.L139:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1312              		.loc 2 185 0 discriminator 6
+ 1313 05ca F4EEC77A 		fcmpes	s15, s14
+ 1314 05ce F1EE10FA 		fmstat
+ 1315 05d2 F2DA     		bge	.L142
+ 1316              	.LVL168:
+ 1317              	.L145:
+ 1318              	.LBE16:
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1319              		.loc 2 185 0
+ 1320 05d4 9FED1D7A 		flds	s14, .L179+28
+ 1321 05d8 F4EEC77A 		fcmpes	s15, s14
+ 1322 05dc F1EE10FA 		fmstat
+ 1323 05e0 3FF70FAF 		bgt	.L108
+ 185:subsystems/navigation/nav_survey_rectangle.c ****       /* U-turn finished, back on a segment */
+ 1324              		.loc 2 185 0 discriminator 12
+ 1325 05e4 B2EE047A 		fconsts	s14, #36
+ 1326 05e8 F4EEC77A 		fcmpes	s15, s14
+ 1327 05ec F1EE10FA 		fmstat
+ 1328 05f0 3FF507AF 		bmi	.L108
+ 1329              	.LVL169:
+ 1330              	.L125:
+ 1331              	.LBE15:
+ 189:subsystems/navigation/nav_survey_rectangle.c ****       LINE_START_FUNCTION;
+ 190:subsystems/navigation/nav_survey_rectangle.c ****     } else {
+ 191:subsystems/navigation/nav_survey_rectangle.c ****       NavCircleWaypoint(0, survey_radius);
+ 1332              		.loc 2 191 0 is_stmt 1
+ 1333 05f4 194B     		ldr	r3, .L179+44
+ 1334 05f6 2068     		ldr	r0, [r4]	@ float
+ 1335 05f8 6168     		ldr	r1, [r4, #4]	@ float
+ 1336 05fa 1A68     		ldr	r2, [r3]	@ float
+ 1337 05fc FFF7FEFF 		bl	nav_circle_XY
+ 1338              	.LVL170:
+ 1339              	.L78:
+ 192:subsystems/navigation/nav_survey_rectangle.c ****     }
+ 193:subsystems/navigation/nav_survey_rectangle.c ****   }
+ 194:subsystems/navigation/nav_survey_rectangle.c ****   NavVerticalAutoThrottleMode(0.); /* No pitch */
+ 1340              		.loc 2 194 0
+ 1341 0600 174B     		ldr	r3, .L179+48
+ 1342 0602 0022     		movs	r2, #0
+ 1343 0604 1A70     		strb	r2, [r3]
+ 1344 0606 174A     		ldr	r2, .L179+52
+ 1345 0608 0023     		movs	r3, #0
+ 1346 060a 1360     		str	r3, [r2]	@ float
+ 195:subsystems/navigation/nav_survey_rectangle.c ****   NavVerticalAltitudeMode(WaypointAlt(wp1), 0.); /* No preclimb */
+ 1347              		.loc 2 195 0
+ 1348 060c 164A     		ldr	r2, .L179+56
+ 1349 060e 0321     		movs	r1, #3
+ 1350 0610 1170     		strb	r1, [r2]
+ 1351 0612 0C22     		movs	r2, #12
+ 1352 0614 02FB0A44 		mla	r4, r2, r10, r4
+ 1353 0618 144A     		ldr	r2, .L179+60
+ 1354 061a A168     		ldr	r1, [r4, #8]	@ float
+ 1355 061c 1160     		str	r1, [r2]	@ float
+ 1356 061e 144A     		ldr	r2, .L179+64
+ 1357 0620 1360     		str	r3, [r2]	@ float
+ 196:subsystems/navigation/nav_survey_rectangle.c **** }
+ 1358              		.loc 2 196 0
+ 1359 0622 03B0     		add	sp, sp, #12
+ 1360              		.cfi_def_cfa_offset 52
+ 1361              		@ sp needed
+ 1362 0624 BDEC048B 		fldmfdd	sp!, {d8-d9}
+ 1363              		.cfi_restore 82
+ 1364              		.cfi_restore 83
+ 1365              		.cfi_restore 80
+ 1366              		.cfi_restore 81
+ 1367              		.cfi_def_cfa_offset 36
+ 1368 0628 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 1369              	.L180:
+ 1370 062c AFF30080 		.align	3
+ 1371              	.L179:
+ 1372 0630 F8C1631A 		.word	442745336
+ 1373 0634 DCA54C40 		.word	1078765020
+ 1374 0638 00000000 		.word	0
+ 1375 063c 00E07040 		.word	1081139200
+ 1376 0640 00000000 		.word	.LANCHOR1
+ 1377 0644 00000000 		.word	.LANCHOR2
+ 1378 0648 0000B443 		.word	1135869952
+ 1379 064c 0000AF43 		.word	1135542272
+ 1380 0650 00000000 		.word	nav_in_circle
+ 1381 0654 00806640 		.word	1080459264
+ 1382 0658 00805640 		.word	1079410688
+ 1383 065c 00000000 		.word	.LANCHOR4
+ 1384 0660 00000000 		.word	v_ctl_climb_mode
+ 1385 0664 00000000 		.word	nav_pitch
+ 1386 0668 00000000 		.word	v_ctl_mode
+ 1387 066c 00000000 		.word	nav_altitude
+ 1388 0670 00000000 		.word	v_ctl_altitude_pre_climb
+ 1389              		.cfi_endproc
+ 1390              	.LFE180:
+ 1392              		.section	.bss.survey_from,"aw",%nobits
+ 1393              		.align	2
+ 1394              		.set	.LANCHOR2,. + 0
+ 1397              	survey_from:
+ 1398 0000 00000000 		.space	12
+ 1398      00000000 
+ 1398      00000000 
+ 1399              		.section	.bss.survey_orientation,"aw",%nobits
+ 1400              		.set	.LANCHOR0,. + 0
+ 1403              	survey_orientation:
+ 1404 0000 00       		.space	1
+ 1405              		.section	.bss.survey_to,"aw",%nobits
+ 1406              		.align	2
+ 1407              		.set	.LANCHOR1,. + 0
+ 1410              	survey_to:
+ 1411 0000 00000000 		.space	12
+ 1411      00000000 
+ 1411      00000000 
+ 1412              		.section	.bss.survey_uturn,"aw",%nobits
+ 1413              		.set	.LANCHOR3,. + 0
+ 1416              	survey_uturn:
+ 1417 0000 00       		.space	1
+ 1418              		.section	.bss.survey_radius.7387,"aw",%nobits
+ 1419              		.align	2
+ 1420              		.set	.LANCHOR4,. + 0
+ 1423              	survey_radius.7387:
+ 1424 0000 00000000 		.space	4
+ 1425              		.text
+ 1426              	.Letext0:
+ 1427              		.file 3 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1428              		.file 4 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1429              		.file 5 "/home/dino/paparazzi/sw/include/std.h"
+ 1430              		.file 6 "./math/pprz_algebra_int.h"
+ 1431              		.file 7 "./math/pprz_algebra_float.h"
+ 1432              		.file 8 "./math/pprz_geodetic_int.h"
+ 1433              		.file 9 "./math/pprz_geodetic_float.h"
+ 1434              		.file 10 "./math/pprz_orientation_conversion.h"
+ 1435              		.file 11 "./subsystems/navigation/common_nav.h"
+ 1436              		.file 12 "./subsystems/navigation/nav_survey_rectangle.h"
+ 1437              		.file 13 "./firmwares/fixedwing/guidance/guidance_common.h"
+ 1438              		.file 14 "./firmwares/fixedwing/guidance/guidance_v.h"
+ 1439              		.file 15 "./firmwares/fixedwing/nav.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 nav_survey_rectangle.c
+     /tmp/ccmjpJ9H.s:20     .text.stateGetPositionEnu_f:00000000 $t
+     /tmp/ccmjpJ9H.s:24     .text.stateGetPositionEnu_f:00000000 stateGetPositionEnu_f
+     /tmp/ccmjpJ9H.s:50     .text.stateGetPositionEnu_f:00000014 $d
+     /tmp/ccmjpJ9H.s:56     .text.stateGetHorizontalSpeedDir_f:00000000 $t
+     /tmp/ccmjpJ9H.s:60     .text.stateGetHorizontalSpeedDir_f:00000000 stateGetHorizontalSpeedDir_f
+     /tmp/ccmjpJ9H.s:85     .text.stateGetHorizontalSpeedDir_f:00000014 $d
+     /tmp/ccmjpJ9H.s:98     .text.nav_survey_rectangle_init:00000000 $t
+     /tmp/ccmjpJ9H.s:103    .text.nav_survey_rectangle_init:00000000 nav_survey_rectangle_init
+     /tmp/ccmjpJ9H.s:472    .text.nav_survey_rectangle_init:000002a8 $d
+     /tmp/ccmjpJ9H.s:493    .text.nav_survey_rectangle:00000000 $t
+     /tmp/ccmjpJ9H.s:498    .text.nav_survey_rectangle:00000000 nav_survey_rectangle
+     /tmp/ccmjpJ9H.s:920    .text.nav_survey_rectangle:00000328 $d
+     /tmp/ccmjpJ9H.s:937    .text.nav_survey_rectangle:00000360 $t
+     /tmp/ccmjpJ9H.s:1372   .text.nav_survey_rectangle:00000630 $d
+     /tmp/ccmjpJ9H.s:1393   .bss.survey_from:00000000 $d
+     /tmp/ccmjpJ9H.s:1397   .bss.survey_from:00000000 survey_from
+     /tmp/ccmjpJ9H.s:1403   .bss.survey_orientation:00000000 survey_orientation
+     /tmp/ccmjpJ9H.s:1404   .bss.survey_orientation:00000000 $d
+     /tmp/ccmjpJ9H.s:1406   .bss.survey_to:00000000 $d
+     /tmp/ccmjpJ9H.s:1410   .bss.survey_to:00000000 survey_to
+     /tmp/ccmjpJ9H.s:1416   .bss.survey_uturn:00000000 survey_uturn
+     /tmp/ccmjpJ9H.s:1417   .bss.survey_uturn:00000000 $d
+     /tmp/ccmjpJ9H.s:1419   .bss.survey_radius.7387:00000000 $d
+     /tmp/ccmjpJ9H.s:1423   .bss.survey_radius.7387:00000000 survey_radius.7387
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.paparazzi.h.2.eeb1c9dc8e5acded3c1d3014b2b23af3
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+                           .group:00000000 wm4.state.h.65.b18954aacb3801ec3e27b4e857d620d3
+                           .group:00000000 wm4.guidance_common.h.29.1bf3aadf5e973d07dcbb9e181585cee6
+                           .group:00000000 wm4.common_flight_plan.h.28.998f628cac1ef266b3e88de20c1aaea2
+                           .group:00000000 wm4.common_nav.h.28.8e6fb87079f62fdfc188e60962e671bb
+                           .group:00000000 wm4.nav.h.44.3eb88fcdae84be242ba32ecd12ce1b48
+                           .group:00000000 wm4.nav_survey_rectangle.h.40.be8d41ad6903a05cab94fc858d7a6899
+                           .group:00000000 wm4.modules.h.5.3647ee45f49511088e2f33d88288be64
+                           .group:00000000 wm4.modules.h.23.3d04ad9f740a156fcd476d18714df592
+                           .group:00000000 wm4.datalink.h.28.0d234a7c203533b2ec538be3e18eddf4
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.dl_protocol.h.8.ff49f2162ca39aa3b0519a0581b3d19d
+                           .group:00000000 wm4.datalink.h.46.36a5e0f36fb7d0784f1e7af767537c84
+                           .group:00000000 wm4.flight_plan.h.10.82b243c7414d8bf1f60915facc215da5
+
+UNDEFINED SYMBOLS
+stateCalcPositionEnu_f
+state
+stateCalcHorizontalSpeedDir_f
+__aeabi_f2d
+__aeabi_dmul
+__aeabi_dadd
+__aeabi_dcmpgt
+__aeabi_dsub
+__aeabi_dcmplt
+__aeabi_d2f
+waypoints
+nav_survey_east
+nav_survey_south
+nav_survey_west
+nav_survey_north
+nav_survey_shift
+nav_route_xy
+nav_survey_active
+nav_in_segment
+nav_circle_XY
+nav_in_circle
+v_ctl_climb_mode
+nav_pitch
+v_ctl_mode
+nav_altitude
+v_ctl_altitude_pre_climb

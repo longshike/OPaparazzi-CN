@@ -1,0 +1,417 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"actuators_shared_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.actuators_pwm_arch_channel_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	actuators_pwm_arch_channel_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	actuators_pwm_arch_channel_init:
+  26              	.LFB5:
+  27              		.file 1 "arch/stm32/subsystems/actuators/actuators_shared_arch.c"
+   1:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** /*
+   2:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * Copyright (C) 2010 The Paparazzi Team
+   3:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  *
+   4:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * This file is part of Paparazzi.
+   5:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  *
+   6:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * Paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * any later version.
+  10:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  *
+  11:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * Paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  *
+  16:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * along with Paparazzi; see the file COPYING.  If not, write to
+  18:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * Boston, MA 02111-1307, USA.
+  20:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  */
+  21:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  22:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** /** @file arch/stm32/subsystems/actuators/actuators_shared_arch.c
+  23:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  *  STM32 PWM and dualPWM servos shared functions.
+  24:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  */
+  25:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  26:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** #include "arch/stm32/subsystems/actuators/actuators_shared_arch.h"
+  27:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  28:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** #include <libopencm3/stm32/timer.h>
+  29:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** // for timer_get_frequency
+  30:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** #include "arch/stm32/mcu_arch.h"
+  31:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  32:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  33:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** /** Set PWM channel configuration
+  34:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  */
+  35:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** void actuators_pwm_arch_channel_init(uint32_t timer_peripheral,
+  36:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****                                      enum tim_oc_id oc_id)
+  37:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** {
+  28              		.loc 1 37 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 38B5     		push	{r3, r4, r5, lr}
+  34              		.cfi_def_cfa_offset 16
+  35              		.cfi_offset 3, -16
+  36              		.cfi_offset 4, -12
+  37              		.cfi_offset 5, -8
+  38              		.cfi_offset 14, -4
+  39              		.loc 1 37 0
+  40 0002 0446     		mov	r4, r0
+  41 0004 0D46     		mov	r5, r1
+  38:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  39:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_disable_oc_output(timer_peripheral, oc_id);
+  42              		.loc 1 39 0
+  43 0006 FFF7FEFF 		bl	timer_disable_oc_output
+  44              	.LVL1:
+  40:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   //There is no such register in TIM9 and 12.
+  41:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if (timer_peripheral != TIM9 && timer_peripheral != TIM12) {
+  45              		.loc 1 41 0
+  46 000a 124B     		ldr	r3, .L4
+  47 000c 9C42     		cmp	r4, r3
+  48 000e 07D0     		beq	.L2
+  49              		.loc 1 41 0 is_stmt 0 discriminator 1
+  50 0010 A3F59433 		sub	r3, r3, #75776
+  51 0014 9C42     		cmp	r4, r3
+  52 0016 03D0     		beq	.L2
+  42:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     timer_disable_oc_clear(timer_peripheral, oc_id);
+  53              		.loc 1 42 0 is_stmt 1
+  54 0018 2046     		mov	r0, r4
+  55 001a 2946     		mov	r1, r5
+  56 001c FFF7FEFF 		bl	timer_disable_oc_clear
+  57              	.LVL2:
+  58              	.L2:
+  43:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+  44:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_enable_oc_preload(timer_peripheral, oc_id);
+  59              		.loc 1 44 0
+  60 0020 2046     		mov	r0, r4
+  61 0022 2946     		mov	r1, r5
+  62 0024 FFF7FEFF 		bl	timer_enable_oc_preload
+  63              	.LVL3:
+  45:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_set_oc_slow_mode(timer_peripheral, oc_id);
+  64              		.loc 1 45 0
+  65 0028 2046     		mov	r0, r4
+  66 002a 2946     		mov	r1, r5
+  67 002c FFF7FEFF 		bl	timer_set_oc_slow_mode
+  68              	.LVL4:
+  46:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_set_oc_mode(timer_peripheral, oc_id, TIM_OCM_PWM1);
+  69              		.loc 1 46 0
+  70 0030 2046     		mov	r0, r4
+  71 0032 2946     		mov	r1, r5
+  72 0034 0622     		movs	r2, #6
+  73 0036 FFF7FEFF 		bl	timer_set_oc_mode
+  74              	.LVL5:
+  47:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_set_oc_polarity_high(timer_peripheral, oc_id);
+  75              		.loc 1 47 0
+  76 003a 2046     		mov	r0, r4
+  77 003c 2946     		mov	r1, r5
+  78 003e FFF7FEFF 		bl	timer_set_oc_polarity_high
+  79              	.LVL6:
+  48:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_enable_oc_output(timer_peripheral, oc_id);
+  80              		.loc 1 48 0
+  81 0042 2046     		mov	r0, r4
+  82 0044 2946     		mov	r1, r5
+  83 0046 FFF7FEFF 		bl	timer_enable_oc_output
+  84              	.LVL7:
+  49:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   // Used for TIM1 and TIM8, the function does nothing if other timer is specified.
+  50:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_enable_break_main_output(timer_peripheral);
+  85              		.loc 1 50 0
+  86 004a 2046     		mov	r0, r4
+  51:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** }
+  87              		.loc 1 51 0
+  88 004c BDE83840 		pop	{r3, r4, r5, lr}
+  89              		.cfi_restore 14
+  90              		.cfi_restore 5
+  91              		.cfi_restore 4
+  92              		.cfi_restore 3
+  93              		.cfi_def_cfa_offset 0
+  94              	.LVL8:
+  50:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** }
+  95              		.loc 1 50 0
+  96 0050 FFF7FEBF 		b	timer_enable_break_main_output
+  97              	.LVL9:
+  98              	.L5:
+  99              		.align	2
+ 100              	.L4:
+ 101 0054 00400140 		.word	1073823744
+ 102              		.cfi_endproc
+ 103              	.LFE5:
+ 105              		.section	.text.set_servo_timer,"ax",%progbits
+ 106              		.align	1
+ 107              		.global	set_servo_timer
+ 108              		.thumb
+ 109              		.thumb_func
+ 111              	set_servo_timer:
+ 112              	.LFB6:
+  52:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  53:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  54:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** /** Set Timer configuration
+  55:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * @param[in] timer Timer register address base
+  56:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * @param[in] freq PWM frequency in Hz (1 / auto-reload period)
+  57:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  * @param[in] channels_mask output compare channels to enable
+  58:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****  */
+  59:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** void set_servo_timer(uint32_t timer, uint32_t freq, uint8_t channels_mask)
+  60:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** {
+ 113              		.loc 1 60 0
+ 114              		.cfi_startproc
+ 115              		@ args = 0, pretend = 0, frame = 0
+ 116              		@ frame_needed = 0, uses_anonymous_args = 0
+ 117              	.LVL10:
+ 118 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 119              		.cfi_def_cfa_offset 24
+ 120              		.cfi_offset 3, -24
+ 121              		.cfi_offset 4, -20
+ 122              		.cfi_offset 5, -16
+ 123              		.cfi_offset 6, -12
+ 124              		.cfi_offset 7, -8
+ 125              		.cfi_offset 14, -4
+ 126              		.loc 1 60 0
+ 127 0002 0446     		mov	r4, r0
+ 128 0004 0F46     		mov	r7, r1
+ 129 0006 1546     		mov	r5, r2
+  61:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   // WARNING, this reset is only implemented for TIM1-8 in libopencm3!!
+  62:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_reset(timer);
+ 130              		.loc 1 62 0
+ 131 0008 FFF7FEFF 		bl	timer_reset
+ 132              	.LVL11:
+  63:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  64:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /* Timer global mode:
+  65:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * - No divider.
+  66:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * - Alignement edge.
+  67:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * - Direction up.
+  68:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    */
+  69:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if ((timer == TIM9) || (timer == TIM12))
+  70:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     //There are no EDGE and DIR settings in TIM9 and TIM12
+  71:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   {
+  72:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     timer_set_mode(timer, TIM_CR1_CKD_CK_INT, 0, 0);
+ 133              		.loc 1 72 0
+ 134 000c 0021     		movs	r1, #0
+ 135 000e 0A46     		mov	r2, r1
+ 136 0010 0B46     		mov	r3, r1
+ 137 0012 2046     		mov	r0, r4
+ 138 0014 FFF7FEFF 		bl	timer_set_mode
+ 139              	.LVL12:
+  73:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   } else {
+  74:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     timer_set_mode(timer, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+  75:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+  76:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  77:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  78:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   // By default the PWM_BASE_FREQ is set to 1MHz thus the timer tick period is 1uS
+  79:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   uint32_t timer_clk = timer_get_frequency(timer);
+ 140              		.loc 1 79 0
+ 141 0018 2046     		mov	r0, r4
+ 142 001a FFF7FEFF 		bl	timer_get_frequency
+ 143              	.LVL13:
+  80:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_set_prescaler(timer, (timer_clk / PWM_BASE_FREQ) - 1);
+ 144              		.loc 1 80 0
+ 145 001e 194E     		ldr	r6, .L23
+ 146 0020 B0FBF6F1 		udiv	r1, r0, r6
+ 147 0024 2046     		mov	r0, r4
+ 148              	.LVL14:
+ 149 0026 0139     		subs	r1, r1, #1
+ 150 0028 FFF7FEFF 		bl	timer_set_prescaler
+ 151              	.LVL15:
+  81:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  82:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_disable_preload(timer);
+ 152              		.loc 1 82 0
+ 153 002c 2046     		mov	r0, r4
+ 154 002e FFF7FEFF 		bl	timer_disable_preload
+ 155              	.LVL16:
+  83:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  84:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_continuous_mode(timer);
+ 156              		.loc 1 84 0
+ 157 0032 2046     		mov	r0, r4
+ 158 0034 FFF7FEFF 		bl	timer_continuous_mode
+ 159              	.LVL17:
+  85:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  86:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_set_period(timer, (PWM_BASE_FREQ / freq) - 1);
+ 160              		.loc 1 86 0
+ 161 0038 B6FBF7F1 		udiv	r1, r6, r7
+ 162 003c 2046     		mov	r0, r4
+ 163 003e 0139     		subs	r1, r1, #1
+ 164 0040 FFF7FEFF 		bl	timer_set_period
+ 165              	.LVL18:
+  87:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+  88:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /* Disable outputs and configure channel if needed. */
+  89:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if (bit_is_set(channels_mask, 0)) {
+ 166              		.loc 1 89 0
+ 167 0044 E807     		lsls	r0, r5, #31
+ 168 0046 03D5     		bpl	.L7
+  90:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     actuators_pwm_arch_channel_init(timer, TIM_OC1);
+ 169              		.loc 1 90 0
+ 170 0048 2046     		mov	r0, r4
+ 171 004a 0021     		movs	r1, #0
+ 172 004c FFF7FEFF 		bl	actuators_pwm_arch_channel_init
+ 173              	.LVL19:
+ 174              	.L7:
+  91:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+  92:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if (bit_is_set(channels_mask, 1)) {
+ 175              		.loc 1 92 0
+ 176 0050 A907     		lsls	r1, r5, #30
+ 177 0052 03D5     		bpl	.L8
+  93:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     actuators_pwm_arch_channel_init(timer, TIM_OC2);
+ 178              		.loc 1 93 0
+ 179 0054 2046     		mov	r0, r4
+ 180 0056 0221     		movs	r1, #2
+ 181 0058 FFF7FEFF 		bl	actuators_pwm_arch_channel_init
+ 182              	.LVL20:
+ 183              	.L8:
+  94:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+  95:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if (bit_is_set(channels_mask, 2)) {
+ 184              		.loc 1 95 0
+ 185 005c 6A07     		lsls	r2, r5, #29
+ 186 005e 03D5     		bpl	.L9
+  96:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     actuators_pwm_arch_channel_init(timer, TIM_OC3);
+ 187              		.loc 1 96 0
+ 188 0060 2046     		mov	r0, r4
+ 189 0062 0421     		movs	r1, #4
+ 190 0064 FFF7FEFF 		bl	actuators_pwm_arch_channel_init
+ 191              	.LVL21:
+ 192              	.L9:
+  97:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+  98:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   if (bit_is_set(channels_mask, 3)) {
+ 193              		.loc 1 98 0
+ 194 0068 2B07     		lsls	r3, r5, #28
+ 195 006a 03D5     		bpl	.L10
+  99:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****     actuators_pwm_arch_channel_init(timer, TIM_OC4);
+ 196              		.loc 1 99 0
+ 197 006c 2046     		mov	r0, r4
+ 198 006e 0621     		movs	r1, #6
+ 199 0070 FFF7FEFF 		bl	actuators_pwm_arch_channel_init
+ 200              	.LVL22:
+ 201              	.L10:
+ 100:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   }
+ 101:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+ 102:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /*
+ 103:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * Set initial output compare values.
+ 104:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * Note: Maybe we should preload the compare registers with some sensible
+ 105:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * values before we enable the timer?
+ 106:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    */
+ 107:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   //timer_set_oc_value(timer, TIM_OC1, 1000);
+ 108:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   //timer_set_oc_value(timer, TIM_OC2, 1000);
+ 109:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   //timer_set_oc_value(timer, TIM_OC3, 1000);
+ 110:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   //timer_set_oc_value(timer, TIM_OC4, 1000);
+ 111:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+ 112:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /* -- Enable timer -- */
+ 113:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /*
+ 114:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * ARR reload enable.
+ 115:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * Note: In our case it does not matter much if we do preload or not. As it
+ 116:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * is unlikely we will want to change the frequency of the timer during
+ 117:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    * runtime anyways.
+ 118:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****    */
+ 119:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_enable_preload(timer);
+ 202              		.loc 1 119 0
+ 203 0074 2046     		mov	r0, r4
+ 204 0076 FFF7FEFF 		bl	timer_enable_preload
+ 205              	.LVL23:
+ 120:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+ 121:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   /* Counter enable. */
+ 122:arch/stm32/subsystems/actuators/actuators_shared_arch.c ****   timer_enable_counter(timer);
+ 206              		.loc 1 122 0
+ 207 007a 2046     		mov	r0, r4
+ 123:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+ 124:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** }
+ 208              		.loc 1 124 0
+ 209 007c BDE8F840 		pop	{r3, r4, r5, r6, r7, lr}
+ 210              		.cfi_restore 14
+ 211              		.cfi_restore 7
+ 212              		.cfi_restore 6
+ 213              		.cfi_restore 5
+ 214              		.cfi_restore 4
+ 215              		.cfi_restore 3
+ 216              		.cfi_def_cfa_offset 0
+ 217              	.LVL24:
+ 122:arch/stm32/subsystems/actuators/actuators_shared_arch.c **** 
+ 218              		.loc 1 122 0
+ 219 0080 FFF7FEBF 		b	timer_enable_counter
+ 220              	.LVL25:
+ 221              	.L24:
+ 222              		.align	2
+ 223              	.L23:
+ 224 0084 40420F00 		.word	1000000
+ 225              		.cfi_endproc
+ 226              	.LFE6:
+ 228              		.text
+ 229              	.Letext0:
+ 230              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 231              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 232              		.file 4 "../ext/libopencm3/include/libopencm3/stm32/common/timer_common_all.h"
+ 233              		.file 5 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_arch.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 actuators_shared_arch.c
+     /tmp/ccmaPEbT.s:20     .text.actuators_pwm_arch_channel_init:00000000 $t
+     /tmp/ccmaPEbT.s:25     .text.actuators_pwm_arch_channel_init:00000000 actuators_pwm_arch_channel_init
+     /tmp/ccmaPEbT.s:101    .text.actuators_pwm_arch_channel_init:00000054 $d
+     /tmp/ccmaPEbT.s:106    .text.set_servo_timer:00000000 $t
+     /tmp/ccmaPEbT.s:111    .text.set_servo_timer:00000000 set_servo_timer
+     /tmp/ccmaPEbT.s:224    .text.set_servo_timer:00000084 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.timer_common_all.h.35.b42b09af17c21cc72e25b3b2ba1809d2
+                           .group:00000000 wm4.timer_common_f24.h.44.de6aabe29f6c3596e141b760d97b2482
+                           .group:00000000 wm4.nvic.h.38.b26077e701ba065ebce4922ce89b9357
+                           .group:00000000 wm4.nvic.h.16.68b2cd144a8737a35a31e344912a6e4f
+                           .group:00000000 wm4.mcu_arch.h.30.9e61c0408281ef19f3143a9b685c0b7d
+                           .group:00000000 wm4.actuators_shared_arch.h.39.d7c4f1bef5ed9690da2ce70955920045
+
+UNDEFINED SYMBOLS
+timer_disable_oc_output
+timer_disable_oc_clear
+timer_enable_oc_preload
+timer_set_oc_slow_mode
+timer_set_oc_mode
+timer_set_oc_polarity_high
+timer_enable_oc_output
+timer_enable_break_main_output
+timer_reset
+timer_set_mode
+timer_get_frequency
+timer_set_prescaler
+timer_disable_preload
+timer_continuous_mode
+timer_set_period
+timer_enable_preload
+timer_enable_counter

@@ -1,0 +1,669 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"pprz_transport.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.put_bytes,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	put_bytes:
+  25              	.LFB312:
+  26              		.file 1 "subsystems/datalink/pprz_transport.c"
+   1:subsystems/datalink/pprz_transport.c **** /*
+   2:subsystems/datalink/pprz_transport.c ****  * Copyright (C) 2006  Pascal Brisset, Antoine Drouin
+   3:subsystems/datalink/pprz_transport.c ****  * Copyright (C) 2014  Gautier Hattenberger <gautier.hattenberger@enac.fr>
+   4:subsystems/datalink/pprz_transport.c ****  *
+   5:subsystems/datalink/pprz_transport.c ****  * This file is part of paparazzi.
+   6:subsystems/datalink/pprz_transport.c ****  *
+   7:subsystems/datalink/pprz_transport.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:subsystems/datalink/pprz_transport.c ****  * it under the terms of the GNU General Public License as published by
+   9:subsystems/datalink/pprz_transport.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:subsystems/datalink/pprz_transport.c ****  * any later version.
+  11:subsystems/datalink/pprz_transport.c ****  *
+  12:subsystems/datalink/pprz_transport.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:subsystems/datalink/pprz_transport.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:subsystems/datalink/pprz_transport.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:subsystems/datalink/pprz_transport.c ****  * GNU General Public License for more details.
+  16:subsystems/datalink/pprz_transport.c ****  *
+  17:subsystems/datalink/pprz_transport.c ****  * You should have received a copy of the GNU General Public License
+  18:subsystems/datalink/pprz_transport.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  19:subsystems/datalink/pprz_transport.c ****  * <http://www.gnu.org/licenses/>.
+  20:subsystems/datalink/pprz_transport.c ****  *
+  21:subsystems/datalink/pprz_transport.c ****  */
+  22:subsystems/datalink/pprz_transport.c **** 
+  23:subsystems/datalink/pprz_transport.c **** /**
+  24:subsystems/datalink/pprz_transport.c ****  * @file subsystems/datalink/pprz_transport.c
+  25:subsystems/datalink/pprz_transport.c ****  *
+  26:subsystems/datalink/pprz_transport.c ****  * Building and parsing Paparazzi frames.
+  27:subsystems/datalink/pprz_transport.c ****  *
+  28:subsystems/datalink/pprz_transport.c ****  * Pprz frame:
+  29:subsystems/datalink/pprz_transport.c ****  *
+  30:subsystems/datalink/pprz_transport.c ****  * |STX|length|... payload=(length-4) bytes ...|Checksum A|Checksum B|
+  31:subsystems/datalink/pprz_transport.c ****  *
+  32:subsystems/datalink/pprz_transport.c ****  * where checksum is computed over length and payload:
+  33:subsystems/datalink/pprz_transport.c ****  * @code
+  34:subsystems/datalink/pprz_transport.c ****  * ck_A = ck_B = length
+  35:subsystems/datalink/pprz_transport.c ****  * for each byte b in payload
+  36:subsystems/datalink/pprz_transport.c ****  *     ck_A += b;
+  37:subsystems/datalink/pprz_transport.c ****  *     ck_b += ck_A;
+  38:subsystems/datalink/pprz_transport.c ****  * @endcode
+  39:subsystems/datalink/pprz_transport.c ****  */
+  40:subsystems/datalink/pprz_transport.c **** 
+  41:subsystems/datalink/pprz_transport.c **** #include <inttypes.h>
+  42:subsystems/datalink/pprz_transport.c **** #include "subsystems/datalink/downlink.h"
+  43:subsystems/datalink/pprz_transport.c **** #ifndef PPRZ_DATALINK_EXPORT
+  44:subsystems/datalink/pprz_transport.c **** #include "subsystems/datalink/pprz_transport.h"
+  45:subsystems/datalink/pprz_transport.c **** #else /* PPRZ_DATALINK_EXPORT defined */
+  46:subsystems/datalink/pprz_transport.c **** #include "pprz_transport.h"
+  47:subsystems/datalink/pprz_transport.c **** #endif
+  48:subsystems/datalink/pprz_transport.c **** 
+  49:subsystems/datalink/pprz_transport.c **** struct pprz_transport pprz_tp;
+  50:subsystems/datalink/pprz_transport.c **** 
+  51:subsystems/datalink/pprz_transport.c **** static void put_1byte(struct pprz_transport *trans, struct link_device *dev, const uint8_t byte)
+  52:subsystems/datalink/pprz_transport.c **** {
+  53:subsystems/datalink/pprz_transport.c ****   trans->ck_a_tx += byte;
+  54:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx += trans->ck_a_tx;
+  55:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, byte);
+  56:subsystems/datalink/pprz_transport.c **** }
+  57:subsystems/datalink/pprz_transport.c **** 
+  58:subsystems/datalink/pprz_transport.c **** static void put_bytes(struct pprz_transport *trans, struct link_device *dev,
+  59:subsystems/datalink/pprz_transport.c ****                       enum TransportDataType type __attribute__((unused)), enum TransportDataFormat
+  60:subsystems/datalink/pprz_transport.c ****                       uint8_t len, const void *bytes)
+  61:subsystems/datalink/pprz_transport.c **** {
+  27              		.loc 1 61 0
+  28              		.cfi_startproc
+  29              		@ args = 8, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+  33              		.cfi_def_cfa_offset 24
+  34              		.cfi_offset 4, -24
+  35              		.cfi_offset 5, -20
+  36              		.cfi_offset 6, -16
+  37              		.cfi_offset 7, -12
+  38              		.cfi_offset 8, -8
+  39              		.cfi_offset 14, -4
+  40              		.loc 1 61 0
+  41 0004 079E     		ldr	r6, [sp, #28]
+  42 0006 9DF81880 		ldrb	r8, [sp, #24]	@ zero_extendqisi2
+  43              	.LVL1:
+  44 000a 0446     		mov	r4, r0
+  45 000c 0F46     		mov	r7, r1
+  62:subsystems/datalink/pprz_transport.c ****   const uint8_t *b = (const uint8_t *) bytes;
+  63:subsystems/datalink/pprz_transport.c ****   int i;
+  64:subsystems/datalink/pprz_transport.c ****   for (i = 0; i < len; i++) {
+  46              		.loc 1 64 0
+  47 000e 3546     		mov	r5, r6
+  48              	.LVL2:
+  49              	.L2:
+  50 0010 AB1B     		subs	r3, r5, r6
+  51              		.loc 1 64 0 is_stmt 0 discriminator 1
+  52 0012 4345     		cmp	r3, r8
+  53 0014 10DA     		bge	.L5
+  65:subsystems/datalink/pprz_transport.c ****     put_1byte(trans, dev, b[i]);
+  54              		.loc 1 65 0 is_stmt 1 discriminator 3
+  55 0016 15F8011B 		ldrb	r1, [r5], #1	@ zero_extendqisi2
+  56              	.LVL3:
+  57              	.LBB6:
+  58              	.LBB7:
+  53:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx += trans->ck_a_tx;
+  59              		.loc 1 53 0 discriminator 3
+  60 001a 94F82C31 		ldrb	r3, [r4, #300]	@ zero_extendqisi2
+  54:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, byte);
+  61              		.loc 1 54 0 discriminator 3
+  62 001e 94F82D21 		ldrb	r2, [r4, #301]	@ zero_extendqisi2
+  53:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx += trans->ck_a_tx;
+  63              		.loc 1 53 0 discriminator 3
+  64 0022 0B44     		add	r3, r3, r1
+  65 0024 DBB2     		uxtb	r3, r3
+  66 0026 84F82C31 		strb	r3, [r4, #300]
+  54:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, byte);
+  67              		.loc 1 54 0 discriminator 3
+  68 002a 1344     		add	r3, r3, r2
+  69 002c 84F82D31 		strb	r3, [r4, #301]
+  55:subsystems/datalink/pprz_transport.c **** }
+  70              		.loc 1 55 0 discriminator 3
+  71 0030 7B68     		ldr	r3, [r7, #4]
+  72 0032 7869     		ldr	r0, [r7, #20]
+  73 0034 9847     		blx	r3
+  74              	.LVL4:
+  75 0036 EBE7     		b	.L2
+  76              	.LVL5:
+  77              	.L5:
+  78              	.LBE7:
+  79              	.LBE6:
+  66:subsystems/datalink/pprz_transport.c ****   }
+  67:subsystems/datalink/pprz_transport.c **** }
+  80              		.loc 1 67 0
+  81 0038 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+  82              		.cfi_endproc
+  83              	.LFE312:
+  85              		.section	.text.size_of,"ax",%progbits
+  86              		.align	1
+  87              		.thumb
+  88              		.thumb_func
+  90              	size_of:
+  91              	.LFB314:
+  68:subsystems/datalink/pprz_transport.c **** 
+  69:subsystems/datalink/pprz_transport.c **** static void put_named_byte(struct pprz_transport *trans, struct link_device *dev,
+  70:subsystems/datalink/pprz_transport.c ****                            enum TransportDataType type __attribute__((unused)), enum TransportDataF
+  71:subsystems/datalink/pprz_transport.c ****                            uint8_t byte, const char *name __attribute__((unused)))
+  72:subsystems/datalink/pprz_transport.c **** {
+  73:subsystems/datalink/pprz_transport.c ****   put_1byte(trans, dev, byte);
+  74:subsystems/datalink/pprz_transport.c **** }
+  75:subsystems/datalink/pprz_transport.c **** 
+  76:subsystems/datalink/pprz_transport.c **** static uint8_t size_of(struct pprz_transport *trans __attribute__((unused)), uint8_t len)
+  77:subsystems/datalink/pprz_transport.c **** {
+  92              		.loc 1 77 0
+  93              		.cfi_startproc
+  94              		@ args = 0, pretend = 0, frame = 0
+  95              		@ frame_needed = 0, uses_anonymous_args = 0
+  96              		@ link register save eliminated.
+  97              	.LVL6:
+  78:subsystems/datalink/pprz_transport.c ****   // message length: payload + protocol overhead (STX + len + ck_a + ck_b = 4)
+  79:subsystems/datalink/pprz_transport.c ****   return len + 4;
+  98              		.loc 1 79 0
+  99 0000 0431     		adds	r1, r1, #4
+ 100              	.LVL7:
+  80:subsystems/datalink/pprz_transport.c **** }
+ 101              		.loc 1 80 0
+ 102 0002 C8B2     		uxtb	r0, r1
+ 103              	.LVL8:
+ 104 0004 7047     		bx	lr
+ 105              		.cfi_endproc
+ 106              	.LFE314:
+ 108              		.section	.text.start_message,"ax",%progbits
+ 109              		.align	1
+ 110              		.thumb
+ 111              		.thumb_func
+ 113              	start_message:
+ 114              	.LFB315:
+  81:subsystems/datalink/pprz_transport.c **** 
+  82:subsystems/datalink/pprz_transport.c **** static void start_message(struct pprz_transport *trans, struct link_device *dev, uint8_t payload_le
+  83:subsystems/datalink/pprz_transport.c **** {
+ 115              		.loc 1 83 0
+ 116              		.cfi_startproc
+ 117              		@ args = 0, pretend = 0, frame = 0
+ 118              		@ frame_needed = 0, uses_anonymous_args = 0
+ 119              	.LVL9:
+ 120 0000 70B5     		push	{r4, r5, r6, lr}
+ 121              		.cfi_def_cfa_offset 16
+ 122              		.cfi_offset 4, -16
+ 123              		.cfi_offset 5, -12
+ 124              		.cfi_offset 6, -8
+ 125              		.cfi_offset 14, -4
+ 126              		.loc 1 83 0
+ 127 0002 1446     		mov	r4, r2
+  84:subsystems/datalink/pprz_transport.c ****   downlink.nb_msgs++;
+ 128              		.loc 1 84 0
+ 129 0004 0A4A     		ldr	r2, .L8
+ 130              	.LVL10:
+ 131 0006 9388     		ldrh	r3, [r2, #4]
+  83:subsystems/datalink/pprz_transport.c ****   downlink.nb_msgs++;
+ 132              		.loc 1 83 0
+ 133 0008 0D46     		mov	r5, r1
+ 134              		.loc 1 84 0
+ 135 000a 0133     		adds	r3, r3, #1
+ 136              	.LBB8:
+ 137              	.LBB9:
+  79:subsystems/datalink/pprz_transport.c **** }
+ 138              		.loc 1 79 0
+ 139 000c 0434     		adds	r4, r4, #4
+ 140              	.LBE9:
+ 141              	.LBE8:
+  83:subsystems/datalink/pprz_transport.c ****   downlink.nb_msgs++;
+ 142              		.loc 1 83 0
+ 143 000e 0646     		mov	r6, r0
+ 144              		.loc 1 84 0
+ 145 0010 9380     		strh	r3, [r2, #4]	@ movhi
+  85:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, STX);
+ 146              		.loc 1 85 0
+ 147 0012 4869     		ldr	r0, [r1, #20]
+ 148              	.LVL11:
+ 149 0014 4B68     		ldr	r3, [r1, #4]
+ 150              	.LBB11:
+ 151              	.LBB10:
+  79:subsystems/datalink/pprz_transport.c **** }
+ 152              		.loc 1 79 0
+ 153 0016 E4B2     		uxtb	r4, r4
+ 154              	.LBE10:
+ 155              	.LBE11:
+ 156              		.loc 1 85 0
+ 157 0018 9921     		movs	r1, #153
+ 158              	.LVL12:
+ 159 001a 9847     		blx	r3
+ 160              	.LVL13:
+  86:subsystems/datalink/pprz_transport.c ****   const uint8_t msg_len = size_of(trans, payload_len);
+  87:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, msg_len);
+ 161              		.loc 1 87 0
+ 162 001c 6B68     		ldr	r3, [r5, #4]
+ 163 001e 6869     		ldr	r0, [r5, #20]
+ 164 0020 2146     		mov	r1, r4
+ 165 0022 9847     		blx	r3
+ 166              	.LVL14:
+  88:subsystems/datalink/pprz_transport.c ****   trans->ck_a_tx = msg_len;
+ 167              		.loc 1 88 0
+ 168 0024 86F82C41 		strb	r4, [r6, #300]
+  89:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx = msg_len;
+ 169              		.loc 1 89 0
+ 170 0028 86F82D41 		strb	r4, [r6, #301]
+ 171 002c 70BD     		pop	{r4, r5, r6, pc}
+ 172              	.LVL15:
+ 173              	.L9:
+ 174 002e 00BF     		.align	2
+ 175              	.L8:
+ 176 0030 00000000 		.word	downlink
+ 177              		.cfi_endproc
+ 178              	.LFE315:
+ 180              		.section	.text.end_message,"ax",%progbits
+ 181              		.align	1
+ 182              		.thumb
+ 183              		.thumb_func
+ 185              	end_message:
+ 186              	.LFB316:
+  90:subsystems/datalink/pprz_transport.c **** }
+  91:subsystems/datalink/pprz_transport.c **** 
+  92:subsystems/datalink/pprz_transport.c **** static void end_message(struct pprz_transport *trans, struct link_device *dev)
+  93:subsystems/datalink/pprz_transport.c **** {
+ 187              		.loc 1 93 0
+ 188              		.cfi_startproc
+ 189              		@ args = 0, pretend = 0, frame = 0
+ 190              		@ frame_needed = 0, uses_anonymous_args = 0
+ 191              	.LVL16:
+ 192 0000 70B5     		push	{r4, r5, r6, lr}
+ 193              		.cfi_def_cfa_offset 16
+ 194              		.cfi_offset 4, -16
+ 195              		.cfi_offset 5, -12
+ 196              		.cfi_offset 6, -8
+ 197              		.cfi_offset 14, -4
+ 198              		.loc 1 93 0
+ 199 0002 0546     		mov	r5, r0
+ 200 0004 0C46     		mov	r4, r1
+  94:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, trans->ck_a_tx);
+ 201              		.loc 1 94 0
+ 202 0006 4B68     		ldr	r3, [r1, #4]
+ 203 0008 4869     		ldr	r0, [r1, #20]
+ 204              	.LVL17:
+ 205 000a 95F82C11 		ldrb	r1, [r5, #300]	@ zero_extendqisi2
+ 206              	.LVL18:
+ 207 000e 9847     		blx	r3
+ 208              	.LVL19:
+  95:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, trans->ck_b_tx);
+ 209              		.loc 1 95 0
+ 210 0010 6368     		ldr	r3, [r4, #4]
+ 211 0012 6069     		ldr	r0, [r4, #20]
+ 212 0014 95F82D11 		ldrb	r1, [r5, #301]	@ zero_extendqisi2
+ 213 0018 9847     		blx	r3
+ 214              	.LVL20:
+  96:subsystems/datalink/pprz_transport.c ****   dev->send_message(dev->periph);
+ 215              		.loc 1 96 0
+ 216 001a A368     		ldr	r3, [r4, #8]
+ 217 001c 6069     		ldr	r0, [r4, #20]
+  97:subsystems/datalink/pprz_transport.c **** }
+ 218              		.loc 1 97 0
+ 219 001e BDE87040 		pop	{r4, r5, r6, lr}
+ 220              		.cfi_restore 14
+ 221              		.cfi_restore 6
+ 222              		.cfi_restore 5
+ 223              		.cfi_restore 4
+ 224              		.cfi_def_cfa_offset 0
+ 225              	.LVL21:
+  96:subsystems/datalink/pprz_transport.c ****   dev->send_message(dev->periph);
+ 226              		.loc 1 96 0
+ 227 0022 1847     		bx	r3	@ indirect register sibling call
+ 228              	.LVL22:
+ 229              		.cfi_endproc
+ 230              	.LFE316:
+ 232              		.section	.text.overrun,"ax",%progbits
+ 233              		.align	1
+ 234              		.thumb
+ 235              		.thumb_func
+ 237              	overrun:
+ 238              	.LFB317:
+  98:subsystems/datalink/pprz_transport.c **** 
+  99:subsystems/datalink/pprz_transport.c **** static void overrun(struct pprz_transport *trans __attribute__((unused)),
+ 100:subsystems/datalink/pprz_transport.c ****                     struct link_device *dev __attribute__((unused)))
+ 101:subsystems/datalink/pprz_transport.c **** {
+ 239              		.loc 1 101 0
+ 240              		.cfi_startproc
+ 241              		@ args = 0, pretend = 0, frame = 0
+ 242              		@ frame_needed = 0, uses_anonymous_args = 0
+ 243              		@ link register save eliminated.
+ 244              	.LVL23:
+ 102:subsystems/datalink/pprz_transport.c ****   downlink.nb_ovrn++;
+ 245              		.loc 1 102 0
+ 246 0000 024A     		ldr	r2, .L12
+ 247 0002 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 248 0004 0133     		adds	r3, r3, #1
+ 249 0006 1370     		strb	r3, [r2]
+ 250 0008 7047     		bx	lr
+ 251              	.L13:
+ 252 000a 00BF     		.align	2
+ 253              	.L12:
+ 254 000c 00000000 		.word	downlink
+ 255              		.cfi_endproc
+ 256              	.LFE317:
+ 258              		.section	.text.count_bytes,"ax",%progbits
+ 259              		.align	1
+ 260              		.thumb
+ 261              		.thumb_func
+ 263              	count_bytes:
+ 264              	.LFB318:
+ 103:subsystems/datalink/pprz_transport.c **** }
+ 104:subsystems/datalink/pprz_transport.c **** 
+ 105:subsystems/datalink/pprz_transport.c **** static void count_bytes(struct pprz_transport *trans __attribute__((unused)),
+ 106:subsystems/datalink/pprz_transport.c ****                         struct link_device *dev __attribute__((unused)), uint8_t bytes)
+ 107:subsystems/datalink/pprz_transport.c **** {
+ 265              		.loc 1 107 0
+ 266              		.cfi_startproc
+ 267              		@ args = 0, pretend = 0, frame = 0
+ 268              		@ frame_needed = 0, uses_anonymous_args = 0
+ 269              		@ link register save eliminated.
+ 270              	.LVL24:
+ 108:subsystems/datalink/pprz_transport.c ****   downlink.nb_bytes += bytes;
+ 271              		.loc 1 108 0
+ 272 0000 0249     		ldr	r1, .L15
+ 273              	.LVL25:
+ 274 0002 4B88     		ldrh	r3, [r1, #2]
+ 275 0004 1A44     		add	r2, r2, r3
+ 276              	.LVL26:
+ 277 0006 4A80     		strh	r2, [r1, #2]	@ movhi
+ 278 0008 7047     		bx	lr
+ 279              	.L16:
+ 280 000a 00BF     		.align	2
+ 281              	.L15:
+ 282 000c 00000000 		.word	downlink
+ 283              		.cfi_endproc
+ 284              	.LFE318:
+ 286              		.section	.text.check_available_space,"ax",%progbits
+ 287              		.align	1
+ 288              		.thumb
+ 289              		.thumb_func
+ 291              	check_available_space:
+ 292              	.LFB319:
+ 109:subsystems/datalink/pprz_transport.c **** }
+ 110:subsystems/datalink/pprz_transport.c **** 
+ 111:subsystems/datalink/pprz_transport.c **** static int check_available_space(struct pprz_transport *trans __attribute__((unused)), struct link_
+ 112:subsystems/datalink/pprz_transport.c ****                                  uint8_t bytes)
+ 113:subsystems/datalink/pprz_transport.c **** {
+ 293              		.loc 1 113 0
+ 294              		.cfi_startproc
+ 295              		@ args = 0, pretend = 0, frame = 0
+ 296              		@ frame_needed = 0, uses_anonymous_args = 0
+ 297              		@ link register save eliminated.
+ 298              	.LVL27:
+ 114:subsystems/datalink/pprz_transport.c ****   return dev->check_free_space(dev->periph, bytes);
+ 299              		.loc 1 114 0
+ 300 0000 0B68     		ldr	r3, [r1]
+ 301 0002 4869     		ldr	r0, [r1, #20]
+ 302              	.LVL28:
+ 303 0004 1146     		mov	r1, r2
+ 304              	.LVL29:
+ 305 0006 1847     		bx	r3
+ 306              	.LVL30:
+ 307              		.cfi_endproc
+ 308              	.LFE319:
+ 310              		.section	.text.put_named_byte,"ax",%progbits
+ 311              		.align	1
+ 312              		.thumb
+ 313              		.thumb_func
+ 315              	put_named_byte:
+ 316              	.LFB313:
+  72:subsystems/datalink/pprz_transport.c ****   put_1byte(trans, dev, byte);
+ 317              		.loc 1 72 0
+ 318              		.cfi_startproc
+ 319              		@ args = 8, pretend = 0, frame = 0
+ 320              		@ frame_needed = 0, uses_anonymous_args = 0
+ 321              	.LVL31:
+ 322 0000 10B5     		push	{r4, lr}
+ 323              		.cfi_def_cfa_offset 8
+ 324              		.cfi_offset 4, -8
+ 325              		.cfi_offset 14, -4
+  72:subsystems/datalink/pprz_transport.c ****   put_1byte(trans, dev, byte);
+ 326              		.loc 1 72 0
+ 327 0002 0C46     		mov	r4, r1
+ 328              	.LVL32:
+ 329              	.LBB14:
+ 330              	.LBB15:
+  53:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx += trans->ck_a_tx;
+ 331              		.loc 1 53 0
+ 332 0004 90F82C31 		ldrb	r3, [r0, #300]	@ zero_extendqisi2
+ 333              	.LVL33:
+ 334              	.LBE15:
+ 335              	.LBE14:
+  72:subsystems/datalink/pprz_transport.c ****   put_1byte(trans, dev, byte);
+ 336              		.loc 1 72 0
+ 337 0008 9DF80810 		ldrb	r1, [sp, #8]	@ zero_extendqisi2
+ 338              	.LVL34:
+ 339              	.LBB18:
+ 340              	.LBB16:
+  54:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, byte);
+ 341              		.loc 1 54 0
+ 342 000c 90F82D21 		ldrb	r2, [r0, #301]	@ zero_extendqisi2
+ 343              	.LVL35:
+  53:subsystems/datalink/pprz_transport.c ****   trans->ck_b_tx += trans->ck_a_tx;
+ 344              		.loc 1 53 0
+ 345 0010 0B44     		add	r3, r3, r1
+ 346 0012 DBB2     		uxtb	r3, r3
+ 347 0014 80F82C31 		strb	r3, [r0, #300]
+  54:subsystems/datalink/pprz_transport.c ****   dev->put_byte(dev->periph, byte);
+ 348              		.loc 1 54 0
+ 349 0018 1344     		add	r3, r3, r2
+ 350 001a 80F82D31 		strb	r3, [r0, #301]
+  55:subsystems/datalink/pprz_transport.c **** }
+ 351              		.loc 1 55 0
+ 352 001e 6368     		ldr	r3, [r4, #4]
+ 353 0020 6069     		ldr	r0, [r4, #20]
+ 354              	.LVL36:
+ 355              	.LBE16:
+ 356              	.LBE18:
+  74:subsystems/datalink/pprz_transport.c **** 
+ 357              		.loc 1 74 0
+ 358 0022 BDE81040 		pop	{r4, lr}
+ 359              		.cfi_restore 14
+ 360              		.cfi_restore 4
+ 361              		.cfi_def_cfa_offset 0
+ 362              	.LVL37:
+ 363              	.LBB19:
+ 364              	.LBB17:
+  55:subsystems/datalink/pprz_transport.c **** }
+ 365              		.loc 1 55 0
+ 366 0026 1847     		bx	r3	@ indirect register sibling call
+ 367              	.LVL38:
+ 368              	.LBE17:
+ 369              	.LBE19:
+ 370              		.cfi_endproc
+ 371              	.LFE313:
+ 373              		.section	.text.pprz_transport_init,"ax",%progbits
+ 374              		.align	1
+ 375              		.global	pprz_transport_init
+ 376              		.thumb
+ 377              		.thumb_func
+ 379              	pprz_transport_init:
+ 380              	.LFB320:
+ 115:subsystems/datalink/pprz_transport.c **** }
+ 116:subsystems/datalink/pprz_transport.c **** 
+ 117:subsystems/datalink/pprz_transport.c **** void pprz_transport_init(struct pprz_transport *t)
+ 118:subsystems/datalink/pprz_transport.c **** {
+ 381              		.loc 1 118 0
+ 382              		.cfi_startproc
+ 383              		@ args = 0, pretend = 0, frame = 0
+ 384              		@ frame_needed = 0, uses_anonymous_args = 0
+ 385              		@ link register save eliminated.
+ 386              	.LVL39:
+ 119:subsystems/datalink/pprz_transport.c ****   t->status = UNINIT;
+ 387              		.loc 1 119 0
+ 388 0000 0023     		movs	r3, #0
+ 389 0002 80F80431 		strb	r3, [r0, #260]
+ 120:subsystems/datalink/pprz_transport.c ****   t->trans_rx.msg_received = FALSE;
+ 390              		.loc 1 120 0
+ 391 0006 80F80131 		strb	r3, [r0, #257]
+ 121:subsystems/datalink/pprz_transport.c ****   t->trans_tx.size_of = (size_of_t) size_of;
+ 392              		.loc 1 121 0
+ 393 000a 0D4B     		ldr	r3, .L20
+ 394 000c C0F80831 		str	r3, [r0, #264]
+ 122:subsystems/datalink/pprz_transport.c ****   t->trans_tx.check_available_space = (check_available_space_t) check_available_space;
+ 395              		.loc 1 122 0
+ 396 0010 0C4B     		ldr	r3, .L20+4
+ 397 0012 C0F80C31 		str	r3, [r0, #268]
+ 123:subsystems/datalink/pprz_transport.c ****   t->trans_tx.put_bytes = (put_bytes_t) put_bytes;
+ 398              		.loc 1 123 0
+ 399 0016 0C4B     		ldr	r3, .L20+8
+ 400 0018 C0F81031 		str	r3, [r0, #272]
+ 124:subsystems/datalink/pprz_transport.c ****   t->trans_tx.put_named_byte = (put_named_byte_t) put_named_byte;
+ 401              		.loc 1 124 0
+ 402 001c 0B4B     		ldr	r3, .L20+12
+ 403 001e C0F81431 		str	r3, [r0, #276]
+ 125:subsystems/datalink/pprz_transport.c ****   t->trans_tx.start_message = (start_message_t) start_message;
+ 404              		.loc 1 125 0
+ 405 0022 0B4B     		ldr	r3, .L20+16
+ 406 0024 C0F81831 		str	r3, [r0, #280]
+ 126:subsystems/datalink/pprz_transport.c ****   t->trans_tx.end_message = (end_message_t) end_message;
+ 407              		.loc 1 126 0
+ 408 0028 0A4B     		ldr	r3, .L20+20
+ 409 002a C0F81C31 		str	r3, [r0, #284]
+ 127:subsystems/datalink/pprz_transport.c ****   t->trans_tx.overrun = (overrun_t) overrun;
+ 410              		.loc 1 127 0
+ 411 002e 0A4B     		ldr	r3, .L20+24
+ 412 0030 C0F82031 		str	r3, [r0, #288]
+ 128:subsystems/datalink/pprz_transport.c ****   t->trans_tx.count_bytes = (count_bytes_t) count_bytes;
+ 413              		.loc 1 128 0
+ 414 0034 094B     		ldr	r3, .L20+28
+ 415 0036 C0F82431 		str	r3, [r0, #292]
+ 129:subsystems/datalink/pprz_transport.c ****   t->trans_tx.impl = (void *)(t);
+ 416              		.loc 1 129 0
+ 417 003a C0F82801 		str	r0, [r0, #296]
+ 418 003e 7047     		bx	lr
+ 419              	.L21:
+ 420              		.align	2
+ 421              	.L20:
+ 422 0040 00000000 		.word	size_of
+ 423 0044 00000000 		.word	check_available_space
+ 424 0048 00000000 		.word	put_bytes
+ 425 004c 00000000 		.word	put_named_byte
+ 426 0050 00000000 		.word	start_message
+ 427 0054 00000000 		.word	end_message
+ 428 0058 00000000 		.word	overrun
+ 429 005c 00000000 		.word	count_bytes
+ 430              		.cfi_endproc
+ 431              	.LFE320:
+ 433              		.global	pprz_tp
+ 434              		.section	.bss.pprz_tp,"aw",%nobits
+ 435              		.align	2
+ 438              	pprz_tp:
+ 439 0000 00000000 		.space	304
+ 439      00000000 
+ 439      00000000 
+ 439      00000000 
+ 439      00000000 
+ 440              		.text
+ 441              	.Letext0:
+ 442              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 443              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 444              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 445              		.file 5 "./mcu_periph/link_device.h"
+ 446              		.file 6 "./subsystems/datalink/transport.h"
+ 447              		.file 7 "./subsystems/datalink/pprz_transport.h"
+ 448              		.file 8 "./mcu_periph/sys_time.h"
+ 449              		.file 9 "./subsystems/datalink/xbee.h"
+ 450              		.file 10 "./subsystems/datalink/downlink.h"
+ 451              		.file 11 "./subsystems/datalink/datalink.h"
+ 452              		.file 12 "./subsystems/datalink/w5100.h"
+ 453              		.file 13 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 pprz_transport.c
+     /tmp/ccW40QYx.s:20     .text.put_bytes:00000000 $t
+     /tmp/ccW40QYx.s:24     .text.put_bytes:00000000 put_bytes
+     /tmp/ccW40QYx.s:86     .text.size_of:00000000 $t
+     /tmp/ccW40QYx.s:90     .text.size_of:00000000 size_of
+     /tmp/ccW40QYx.s:109    .text.start_message:00000000 $t
+     /tmp/ccW40QYx.s:113    .text.start_message:00000000 start_message
+     /tmp/ccW40QYx.s:176    .text.start_message:00000030 $d
+     /tmp/ccW40QYx.s:181    .text.end_message:00000000 $t
+     /tmp/ccW40QYx.s:185    .text.end_message:00000000 end_message
+     /tmp/ccW40QYx.s:233    .text.overrun:00000000 $t
+     /tmp/ccW40QYx.s:237    .text.overrun:00000000 overrun
+     /tmp/ccW40QYx.s:254    .text.overrun:0000000c $d
+     /tmp/ccW40QYx.s:259    .text.count_bytes:00000000 $t
+     /tmp/ccW40QYx.s:263    .text.count_bytes:00000000 count_bytes
+     /tmp/ccW40QYx.s:282    .text.count_bytes:0000000c $d
+     /tmp/ccW40QYx.s:287    .text.check_available_space:00000000 $t
+     /tmp/ccW40QYx.s:291    .text.check_available_space:00000000 check_available_space
+     /tmp/ccW40QYx.s:311    .text.put_named_byte:00000000 $t
+     /tmp/ccW40QYx.s:315    .text.put_named_byte:00000000 put_named_byte
+     /tmp/ccW40QYx.s:374    .text.pprz_transport_init:00000000 $t
+     /tmp/ccW40QYx.s:379    .text.pprz_transport_init:00000000 pprz_transport_init
+     /tmp/ccW40QYx.s:422    .text.pprz_transport_init:00000040 $d
+     /tmp/ccW40QYx.s:438    .bss.pprz_tp:00000000 pprz_tp
+     /tmp/ccW40QYx.s:435    .bss.pprz_tp:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.modules.h.5.3647ee45f49511088e2f33d88288be64
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.modules.h.23.3d04ad9f740a156fcd476d18714df592
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.messages.h.9.c7f125c5dbec47e7d7f58ef9afe50d8b
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.datalink.h.28.0d234a7c203533b2ec538be3e18eddf4
+                           .group:00000000 wm4.dl_protocol.h.5.a12fe27a4b4a3cbb46fbca8acf33e3dd
+                           .group:00000000 wm4.datalink.h.46.36a5e0f36fb7d0784f1e7af767537c84
+                           .group:00000000 wm4.pprz_transport.h.57.167db0ee96032e142f5d6e570b3339aa
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.xbee24.h.29.a6677f8bcb71d3b07e11290a2de0e179
+                           .group:00000000 wm4.xbee.h.41.f36be817f95b74f883aef9324b53817b
+                           .group:00000000 wm4.w5100.h.29.d3529bed8de657ab3944b343be960f10
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.downlink.h.76.41034157e32fc9012166fd95ec7418fc
+
+UNDEFINED SYMBOLS
+downlink

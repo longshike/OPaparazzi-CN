@@ -1,0 +1,331 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"mcp355x.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.mcp355x_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	mcp355x_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	mcp355x_init:
+  26              	.LFB1:
+  27              		.file 1 "peripherals/mcp355x.c"
+   1:peripherals/mcp355x.c **** /*
+   2:peripherals/mcp355x.c ****  * Copyright (C) 2011 Gautier Hattenberger
+   3:peripherals/mcp355x.c ****  *
+   4:peripherals/mcp355x.c ****  * This file is part of paparazzi.
+   5:peripherals/mcp355x.c ****  *
+   6:peripherals/mcp355x.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:peripherals/mcp355x.c ****  * it under the terms of the GNU General Public License as published by
+   8:peripherals/mcp355x.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:peripherals/mcp355x.c ****  * any later version.
+  10:peripherals/mcp355x.c ****  *
+  11:peripherals/mcp355x.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:peripherals/mcp355x.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:peripherals/mcp355x.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:peripherals/mcp355x.c ****  * GNU General Public License for more details.
+  15:peripherals/mcp355x.c ****  *
+  16:peripherals/mcp355x.c ****  * You should have received a copy of the GNU General Public License
+  17:peripherals/mcp355x.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:peripherals/mcp355x.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:peripherals/mcp355x.c ****  * Boston, MA 02111-1307, USA.
+  20:peripherals/mcp355x.c ****  */
+  21:peripherals/mcp355x.c **** 
+  22:peripherals/mcp355x.c **** /**
+  23:peripherals/mcp355x.c ****  * @file peripherals/mcp355x.c
+  24:peripherals/mcp355x.c ****  * @brief Driver for MCP3550/1/3
+  25:peripherals/mcp355x.c ****  */
+  26:peripherals/mcp355x.c **** 
+  27:peripherals/mcp355x.c **** #include "peripherals/mcp355x.h"
+  28:peripherals/mcp355x.c **** #include "mcu_periph/spi.h"
+  29:peripherals/mcp355x.c **** 
+  30:peripherals/mcp355x.c **** bool_t mcp355x_data_available;
+  31:peripherals/mcp355x.c **** int32_t mcp355x_data;
+  32:peripherals/mcp355x.c **** uint8_t mcp355x_val[4];
+  33:peripherals/mcp355x.c **** 
+  34:peripherals/mcp355x.c **** struct spi_transaction mcp355x_spi_trans;
+  35:peripherals/mcp355x.c **** 
+  36:peripherals/mcp355x.c **** void mcp355x_init(void)
+  37:peripherals/mcp355x.c **** {
+  28              		.loc 1 37 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  38:peripherals/mcp355x.c ****   mcp355x_data_available = FALSE;
+  33              		.loc 1 38 0
+  34 0000 0A4B     		ldr	r3, .L2
+  35 0002 0022     		movs	r2, #0
+  36 0004 1A70     		strb	r2, [r3]
+  39:peripherals/mcp355x.c ****   mcp355x_data = 0;
+  37              		.loc 1 39 0
+  38 0006 0A4B     		ldr	r3, .L2+4
+  39 0008 1A60     		str	r2, [r3]
+  40:peripherals/mcp355x.c **** 
+  41:peripherals/mcp355x.c ****   mcp355x_spi_trans.input_length = 4;
+  40              		.loc 1 41 0
+  41 000a 0A4B     		ldr	r3, .L2+8
+  42 000c 0421     		movs	r1, #4
+  43 000e 1981     		strh	r1, [r3, #8]	@ movhi
+  42:peripherals/mcp355x.c ****   mcp355x_spi_trans.input_buf = mcp355x_val;
+  44              		.loc 1 42 0
+  45 0010 0949     		ldr	r1, .L2+12
+  46 0012 1960     		str	r1, [r3]
+  43:peripherals/mcp355x.c ****   mcp355x_spi_trans.output_length = 0;
+  47              		.loc 1 43 0
+  48 0014 5A81     		strh	r2, [r3, #10]	@ movhi
+  44:peripherals/mcp355x.c ****   mcp355x_spi_trans.output_buf = NULL;
+  49              		.loc 1 44 0
+  50 0016 5A60     		str	r2, [r3, #4]
+  45:peripherals/mcp355x.c ****   mcp355x_spi_trans.slave_idx = SPI_SLAVE0;
+  51              		.loc 1 45 0
+  52 0018 1A73     		strb	r2, [r3, #12]
+  46:peripherals/mcp355x.c ****   mcp355x_spi_trans.select = SPISelect;
+  53              		.loc 1 46 0
+  54 001a 0121     		movs	r1, #1
+  47:peripherals/mcp355x.c **** 
+  48:peripherals/mcp355x.c ****   mcp355x_spi_trans.cpol = SPICpolIdleLow;
+  55              		.loc 1 48 0
+  56 001c 9A73     		strb	r2, [r3, #14]
+  49:peripherals/mcp355x.c ****   mcp355x_spi_trans.cpha = SPICphaEdge1;
+  57              		.loc 1 49 0
+  58 001e DA73     		strb	r2, [r3, #15]
+  50:peripherals/mcp355x.c ****   mcp355x_spi_trans.dss = SPIDss8bit;
+  59              		.loc 1 50 0
+  60 0020 1A74     		strb	r2, [r3, #16]
+  51:peripherals/mcp355x.c ****   mcp355x_spi_trans.bitorder = SPIMSBFirst;
+  61              		.loc 1 51 0
+  62 0022 5A74     		strb	r2, [r3, #17]
+  52:peripherals/mcp355x.c ****   mcp355x_spi_trans.cdiv = SPIDiv64;
+  63              		.loc 1 52 0
+  64 0024 0522     		movs	r2, #5
+  46:peripherals/mcp355x.c **** 
+  65              		.loc 1 46 0
+  66 0026 5973     		strb	r1, [r3, #13]
+  67              		.loc 1 52 0
+  68 0028 9A74     		strb	r2, [r3, #18]
+  69 002a 7047     		bx	lr
+  70              	.L3:
+  71              		.align	2
+  72              	.L2:
+  73 002c 00000000 		.word	.LANCHOR0
+  74 0030 00000000 		.word	.LANCHOR1
+  75 0034 00000000 		.word	.LANCHOR2
+  76 0038 00000000 		.word	.LANCHOR3
+  77              		.cfi_endproc
+  78              	.LFE1:
+  80              		.section	.text.mcp355x_read,"ax",%progbits
+  81              		.align	1
+  82              		.global	mcp355x_read
+  83              		.thumb
+  84              		.thumb_func
+  86              	mcp355x_read:
+  87              	.LFB2:
+  53:peripherals/mcp355x.c **** }
+  54:peripherals/mcp355x.c **** 
+  55:peripherals/mcp355x.c **** void mcp355x_read(void)
+  56:peripherals/mcp355x.c **** {
+  88              		.loc 1 56 0
+  89              		.cfi_startproc
+  90              		@ args = 0, pretend = 0, frame = 0
+  91              		@ frame_needed = 0, uses_anonymous_args = 0
+  92              		@ link register save eliminated.
+  57:peripherals/mcp355x.c ****   spi_submit(&spi1, &mcp355x_spi_trans);
+  93              		.loc 1 57 0
+  94 0000 0148     		ldr	r0, .L5
+  95 0002 0249     		ldr	r1, .L5+4
+  96 0004 FFF7FEBF 		b	spi_submit
+  97              	.LVL0:
+  98              	.L6:
+  99              		.align	2
+ 100              	.L5:
+ 101 0008 00000000 		.word	spi1
+ 102 000c 00000000 		.word	.LANCHOR2
+ 103              		.cfi_endproc
+ 104              	.LFE2:
+ 106              		.section	.text.mcp355x_event,"ax",%progbits
+ 107              		.align	1
+ 108              		.global	mcp355x_event
+ 109              		.thumb
+ 110              		.thumb_func
+ 112              	mcp355x_event:
+ 113              	.LFB3:
+  58:peripherals/mcp355x.c **** }
+  59:peripherals/mcp355x.c **** 
+  60:peripherals/mcp355x.c **** void mcp355x_event(void)
+  61:peripherals/mcp355x.c **** {
+ 114              		.loc 1 61 0
+ 115              		.cfi_startproc
+ 116              		@ args = 0, pretend = 0, frame = 0
+ 117              		@ frame_needed = 0, uses_anonymous_args = 0
+  62:peripherals/mcp355x.c ****   if (mcp355x_spi_trans.status == SPITransSuccess) {
+ 118              		.loc 1 62 0
+ 119 0000 1049     		ldr	r1, .L12
+ 120 0002 0B7F     		ldrb	r3, [r1, #28]	@ zero_extendqisi2
+ 121 0004 022B     		cmp	r3, #2
+  61:peripherals/mcp355x.c ****   if (mcp355x_spi_trans.status == SPITransSuccess) {
+ 122              		.loc 1 61 0
+ 123 0006 10B5     		push	{r4, lr}
+ 124              		.cfi_def_cfa_offset 8
+ 125              		.cfi_offset 4, -8
+ 126              		.cfi_offset 14, -4
+ 127              		.loc 1 62 0
+ 128 0008 15D1     		bne	.L8
+  63:peripherals/mcp355x.c ****     if ((mcp355x_spi_trans.input_buf[0] >> 4) == 0) {
+ 129              		.loc 1 63 0
+ 130 000a 0868     		ldr	r0, [r1]
+ 131 000c 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+ 132 000e 1B09     		lsrs	r3, r3, #4
+ 133 0010 0FD1     		bne	.L9
+  64:peripherals/mcp355x.c ****       mcp355x_data = (int32_t)(
+  65:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[0] << 17) |
+ 134              		.loc 1 65 0
+ 135 0012 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+  66:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[1] << 9) |
+ 136              		.loc 1 66 0
+ 137 0014 4478     		ldrb	r4, [r0, #1]	@ zero_extendqisi2
+  67:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[2] << 1) |
+ 138              		.loc 1 67 0
+ 139 0016 8378     		ldrb	r3, [r0, #2]	@ zero_extendqisi2
+  68:peripherals/mcp355x.c ****                        (mcp355x_spi_trans.input_buf[3] >> 7));
+ 140              		.loc 1 68 0
+ 141 0018 C078     		ldrb	r0, [r0, #3]	@ zero_extendqisi2
+  65:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[1] << 9) |
+ 142              		.loc 1 65 0
+ 143 001a 5204     		lsls	r2, r2, #17
+ 144 001c 42EA4422 		orr	r2, r2, r4, lsl #9
+  66:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[2] << 1) |
+ 145              		.loc 1 66 0
+ 146 0020 42EA4303 		orr	r3, r2, r3, lsl #1
+  64:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[0] << 17) |
+ 147              		.loc 1 64 0
+ 148 0024 084A     		ldr	r2, .L12+4
+  67:peripherals/mcp355x.c ****                        (mcp355x_spi_trans.input_buf[3] >> 7));
+ 149              		.loc 1 67 0
+ 150 0026 43EAD013 		orr	r3, r3, r0, lsr #7
+  64:peripherals/mcp355x.c ****                        ((uint32_t)mcp355x_spi_trans.input_buf[0] << 17) |
+ 151              		.loc 1 64 0
+ 152 002a 1360     		str	r3, [r2]
+  69:peripherals/mcp355x.c ****       mcp355x_data_available = TRUE;
+ 153              		.loc 1 69 0
+ 154 002c 074B     		ldr	r3, .L12+8
+ 155 002e 0122     		movs	r2, #1
+ 156 0030 1A70     		strb	r2, [r3]
+ 157              	.L9:
+  70:peripherals/mcp355x.c ****     }
+  71:peripherals/mcp355x.c ****     mcp355x_spi_trans.status = SPITransDone;
+ 158              		.loc 1 71 0
+ 159 0032 0423     		movs	r3, #4
+ 160 0034 0B77     		strb	r3, [r1, #28]
+ 161              	.L8:
+  72:peripherals/mcp355x.c ****   }
+  73:peripherals/mcp355x.c ****   if (mcp355x_spi_trans.status == SPITransFailed) {
+ 162              		.loc 1 73 0
+ 163 0036 0B7F     		ldrb	r3, [r1, #28]	@ zero_extendqisi2
+ 164 0038 032B     		cmp	r3, #3
+  74:peripherals/mcp355x.c ****     mcp355x_spi_trans.status = SPITransDone;
+ 165              		.loc 1 74 0
+ 166 003a 02BF     		ittt	eq
+ 167 003c 014B     		ldreq	r3, .L12
+ 168 003e 0422     		moveq	r2, #4
+ 169 0040 1A77     		strbeq	r2, [r3, #28]
+ 170 0042 10BD     		pop	{r4, pc}
+ 171              	.L13:
+ 172              		.align	2
+ 173              	.L12:
+ 174 0044 00000000 		.word	.LANCHOR2
+ 175 0048 00000000 		.word	.LANCHOR1
+ 176 004c 00000000 		.word	.LANCHOR0
+ 177              		.cfi_endproc
+ 178              	.LFE3:
+ 180              		.global	mcp355x_spi_trans
+ 181              		.global	mcp355x_val
+ 182              		.global	mcp355x_data
+ 183              		.global	mcp355x_data_available
+ 184              		.section	.bss.mcp355x_data_available,"aw",%nobits
+ 185              		.set	.LANCHOR0,. + 0
+ 188              	mcp355x_data_available:
+ 189 0000 00       		.space	1
+ 190              		.section	.bss.mcp355x_data,"aw",%nobits
+ 191              		.align	2
+ 192              		.set	.LANCHOR1,. + 0
+ 195              	mcp355x_data:
+ 196 0000 00000000 		.space	4
+ 197              		.section	.bss.mcp355x_val,"aw",%nobits
+ 198              		.set	.LANCHOR3,. + 0
+ 201              	mcp355x_val:
+ 202 0000 00000000 		.space	4
+ 203              		.section	.bss.mcp355x_spi_trans,"aw",%nobits
+ 204              		.align	2
+ 205              		.set	.LANCHOR2,. + 0
+ 208              	mcp355x_spi_trans:
+ 209 0000 00000000 		.space	32
+ 209      00000000 
+ 209      00000000 
+ 209      00000000 
+ 209      00000000 
+ 210              		.text
+ 211              	.Letext0:
+ 212              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 213              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 214              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 215              		.file 5 "./mcu_periph/spi.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 mcp355x.c
+     /tmp/ccJo0pzC.s:20     .text.mcp355x_init:00000000 $t
+     /tmp/ccJo0pzC.s:25     .text.mcp355x_init:00000000 mcp355x_init
+     /tmp/ccJo0pzC.s:73     .text.mcp355x_init:0000002c $d
+     /tmp/ccJo0pzC.s:81     .text.mcp355x_read:00000000 $t
+     /tmp/ccJo0pzC.s:86     .text.mcp355x_read:00000000 mcp355x_read
+     /tmp/ccJo0pzC.s:101    .text.mcp355x_read:00000008 $d
+     /tmp/ccJo0pzC.s:107    .text.mcp355x_event:00000000 $t
+     /tmp/ccJo0pzC.s:112    .text.mcp355x_event:00000000 mcp355x_event
+     /tmp/ccJo0pzC.s:174    .text.mcp355x_event:00000044 $d
+     /tmp/ccJo0pzC.s:208    .bss.mcp355x_spi_trans:00000000 mcp355x_spi_trans
+     /tmp/ccJo0pzC.s:201    .bss.mcp355x_val:00000000 mcp355x_val
+     /tmp/ccJo0pzC.s:195    .bss.mcp355x_data:00000000 mcp355x_data
+     /tmp/ccJo0pzC.s:188    .bss.mcp355x_data_available:00000000 mcp355x_data_available
+     /tmp/ccJo0pzC.s:189    .bss.mcp355x_data_available:00000000 $d
+     /tmp/ccJo0pzC.s:191    .bss.mcp355x_data:00000000 $d
+     /tmp/ccJo0pzC.s:202    .bss.mcp355x_val:00000000 $d
+     /tmp/ccJo0pzC.s:204    .bss.mcp355x_spi_trans:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.spi.h.163.1dbaacd28ac2df39e8b3e6d025cb4129
+
+UNDEFINED SYMBOLS
+spi_submit
+spi1

@@ -1,0 +1,621 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"gpio_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.gpio_enable_clock,"ax",%progbits
+  20              		.align	1
+  21              		.global	gpio_enable_clock
+  22              		.thumb
+  23              		.thumb_func
+  25              	gpio_enable_clock:
+  26              	.LFB5:
+  27              		.file 1 "arch/stm32/mcu_periph/gpio_arch.c"
+   1:arch/stm32/mcu_periph/gpio_arch.c **** /*
+   2:arch/stm32/mcu_periph/gpio_arch.c ****  * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
+   3:arch/stm32/mcu_periph/gpio_arch.c ****  *
+   4:arch/stm32/mcu_periph/gpio_arch.c ****  * This file is part of paparazzi.
+   5:arch/stm32/mcu_periph/gpio_arch.c ****  *
+   6:arch/stm32/mcu_periph/gpio_arch.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/mcu_periph/gpio_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/mcu_periph/gpio_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/mcu_periph/gpio_arch.c ****  * any later version.
+  10:arch/stm32/mcu_periph/gpio_arch.c ****  *
+  11:arch/stm32/mcu_periph/gpio_arch.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/mcu_periph/gpio_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/mcu_periph/gpio_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/mcu_periph/gpio_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/mcu_periph/gpio_arch.c ****  *
+  16:arch/stm32/mcu_periph/gpio_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/mcu_periph/gpio_arch.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:arch/stm32/mcu_periph/gpio_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:arch/stm32/mcu_periph/gpio_arch.c ****  * Boston, MA 02111-1307, USA.
+  20:arch/stm32/mcu_periph/gpio_arch.c ****  */
+  21:arch/stm32/mcu_periph/gpio_arch.c **** 
+  22:arch/stm32/mcu_periph/gpio_arch.c **** /**
+  23:arch/stm32/mcu_periph/gpio_arch.c ****  * @file arch/stm32/mcu_periph/gpio_arch.c
+  24:arch/stm32/mcu_periph/gpio_arch.c ****  * @ingroup stm32_arch
+  25:arch/stm32/mcu_periph/gpio_arch.c ****  *
+  26:arch/stm32/mcu_periph/gpio_arch.c ****  * GPIO helper functions for STM32F1 and STM32F4.
+  27:arch/stm32/mcu_periph/gpio_arch.c ****  */
+  28:arch/stm32/mcu_periph/gpio_arch.c **** 
+  29:arch/stm32/mcu_periph/gpio_arch.c **** #include "mcu_periph/gpio.h"
+  30:arch/stm32/mcu_periph/gpio_arch.c **** 
+  31:arch/stm32/mcu_periph/gpio_arch.c **** #include <libopencm3/stm32/gpio.h>
+  32:arch/stm32/mcu_periph/gpio_arch.c **** #include <libopencm3/stm32/rcc.h>
+  33:arch/stm32/mcu_periph/gpio_arch.c **** 
+  34:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_enable_clock(uint32_t port)
+  35:arch/stm32/mcu_periph/gpio_arch.c **** {
+  28              		.loc 1 35 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  36:arch/stm32/mcu_periph/gpio_arch.c ****   switch (port) {
+  34              		.loc 1 36 0
+  35 0000 214B     		ldr	r3, .L17
+  36 0002 9842     		cmp	r0, r3
+  37 0004 2FD0     		beq	.L3
+  38 0006 11D8     		bhi	.L4
+  39 0008 A3F54063 		sub	r3, r3, #3072
+  40 000c 9842     		cmp	r0, r3
+  41 000e 21D0     		beq	.L5
+  42 0010 04D8     		bhi	.L6
+  43 0012 A3F58063 		sub	r3, r3, #1024
+  44 0016 9842     		cmp	r0, r3
+  45 0018 19D0     		beq	.L7
+  46 001a 7047     		bx	lr
+  47              	.L6:
+  48 001c 1B4B     		ldr	r3, .L17+4
+  49 001e 9842     		cmp	r0, r3
+  50 0020 1BD0     		beq	.L8
+  51 0022 03F58063 		add	r3, r3, #1024
+  52 0026 9842     		cmp	r0, r3
+  53 0028 1AD0     		beq	.L9
+  54 002a 7047     		bx	lr
+  55              	.L4:
+  56 002c 184B     		ldr	r3, .L17+8
+  57 002e 9842     		cmp	r0, r3
+  58 0030 1FD0     		beq	.L10
+  59 0032 04D8     		bhi	.L11
+  60 0034 A3F58063 		sub	r3, r3, #1024
+  61 0038 9842     		cmp	r0, r3
+  62 003a 17D0     		beq	.L12
+  63 003c 7047     		bx	lr
+  64              	.L11:
+  65 003e 154B     		ldr	r3, .L17+12
+  66 0040 9842     		cmp	r0, r3
+  67 0042 19D0     		beq	.L13
+  68 0044 03F58063 		add	r3, r3, #1024
+  69 0048 9842     		cmp	r0, r3
+  70 004a 18D0     		beq	.L14
+  71 004c 7047     		bx	lr
+  72              	.L7:
+  37:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOA:
+  38:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOA);
+  73              		.loc 1 38 0
+  74 004e 4FF4C060 		mov	r0, #1536
+  75              	.LVL1:
+  76 0052 16E0     		b	.L15
+  77              	.LVL2:
+  78              	.L5:
+  39:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  40:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOB:
+  41:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOB);
+  79              		.loc 1 41 0
+  80 0054 40F20160 		movw	r0, #1537
+  81              	.LVL3:
+  82 0058 13E0     		b	.L15
+  83              	.LVL4:
+  84              	.L8:
+  42:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  43:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOC:
+  44:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOC);
+  85              		.loc 1 44 0
+  86 005a 40F20260 		movw	r0, #1538
+  87              	.LVL5:
+  88 005e 10E0     		b	.L15
+  89              	.LVL6:
+  90              	.L9:
+  45:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  46:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOD:
+  47:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOD);
+  91              		.loc 1 47 0
+  92 0060 40F20360 		movw	r0, #1539
+  93              	.LVL7:
+  94 0064 0DE0     		b	.L15
+  95              	.LVL8:
+  96              	.L3:
+  48:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  49:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef GPIOE
+  50:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOE:
+  51:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOE);
+  97              		.loc 1 51 0
+  98 0066 40F20460 		movw	r0, #1540
+  99              	.LVL9:
+ 100 006a 0AE0     		b	.L15
+ 101              	.LVL10:
+ 102              	.L12:
+  52:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  53:arch/stm32/mcu_periph/gpio_arch.c **** #endif
+  54:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef GPIOF
+  55:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOF:
+  56:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOF);
+ 103              		.loc 1 56 0
+ 104 006c 40F20560 		movw	r0, #1541
+ 105              	.LVL11:
+ 106 0070 07E0     		b	.L15
+ 107              	.LVL12:
+ 108              	.L10:
+  57:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  58:arch/stm32/mcu_periph/gpio_arch.c **** #endif
+  59:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef GPIOG
+  60:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOG:
+  61:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOG);
+ 109              		.loc 1 61 0
+ 110 0072 40F20660 		movw	r0, #1542
+ 111              	.LVL13:
+ 112 0076 04E0     		b	.L15
+ 113              	.LVL14:
+ 114              	.L13:
+  62:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  63:arch/stm32/mcu_periph/gpio_arch.c **** #endif
+  64:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef GPIOH
+  65:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOH:
+  66:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOH);
+ 115              		.loc 1 66 0
+ 116 0078 40F20760 		movw	r0, #1543
+ 117              	.LVL15:
+ 118 007c 01E0     		b	.L15
+ 119              	.LVL16:
+ 120              	.L14:
+  67:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  68:arch/stm32/mcu_periph/gpio_arch.c **** #endif
+  69:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef GPIOI
+  70:arch/stm32/mcu_periph/gpio_arch.c ****     case GPIOI:
+  71:arch/stm32/mcu_periph/gpio_arch.c ****       rcc_periph_clock_enable(RCC_GPIOI);
+ 121              		.loc 1 71 0
+ 122 007e 4FF4C160 		mov	r0, #1544
+ 123              	.LVL17:
+ 124              	.L15:
+ 125 0082 FFF7FEBF 		b	rcc_periph_clock_enable
+ 126              	.LVL18:
+ 127              	.L18:
+ 128 0086 00BF     		.align	2
+ 129              	.L17:
+ 130 0088 00100240 		.word	1073876992
+ 131 008c 00080240 		.word	1073874944
+ 132 0090 00180240 		.word	1073879040
+ 133 0094 001C0240 		.word	1073880064
+ 134              		.cfi_endproc
+ 135              	.LFE5:
+ 137              		.section	.text.gpio_setup_output,"ax",%progbits
+ 138              		.align	1
+ 139              		.global	gpio_setup_output
+ 140              		.thumb
+ 141              		.thumb_func
+ 143              	gpio_setup_output:
+ 144              	.LFB6:
+  72:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  73:arch/stm32/mcu_periph/gpio_arch.c **** #endif
+  74:arch/stm32/mcu_periph/gpio_arch.c ****     default:
+  75:arch/stm32/mcu_periph/gpio_arch.c ****       break;
+  76:arch/stm32/mcu_periph/gpio_arch.c ****   };
+  77:arch/stm32/mcu_periph/gpio_arch.c **** }
+  78:arch/stm32/mcu_periph/gpio_arch.c **** 
+  79:arch/stm32/mcu_periph/gpio_arch.c **** #ifdef STM32F1
+  80:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_output(uint32_t port, uint16_t gpios)
+  81:arch/stm32/mcu_periph/gpio_arch.c **** {
+  82:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+  83:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_mode(port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, gpios);
+  84:arch/stm32/mcu_periph/gpio_arch.c **** }
+  85:arch/stm32/mcu_periph/gpio_arch.c **** 
+  86:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input(uint32_t port, uint16_t gpios)
+  87:arch/stm32/mcu_periph/gpio_arch.c **** {
+  88:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+  89:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, gpios);
+  90:arch/stm32/mcu_periph/gpio_arch.c **** }
+  91:arch/stm32/mcu_periph/gpio_arch.c **** 
+  92:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input_pullup(uint32_t port, uint16_t gpios)
+  93:arch/stm32/mcu_periph/gpio_arch.c **** {
+  94:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+  95:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set(port, gpios);
+  96:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, gpios);
+  97:arch/stm32/mcu_periph/gpio_arch.c **** }
+  98:arch/stm32/mcu_periph/gpio_arch.c **** 
+  99:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input_pulldown(uint32_t port, uint16_t gpios)
+ 100:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 101:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 102:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_clear(port, gpios);
+ 103:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, gpios);
+ 104:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 105:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 106:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_pin_af(uint32_t port, uint16_t pin, uint32_t af, bool_t is_output)
+ 107:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 108:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 109:arch/stm32/mcu_periph/gpio_arch.c ****   /* remap alternate function if needed */
+ 110:arch/stm32/mcu_periph/gpio_arch.c ****   if (af) {
+ 111:arch/stm32/mcu_periph/gpio_arch.c ****     rcc_periph_clock_enable(RCC_AFIO);
+ 112:arch/stm32/mcu_periph/gpio_arch.c ****     AFIO_MAPR |= af;
+ 113:arch/stm32/mcu_periph/gpio_arch.c ****   }
+ 114:arch/stm32/mcu_periph/gpio_arch.c ****   if (is_output) {
+ 115:arch/stm32/mcu_periph/gpio_arch.c ****     gpio_set_mode(port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, pin);
+ 116:arch/stm32/mcu_periph/gpio_arch.c ****   } else {
+ 117:arch/stm32/mcu_periph/gpio_arch.c ****     gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, pin);
+ 118:arch/stm32/mcu_periph/gpio_arch.c ****   }
+ 119:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 120:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 121:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_pin_analog(uint32_t port, uint16_t pin)
+ 122:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 123:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 124:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, pin);
+ 125:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 126:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 127:arch/stm32/mcu_periph/gpio_arch.c **** #elif defined STM32F4
+ 128:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 129:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_output(uint32_t port, uint16_t gpios)
+ 130:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 145              		.loc 1 130 0
+ 146              		.cfi_startproc
+ 147              		@ args = 0, pretend = 0, frame = 0
+ 148              		@ frame_needed = 0, uses_anonymous_args = 0
+ 149              	.LVL19:
+ 150 0000 70B5     		push	{r4, r5, r6, lr}
+ 151              		.cfi_def_cfa_offset 16
+ 152              		.cfi_offset 4, -16
+ 153              		.cfi_offset 5, -12
+ 154              		.cfi_offset 6, -8
+ 155              		.cfi_offset 14, -4
+ 156              		.loc 1 130 0
+ 157 0002 0C46     		mov	r4, r1
+ 158 0004 0546     		mov	r5, r0
+ 131:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 159              		.loc 1 131 0
+ 160 0006 FFF7FEFF 		bl	gpio_enable_clock
+ 161              	.LVL20:
+ 132:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, gpios);
+ 162              		.loc 1 132 0
+ 163 000a 2846     		mov	r0, r5
+ 164 000c 2346     		mov	r3, r4
+ 165 000e 0121     		movs	r1, #1
+ 166 0010 0022     		movs	r2, #0
+ 133:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 167              		.loc 1 133 0
+ 168 0012 BDE87040 		pop	{r4, r5, r6, lr}
+ 169              		.cfi_restore 14
+ 170              		.cfi_restore 6
+ 171              		.cfi_restore 5
+ 172              		.cfi_restore 4
+ 173              		.cfi_def_cfa_offset 0
+ 174              	.LVL21:
+ 132:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, gpios);
+ 175              		.loc 1 132 0
+ 176 0016 FFF7FEBF 		b	gpio_mode_setup
+ 177              	.LVL22:
+ 178              		.cfi_endproc
+ 179              	.LFE6:
+ 181              		.section	.text.gpio_setup_input,"ax",%progbits
+ 182              		.align	1
+ 183              		.global	gpio_setup_input
+ 184              		.thumb
+ 185              		.thumb_func
+ 187              	gpio_setup_input:
+ 188              	.LFB7:
+ 134:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 135:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input(uint32_t port, uint16_t gpios)
+ 136:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 189              		.loc 1 136 0
+ 190              		.cfi_startproc
+ 191              		@ args = 0, pretend = 0, frame = 0
+ 192              		@ frame_needed = 0, uses_anonymous_args = 0
+ 193              	.LVL23:
+ 194 0000 70B5     		push	{r4, r5, r6, lr}
+ 195              		.cfi_def_cfa_offset 16
+ 196              		.cfi_offset 4, -16
+ 197              		.cfi_offset 5, -12
+ 198              		.cfi_offset 6, -8
+ 199              		.cfi_offset 14, -4
+ 200              		.loc 1 136 0
+ 201 0002 0C46     		mov	r4, r1
+ 202 0004 0546     		mov	r5, r0
+ 137:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 203              		.loc 1 137 0
+ 204 0006 FFF7FEFF 		bl	gpio_enable_clock
+ 205              	.LVL24:
+ 138:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, gpios);
+ 206              		.loc 1 138 0
+ 207 000a 0021     		movs	r1, #0
+ 208 000c 2846     		mov	r0, r5
+ 209 000e 2346     		mov	r3, r4
+ 210 0010 0A46     		mov	r2, r1
+ 139:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 211              		.loc 1 139 0
+ 212 0012 BDE87040 		pop	{r4, r5, r6, lr}
+ 213              		.cfi_restore 14
+ 214              		.cfi_restore 6
+ 215              		.cfi_restore 5
+ 216              		.cfi_restore 4
+ 217              		.cfi_def_cfa_offset 0
+ 218              	.LVL25:
+ 138:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, gpios);
+ 219              		.loc 1 138 0
+ 220 0016 FFF7FEBF 		b	gpio_mode_setup
+ 221              	.LVL26:
+ 222              		.cfi_endproc
+ 223              	.LFE7:
+ 225              		.section	.text.gpio_setup_input_pullup,"ax",%progbits
+ 226              		.align	1
+ 227              		.global	gpio_setup_input_pullup
+ 228              		.thumb
+ 229              		.thumb_func
+ 231              	gpio_setup_input_pullup:
+ 232              	.LFB8:
+ 140:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 141:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input_pullup(uint32_t port, uint16_t gpios)
+ 142:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 233              		.loc 1 142 0
+ 234              		.cfi_startproc
+ 235              		@ args = 0, pretend = 0, frame = 0
+ 236              		@ frame_needed = 0, uses_anonymous_args = 0
+ 237              	.LVL27:
+ 238 0000 70B5     		push	{r4, r5, r6, lr}
+ 239              		.cfi_def_cfa_offset 16
+ 240              		.cfi_offset 4, -16
+ 241              		.cfi_offset 5, -12
+ 242              		.cfi_offset 6, -8
+ 243              		.cfi_offset 14, -4
+ 244              		.loc 1 142 0
+ 245 0002 0C46     		mov	r4, r1
+ 246 0004 0546     		mov	r5, r0
+ 143:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 247              		.loc 1 143 0
+ 248 0006 FFF7FEFF 		bl	gpio_enable_clock
+ 249              	.LVL28:
+ 144:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, gpios);
+ 250              		.loc 1 144 0
+ 251 000a 2846     		mov	r0, r5
+ 252 000c 2346     		mov	r3, r4
+ 253 000e 0021     		movs	r1, #0
+ 254 0010 0122     		movs	r2, #1
+ 145:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 255              		.loc 1 145 0
+ 256 0012 BDE87040 		pop	{r4, r5, r6, lr}
+ 257              		.cfi_restore 14
+ 258              		.cfi_restore 6
+ 259              		.cfi_restore 5
+ 260              		.cfi_restore 4
+ 261              		.cfi_def_cfa_offset 0
+ 262              	.LVL29:
+ 144:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, gpios);
+ 263              		.loc 1 144 0
+ 264 0016 FFF7FEBF 		b	gpio_mode_setup
+ 265              	.LVL30:
+ 266              		.cfi_endproc
+ 267              	.LFE8:
+ 269              		.section	.text.gpio_setup_input_pulldown,"ax",%progbits
+ 270              		.align	1
+ 271              		.global	gpio_setup_input_pulldown
+ 272              		.thumb
+ 273              		.thumb_func
+ 275              	gpio_setup_input_pulldown:
+ 276              	.LFB9:
+ 146:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 147:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_input_pulldown(uint32_t port, uint16_t gpios)
+ 148:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 277              		.loc 1 148 0
+ 278              		.cfi_startproc
+ 279              		@ args = 0, pretend = 0, frame = 0
+ 280              		@ frame_needed = 0, uses_anonymous_args = 0
+ 281              	.LVL31:
+ 282 0000 70B5     		push	{r4, r5, r6, lr}
+ 283              		.cfi_def_cfa_offset 16
+ 284              		.cfi_offset 4, -16
+ 285              		.cfi_offset 5, -12
+ 286              		.cfi_offset 6, -8
+ 287              		.cfi_offset 14, -4
+ 288              		.loc 1 148 0
+ 289 0002 0C46     		mov	r4, r1
+ 290 0004 0546     		mov	r5, r0
+ 149:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 291              		.loc 1 149 0
+ 292 0006 FFF7FEFF 		bl	gpio_enable_clock
+ 293              	.LVL32:
+ 150:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, gpios);
+ 294              		.loc 1 150 0
+ 295 000a 2846     		mov	r0, r5
+ 296 000c 2346     		mov	r3, r4
+ 297 000e 0021     		movs	r1, #0
+ 298 0010 0222     		movs	r2, #2
+ 151:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 299              		.loc 1 151 0
+ 300 0012 BDE87040 		pop	{r4, r5, r6, lr}
+ 301              		.cfi_restore 14
+ 302              		.cfi_restore 6
+ 303              		.cfi_restore 5
+ 304              		.cfi_restore 4
+ 305              		.cfi_def_cfa_offset 0
+ 306              	.LVL33:
+ 150:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, gpios);
+ 307              		.loc 1 150 0
+ 308 0016 FFF7FEBF 		b	gpio_mode_setup
+ 309              	.LVL34:
+ 310              		.cfi_endproc
+ 311              	.LFE9:
+ 313              		.section	.text.gpio_setup_pin_af,"ax",%progbits
+ 314              		.align	1
+ 315              		.global	gpio_setup_pin_af
+ 316              		.thumb
+ 317              		.thumb_func
+ 319              	gpio_setup_pin_af:
+ 320              	.LFB10:
+ 152:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 153:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_pin_af(uint32_t port, uint16_t pin, uint8_t af, bool_t is_output __attribute__((unu
+ 154:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 321              		.loc 1 154 0
+ 322              		.cfi_startproc
+ 323              		@ args = 0, pretend = 0, frame = 0
+ 324              		@ frame_needed = 0, uses_anonymous_args = 0
+ 325              	.LVL35:
+ 326 0000 70B5     		push	{r4, r5, r6, lr}
+ 327              		.cfi_def_cfa_offset 16
+ 328              		.cfi_offset 4, -16
+ 329              		.cfi_offset 5, -12
+ 330              		.cfi_offset 6, -8
+ 331              		.cfi_offset 14, -4
+ 332              		.loc 1 154 0
+ 333 0002 0C46     		mov	r4, r1
+ 334 0004 0546     		mov	r5, r0
+ 335 0006 1646     		mov	r6, r2
+ 155:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 336              		.loc 1 155 0
+ 337 0008 FFF7FEFF 		bl	gpio_enable_clock
+ 338              	.LVL36:
+ 156:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_set_af(port, af, pin);
+ 339              		.loc 1 156 0
+ 340 000c 2846     		mov	r0, r5
+ 341 000e 3146     		mov	r1, r6
+ 342 0010 2246     		mov	r2, r4
+ 343 0012 FFF7FEFF 		bl	gpio_set_af
+ 344              	.LVL37:
+ 157:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_AF, GPIO_PUPD_NONE, pin);
+ 345              		.loc 1 157 0
+ 346 0016 2846     		mov	r0, r5
+ 347 0018 2346     		mov	r3, r4
+ 348 001a 0221     		movs	r1, #2
+ 349 001c 0022     		movs	r2, #0
+ 158:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 350              		.loc 1 158 0
+ 351 001e BDE87040 		pop	{r4, r5, r6, lr}
+ 352              		.cfi_restore 14
+ 353              		.cfi_restore 6
+ 354              		.cfi_restore 5
+ 355              		.cfi_restore 4
+ 356              		.cfi_def_cfa_offset 0
+ 357              	.LVL38:
+ 157:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_AF, GPIO_PUPD_NONE, pin);
+ 358              		.loc 1 157 0
+ 359 0022 FFF7FEBF 		b	gpio_mode_setup
+ 360              	.LVL39:
+ 361              		.cfi_endproc
+ 362              	.LFE10:
+ 364              		.section	.text.gpio_setup_pin_analog,"ax",%progbits
+ 365              		.align	1
+ 366              		.global	gpio_setup_pin_analog
+ 367              		.thumb
+ 368              		.thumb_func
+ 370              	gpio_setup_pin_analog:
+ 371              	.LFB11:
+ 159:arch/stm32/mcu_periph/gpio_arch.c **** 
+ 160:arch/stm32/mcu_periph/gpio_arch.c **** void gpio_setup_pin_analog(uint32_t port, uint16_t pin)
+ 161:arch/stm32/mcu_periph/gpio_arch.c **** {
+ 372              		.loc 1 161 0
+ 373              		.cfi_startproc
+ 374              		@ args = 0, pretend = 0, frame = 0
+ 375              		@ frame_needed = 0, uses_anonymous_args = 0
+ 376              	.LVL40:
+ 377 0000 70B5     		push	{r4, r5, r6, lr}
+ 378              		.cfi_def_cfa_offset 16
+ 379              		.cfi_offset 4, -16
+ 380              		.cfi_offset 5, -12
+ 381              		.cfi_offset 6, -8
+ 382              		.cfi_offset 14, -4
+ 383              		.loc 1 161 0
+ 384 0002 0C46     		mov	r4, r1
+ 385 0004 0546     		mov	r5, r0
+ 162:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_enable_clock(port);
+ 386              		.loc 1 162 0
+ 387 0006 FFF7FEFF 		bl	gpio_enable_clock
+ 388              	.LVL41:
+ 163:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, pin);
+ 389              		.loc 1 163 0
+ 390 000a 2846     		mov	r0, r5
+ 391 000c 2346     		mov	r3, r4
+ 392 000e 0321     		movs	r1, #3
+ 393 0010 0022     		movs	r2, #0
+ 164:arch/stm32/mcu_periph/gpio_arch.c **** }
+ 394              		.loc 1 164 0
+ 395 0012 BDE87040 		pop	{r4, r5, r6, lr}
+ 396              		.cfi_restore 14
+ 397              		.cfi_restore 6
+ 398              		.cfi_restore 5
+ 399              		.cfi_restore 4
+ 400              		.cfi_def_cfa_offset 0
+ 401              	.LVL42:
+ 163:arch/stm32/mcu_periph/gpio_arch.c ****   gpio_mode_setup(port, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, pin);
+ 402              		.loc 1 163 0
+ 403 0016 FFF7FEBF 		b	gpio_mode_setup
+ 404              	.LVL43:
+ 405              		.cfi_endproc
+ 406              	.LFE11:
+ 408              		.text
+ 409              	.Letext0:
+ 410              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 411              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 412              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 413              		.file 5 "../ext/libopencm3/include/libopencm3/stm32/common/rcc_common_all.h"
+ 414              		.file 6 "../ext/libopencm3/include/libopencm3/stm32/common/gpio_common_f234.h"
+ 415              		.file 7 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 gpio_arch.c
+     /tmp/ccAN6FIn.s:20     .text.gpio_enable_clock:00000000 $t
+     /tmp/ccAN6FIn.s:25     .text.gpio_enable_clock:00000000 gpio_enable_clock
+     /tmp/ccAN6FIn.s:130    .text.gpio_enable_clock:00000088 $d
+     /tmp/ccAN6FIn.s:138    .text.gpio_setup_output:00000000 $t
+     /tmp/ccAN6FIn.s:143    .text.gpio_setup_output:00000000 gpio_setup_output
+     /tmp/ccAN6FIn.s:182    .text.gpio_setup_input:00000000 $t
+     /tmp/ccAN6FIn.s:187    .text.gpio_setup_input:00000000 gpio_setup_input
+     /tmp/ccAN6FIn.s:226    .text.gpio_setup_input_pullup:00000000 $t
+     /tmp/ccAN6FIn.s:231    .text.gpio_setup_input_pullup:00000000 gpio_setup_input_pullup
+     /tmp/ccAN6FIn.s:270    .text.gpio_setup_input_pulldown:00000000 $t
+     /tmp/ccAN6FIn.s:275    .text.gpio_setup_input_pulldown:00000000 gpio_setup_input_pulldown
+     /tmp/ccAN6FIn.s:314    .text.gpio_setup_pin_af:00000000 $t
+     /tmp/ccAN6FIn.s:319    .text.gpio_setup_pin_af:00000000 gpio_setup_pin_af
+     /tmp/ccAN6FIn.s:365    .text.gpio_setup_pin_analog:00000000 $t
+     /tmp/ccAN6FIn.s:370    .text.gpio_setup_pin_analog:00000000 gpio_setup_pin_analog
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+
+UNDEFINED SYMBOLS
+rcc_periph_clock_enable
+gpio_mode_setup
+gpio_set_af

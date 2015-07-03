@@ -1,0 +1,774 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"telemetry.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.register_periodic_telemetry,"ax",%progbits
+  20              		.align	1
+  21              		.global	register_periodic_telemetry
+  22              		.thumb
+  23              		.thumb_func
+  25              	register_periodic_telemetry:
+  26              	.LFB3:
+  27              		.file 1 "subsystems/datalink/telemetry.c"
+   1:subsystems/datalink/telemetry.c **** /*
+   2:subsystems/datalink/telemetry.c ****  * Copyright (C) 2013 Gautier Hattenberger
+   3:subsystems/datalink/telemetry.c ****  *
+   4:subsystems/datalink/telemetry.c ****  * This file is part of paparazzi.
+   5:subsystems/datalink/telemetry.c ****  *
+   6:subsystems/datalink/telemetry.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/datalink/telemetry.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/datalink/telemetry.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/datalink/telemetry.c ****  * any later version.
+  10:subsystems/datalink/telemetry.c ****  *
+  11:subsystems/datalink/telemetry.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/datalink/telemetry.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/datalink/telemetry.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/datalink/telemetry.c ****  * GNU General Public License for more details.
+  15:subsystems/datalink/telemetry.c ****  *
+  16:subsystems/datalink/telemetry.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/datalink/telemetry.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/datalink/telemetry.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/datalink/telemetry.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/datalink/telemetry.c ****  *
+  21:subsystems/datalink/telemetry.c ****  */
+  22:subsystems/datalink/telemetry.c **** 
+  23:subsystems/datalink/telemetry.c **** /**
+  24:subsystems/datalink/telemetry.c ****  * @file subsystems/datalink/telemetry.c
+  25:subsystems/datalink/telemetry.c ****  *
+  26:subsystems/datalink/telemetry.c ****  * Periodic telemetry system utility function.
+  27:subsystems/datalink/telemetry.c ****  *
+  28:subsystems/datalink/telemetry.c ****  */
+  29:subsystems/datalink/telemetry.c **** 
+  30:subsystems/datalink/telemetry.c **** #include "subsystems/datalink/telemetry_common.h"
+  31:subsystems/datalink/telemetry.c **** #include "generated/periodic_telemetry.h"
+  32:subsystems/datalink/telemetry.c **** 
+  33:subsystems/datalink/telemetry.c **** /* Implement global structures from generated header
+  34:subsystems/datalink/telemetry.c ****  */
+  35:subsystems/datalink/telemetry.c **** telemetry_msg telemetry_msgs[TELEMETRY_NB_MSG] = TELEMETRY_MSG_NAMES;
+  36:subsystems/datalink/telemetry.c **** telemetry_cb telemetry_cbs[TELEMETRY_NB_MSG] = TELEMETRY_CBS_NULL;
+  37:subsystems/datalink/telemetry.c **** struct periodic_telemetry pprz_telemetry = { TELEMETRY_NB_MSG, telemetry_msgs, telemetry_cbs };
+  38:subsystems/datalink/telemetry.c **** 
+  39:subsystems/datalink/telemetry.c **** 
+  40:subsystems/datalink/telemetry.c **** /** Register a telemetry callback function.
+  41:subsystems/datalink/telemetry.c ****  * @param _pt periodic telemetry structure to register
+  42:subsystems/datalink/telemetry.c ****  * @param _msg message name (string) as defined in telemetry xml file
+  43:subsystems/datalink/telemetry.c ****  * @param _cb callback function, called according to telemetry mode and specified period
+  44:subsystems/datalink/telemetry.c ****  * @return TRUE if message registered with success, FALSE otherwise
+  45:subsystems/datalink/telemetry.c ****  */
+  46:subsystems/datalink/telemetry.c **** bool_t register_periodic_telemetry(struct periodic_telemetry *_pt, const char *_msg, telemetry_cb _
+  47:subsystems/datalink/telemetry.c **** {
+  28              		.loc 1 47 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+  34              		.cfi_def_cfa_offset 20
+  35              		.cfi_offset 4, -20
+  36              		.cfi_offset 5, -16
+  37              		.cfi_offset 6, -12
+  38              		.cfi_offset 7, -8
+  39              		.cfi_offset 14, -4
+  48:subsystems/datalink/telemetry.c ****   // return FALSE if NULL is passed as periodic_telemetry
+  49:subsystems/datalink/telemetry.c ****   if (_pt == NULL) { return FALSE; }
+  40              		.loc 1 49 0
+  41 0002 08B3     		cbz	r0, .L12
+  50:subsystems/datalink/telemetry.c ****   // look for message name
+  51:subsystems/datalink/telemetry.c ****   uint8_t i;
+  52:subsystems/datalink/telemetry.c ****   for (i = 0; i < _pt->nb; i++) {
+  42              		.loc 1 52 0
+  43 0004 90F800E0 		ldrb	lr, [r0]	@ zero_extendqisi2
+  44 0008 0024     		movs	r4, #0
+  45              	.L3:
+  46              	.LVL1:
+  47              		.loc 1 52 0 is_stmt 0 discriminator 1
+  48 000a E3B2     		uxtb	r3, r4
+  49 000c 7345     		cmp	r3, lr
+  50 000e 10D2     		bcs	.L14
+  51              	.LVL2:
+  52 0010 4568     		ldr	r5, [r0, #4]
+  53 0012 0E46     		mov	r6, r1
+  54 0014 05EB8415 		add	r5, r5, r4, lsl #6
+  55              	.LVL3:
+  56              	.L4:
+  57              	.LBB4:
+  58              	.LBB5:
+  59              		.file 2 "/home/dino/paparazzi/sw/include/std.h"
+   1:/home/dino/paparazzi/sw/include/std.h **** /*
+   2:/home/dino/paparazzi/sw/include/std.h ****  * Copyright (C) 2005 Pascal Brisset, Antoine Drouin
+   3:/home/dino/paparazzi/sw/include/std.h ****  *
+   4:/home/dino/paparazzi/sw/include/std.h ****  * This file is part of paparazzi.
+   5:/home/dino/paparazzi/sw/include/std.h ****  *
+   6:/home/dino/paparazzi/sw/include/std.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:/home/dino/paparazzi/sw/include/std.h ****  * it under the terms of the GNU General Public License as published by
+   8:/home/dino/paparazzi/sw/include/std.h ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:/home/dino/paparazzi/sw/include/std.h ****  * any later version.
+  10:/home/dino/paparazzi/sw/include/std.h ****  *
+  11:/home/dino/paparazzi/sw/include/std.h ****  * paparazzi is distributed in the hope that it will be useful,
+  12:/home/dino/paparazzi/sw/include/std.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:/home/dino/paparazzi/sw/include/std.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:/home/dino/paparazzi/sw/include/std.h ****  * GNU General Public License for more details.
+  15:/home/dino/paparazzi/sw/include/std.h ****  *
+  16:/home/dino/paparazzi/sw/include/std.h ****  * You should have received a copy of the GNU General Public License
+  17:/home/dino/paparazzi/sw/include/std.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:/home/dino/paparazzi/sw/include/std.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:/home/dino/paparazzi/sw/include/std.h ****  * Boston, MA 02111-1307, USA.
+  20:/home/dino/paparazzi/sw/include/std.h ****  *
+  21:/home/dino/paparazzi/sw/include/std.h ****  *
+  22:/home/dino/paparazzi/sw/include/std.h ****  * a couple of fundamentals used in the avr code
+  23:/home/dino/paparazzi/sw/include/std.h ****  *
+  24:/home/dino/paparazzi/sw/include/std.h ****  */
+  25:/home/dino/paparazzi/sw/include/std.h **** 
+  26:/home/dino/paparazzi/sw/include/std.h **** #ifndef STD_H
+  27:/home/dino/paparazzi/sw/include/std.h **** #define STD_H
+  28:/home/dino/paparazzi/sw/include/std.h **** 
+  29:/home/dino/paparazzi/sw/include/std.h **** #include <inttypes.h>
+  30:/home/dino/paparazzi/sw/include/std.h **** #include <stdbool.h>
+  31:/home/dino/paparazzi/sw/include/std.h **** #include <math.h>
+  32:/home/dino/paparazzi/sw/include/std.h **** 
+  33:/home/dino/paparazzi/sw/include/std.h **** /* some convenience macros to print debug/config messages at compile time */
+  34:/home/dino/paparazzi/sw/include/std.h **** #include "message_pragmas.h"
+  35:/home/dino/paparazzi/sw/include/std.h **** 
+  36:/home/dino/paparazzi/sw/include/std.h **** /* stringify a define, e.g. one that was not quoted */
+  37:/home/dino/paparazzi/sw/include/std.h **** #define _STRINGIFY(s) #s
+  38:/home/dino/paparazzi/sw/include/std.h **** #define STRINGIFY(s) _STRINGIFY(s)
+  39:/home/dino/paparazzi/sw/include/std.h **** 
+  40:/home/dino/paparazzi/sw/include/std.h **** #ifndef FALSE
+  41:/home/dino/paparazzi/sw/include/std.h **** #define FALSE 0
+  42:/home/dino/paparazzi/sw/include/std.h **** #endif
+  43:/home/dino/paparazzi/sw/include/std.h **** #ifndef TRUE
+  44:/home/dino/paparazzi/sw/include/std.h **** #define TRUE (!FALSE)
+  45:/home/dino/paparazzi/sw/include/std.h **** #endif
+  46:/home/dino/paparazzi/sw/include/std.h **** 
+  47:/home/dino/paparazzi/sw/include/std.h **** #ifndef NULL
+  48:/home/dino/paparazzi/sw/include/std.h **** #ifdef __cplusplus
+  49:/home/dino/paparazzi/sw/include/std.h **** #define NULL 0
+  50:/home/dino/paparazzi/sw/include/std.h **** #else
+  51:/home/dino/paparazzi/sw/include/std.h **** #define NULL ((void *)0)
+  52:/home/dino/paparazzi/sw/include/std.h **** #endif
+  53:/home/dino/paparazzi/sw/include/std.h **** #endif
+  54:/home/dino/paparazzi/sw/include/std.h **** 
+  55:/home/dino/paparazzi/sw/include/std.h **** /* Boolean values */
+  56:/home/dino/paparazzi/sw/include/std.h **** #ifdef RTOS_IS_CHIBIOS
+  57:/home/dino/paparazzi/sw/include/std.h **** /* make bool_t an alias to bool instead of uint8_t dor chibios port
+  58:/home/dino/paparazzi/sw/include/std.h ****   probably a bad idea since sizeof(bool) is 4, and this will break
+  59:/home/dino/paparazzi/sw/include/std.h ****   message coding/decoding **** FIX NEEDEED ****
+  60:/home/dino/paparazzi/sw/include/std.h **** */
+  61:/home/dino/paparazzi/sw/include/std.h **** typedef bool bool_t;
+  62:/home/dino/paparazzi/sw/include/std.h **** #else
+  63:/home/dino/paparazzi/sw/include/std.h **** typedef uint8_t bool_t;
+  64:/home/dino/paparazzi/sw/include/std.h **** #endif
+  65:/home/dino/paparazzi/sw/include/std.h **** 
+  66:/home/dino/paparazzi/sw/include/std.h **** /* Unit (void) values */
+  67:/home/dino/paparazzi/sw/include/std.h **** typedef uint8_t unit_t;
+  68:/home/dino/paparazzi/sw/include/std.h **** 
+  69:/home/dino/paparazzi/sw/include/std.h **** #ifndef M_PI
+  70:/home/dino/paparazzi/sw/include/std.h **** #define M_PI 3.14159265358979323846
+  71:/home/dino/paparazzi/sw/include/std.h **** #endif
+  72:/home/dino/paparazzi/sw/include/std.h **** 
+  73:/home/dino/paparazzi/sw/include/std.h **** #ifndef M_PI_4
+  74:/home/dino/paparazzi/sw/include/std.h **** #define M_PI_4 (M_PI/4)
+  75:/home/dino/paparazzi/sw/include/std.h **** #endif
+  76:/home/dino/paparazzi/sw/include/std.h **** 
+  77:/home/dino/paparazzi/sw/include/std.h **** #ifndef M_PI_2
+  78:/home/dino/paparazzi/sw/include/std.h **** #define M_PI_2 (M_PI/2)
+  79:/home/dino/paparazzi/sw/include/std.h **** #endif
+  80:/home/dino/paparazzi/sw/include/std.h **** 
+  81:/home/dino/paparazzi/sw/include/std.h **** 
+  82:/home/dino/paparazzi/sw/include/std.h **** #ifndef bit_is_set
+  83:/home/dino/paparazzi/sw/include/std.h **** #define bit_is_set(x, b) ((x >> b) & 0x1)
+  84:/home/dino/paparazzi/sw/include/std.h **** #endif
+  85:/home/dino/paparazzi/sw/include/std.h **** 
+  86:/home/dino/paparazzi/sw/include/std.h **** #ifndef _BV
+  87:/home/dino/paparazzi/sw/include/std.h **** #define _BV(bit) (1 << (bit))
+  88:/home/dino/paparazzi/sw/include/std.h **** #endif
+  89:/home/dino/paparazzi/sw/include/std.h **** 
+  90:/home/dino/paparazzi/sw/include/std.h **** #define SetBit(a, n) a |= (1 << n)
+  91:/home/dino/paparazzi/sw/include/std.h **** #define ClearBit(a, n) a &= ~(1 << n)
+  92:/home/dino/paparazzi/sw/include/std.h **** 
+  93:/home/dino/paparazzi/sw/include/std.h **** #define NormRadAngle(x) { \
+  94:/home/dino/paparazzi/sw/include/std.h ****     while (x > M_PI) x -= 2 * M_PI; \
+  95:/home/dino/paparazzi/sw/include/std.h ****     while (x < -M_PI) x += 2 * M_PI; \
+  96:/home/dino/paparazzi/sw/include/std.h ****   }
+  97:/home/dino/paparazzi/sw/include/std.h **** #define DegOfRad(x) ((x) * (180. / M_PI))
+  98:/home/dino/paparazzi/sw/include/std.h **** #define DeciDegOfRad(x) ((x) * (1800./ M_PI))
+  99:/home/dino/paparazzi/sw/include/std.h **** #define RadOfDeg(x) ((x) * (M_PI/180.))
+ 100:/home/dino/paparazzi/sw/include/std.h **** 
+ 101:/home/dino/paparazzi/sw/include/std.h **** #define Min(x,y) (x < y ? x : y)
+ 102:/home/dino/paparazzi/sw/include/std.h **** #define Max(x,y) (x > y ? x : y)
+ 103:/home/dino/paparazzi/sw/include/std.h **** 
+ 104:/home/dino/paparazzi/sw/include/std.h **** #ifndef ABS
+ 105:/home/dino/paparazzi/sw/include/std.h **** #define ABS(val) ((val) < 0 ? -(val) : (val))
+ 106:/home/dino/paparazzi/sw/include/std.h **** #endif
+ 107:/home/dino/paparazzi/sw/include/std.h **** 
+ 108:/home/dino/paparazzi/sw/include/std.h **** #define Bound(_x, _min, _max) { if (_x > (_max)) _x = (_max); else if (_x < (_min)) _x = (_min); }
+ 109:/home/dino/paparazzi/sw/include/std.h **** #define BoundInverted(_x, _min, _max) {           \
+ 110:/home/dino/paparazzi/sw/include/std.h ****     if ((_x < (_min)) && (_x > (_max))) {         \
+ 111:/home/dino/paparazzi/sw/include/std.h ****       if (abs(_x - (_min)) < abs(_x - (_max)))    \
+ 112:/home/dino/paparazzi/sw/include/std.h ****         _x = (_min);                              \
+ 113:/home/dino/paparazzi/sw/include/std.h ****       else                                        \
+ 114:/home/dino/paparazzi/sw/include/std.h ****         _x = (_max);                              \
+ 115:/home/dino/paparazzi/sw/include/std.h ****     }                                             \
+ 116:/home/dino/paparazzi/sw/include/std.h ****   }
+ 117:/home/dino/paparazzi/sw/include/std.h **** #define BoundWrapped(_x, _min, _max) {            \
+ 118:/home/dino/paparazzi/sw/include/std.h ****     if ((_max) > (_min))                          \
+ 119:/home/dino/paparazzi/sw/include/std.h ****       Bound(_x, _min, _max)                       \
+ 120:/home/dino/paparazzi/sw/include/std.h ****     else                                          \
+ 121:/home/dino/paparazzi/sw/include/std.h ****       BoundInverted(_x, _min, _max)               \
+ 122:/home/dino/paparazzi/sw/include/std.h ****   }
+ 123:/home/dino/paparazzi/sw/include/std.h **** #define BoundAbs(_x, _max) Bound(_x, -(_max), (_max))
+ 124:/home/dino/paparazzi/sw/include/std.h **** #define Chop(_x, _min, _max) ( (_x) < (_min) ? (_min) : (_x) > (_max) ? (_max) : (_x) )
+ 125:/home/dino/paparazzi/sw/include/std.h **** #define ChopAbs(x, max) Chop(x, -(max), (max))
+ 126:/home/dino/paparazzi/sw/include/std.h **** 
+ 127:/home/dino/paparazzi/sw/include/std.h **** #define DeadBand(_x, _v) {						\
+ 128:/home/dino/paparazzi/sw/include/std.h ****     if (_x > (_v))                              \
+ 129:/home/dino/paparazzi/sw/include/std.h ****       _x = _x -(_v);                            \
+ 130:/home/dino/paparazzi/sw/include/std.h ****     else if  (_x < -(_v))                       \
+ 131:/home/dino/paparazzi/sw/include/std.h ****       _x = _x +(_v);                            \
+ 132:/home/dino/paparazzi/sw/include/std.h ****     else                                        \
+ 133:/home/dino/paparazzi/sw/include/std.h ****       _x = 0;                                   \
+ 134:/home/dino/paparazzi/sw/include/std.h ****   }
+ 135:/home/dino/paparazzi/sw/include/std.h **** 
+ 136:/home/dino/paparazzi/sw/include/std.h **** #define Blend(a, b, rho) (((rho)*(a))+(1-(rho))*(b))
+ 137:/home/dino/paparazzi/sw/include/std.h **** 
+ 138:/home/dino/paparazzi/sw/include/std.h **** #define RunOnceEvery(_prescaler, _code) {		\
+ 139:/home/dino/paparazzi/sw/include/std.h ****     static uint16_t prescaler = 0;			\
+ 140:/home/dino/paparazzi/sw/include/std.h ****     prescaler++;					\
+ 141:/home/dino/paparazzi/sw/include/std.h ****     if (prescaler >= _prescaler) {			\
+ 142:/home/dino/paparazzi/sw/include/std.h ****       prescaler = 0;					\
+ 143:/home/dino/paparazzi/sw/include/std.h ****       _code;						\
+ 144:/home/dino/paparazzi/sw/include/std.h ****     }							\
+ 145:/home/dino/paparazzi/sw/include/std.h ****   }
+ 146:/home/dino/paparazzi/sw/include/std.h **** 
+ 147:/home/dino/paparazzi/sw/include/std.h **** #define RunXTimesEvery(_jumpstart, _prescaler, _interval, _xtimes, _code) {		\
+ 148:/home/dino/paparazzi/sw/include/std.h ****   static uint16_t prescaler = _jumpstart;			\
+ 149:/home/dino/paparazzi/sw/include/std.h ****   static uint16_t xtimes = 0;                   \
+ 150:/home/dino/paparazzi/sw/include/std.h ****   prescaler++;					\
+ 151:/home/dino/paparazzi/sw/include/std.h ****   if (prescaler >= _prescaler + _interval*xtimes && xtimes < _xtimes) {			\
+ 152:/home/dino/paparazzi/sw/include/std.h ****     _code;						\
+ 153:/home/dino/paparazzi/sw/include/std.h ****     xtimes++;						\
+ 154:/home/dino/paparazzi/sw/include/std.h ****     }							\
+ 155:/home/dino/paparazzi/sw/include/std.h ****   if (xtimes >= _xtimes) {				\
+ 156:/home/dino/paparazzi/sw/include/std.h ****     xtimes = 0;					\
+ 157:/home/dino/paparazzi/sw/include/std.h ****     prescaler = 0;					\
+ 158:/home/dino/paparazzi/sw/include/std.h ****     }							\
+ 159:/home/dino/paparazzi/sw/include/std.h **** }
+ 160:/home/dino/paparazzi/sw/include/std.h **** 
+ 161:/home/dino/paparazzi/sw/include/std.h **** 
+ 162:/home/dino/paparazzi/sw/include/std.h **** #define PeriodicPrescaleBy5( _code_0, _code_1, _code_2, _code_3, _code_4) { \
+ 163:/home/dino/paparazzi/sw/include/std.h ****     static uint8_t _50hz = 0;						\
+ 164:/home/dino/paparazzi/sw/include/std.h ****     _50hz++;								\
+ 165:/home/dino/paparazzi/sw/include/std.h ****     if (_50hz >= 5) _50hz = 0;						\
+ 166:/home/dino/paparazzi/sw/include/std.h ****     switch (_50hz) {							\
+ 167:/home/dino/paparazzi/sw/include/std.h ****     case 0:								\
+ 168:/home/dino/paparazzi/sw/include/std.h ****       _code_0;								\
+ 169:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 170:/home/dino/paparazzi/sw/include/std.h ****     case 1:								\
+ 171:/home/dino/paparazzi/sw/include/std.h ****       _code_1;								\
+ 172:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 173:/home/dino/paparazzi/sw/include/std.h ****     case 2:								\
+ 174:/home/dino/paparazzi/sw/include/std.h ****       _code_2;								\
+ 175:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 176:/home/dino/paparazzi/sw/include/std.h ****     case 3:								\
+ 177:/home/dino/paparazzi/sw/include/std.h ****       _code_3;								\
+ 178:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 179:/home/dino/paparazzi/sw/include/std.h ****     case 4:								\
+ 180:/home/dino/paparazzi/sw/include/std.h ****       _code_4;								\
+ 181:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 182:/home/dino/paparazzi/sw/include/std.h ****     }									\
+ 183:/home/dino/paparazzi/sw/include/std.h ****   }
+ 184:/home/dino/paparazzi/sw/include/std.h **** 
+ 185:/home/dino/paparazzi/sw/include/std.h **** #define PeriodicPrescaleBy10( _code_0, _code_1, _code_2, _code_3, _code_4, _code_5, _code_6, _code_
+ 186:/home/dino/paparazzi/sw/include/std.h ****     static uint8_t _cnt = 0;						\
+ 187:/home/dino/paparazzi/sw/include/std.h ****     _cnt++;								\
+ 188:/home/dino/paparazzi/sw/include/std.h ****     if (_cnt >= 10) _cnt = 0;						\
+ 189:/home/dino/paparazzi/sw/include/std.h ****     switch (_cnt) {							\
+ 190:/home/dino/paparazzi/sw/include/std.h ****     case 0:								\
+ 191:/home/dino/paparazzi/sw/include/std.h ****       _code_0;								\
+ 192:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 193:/home/dino/paparazzi/sw/include/std.h ****     case 1:								\
+ 194:/home/dino/paparazzi/sw/include/std.h ****       _code_1;								\
+ 195:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 196:/home/dino/paparazzi/sw/include/std.h ****     case 2:								\
+ 197:/home/dino/paparazzi/sw/include/std.h ****       _code_2;								\
+ 198:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 199:/home/dino/paparazzi/sw/include/std.h ****     case 3:								\
+ 200:/home/dino/paparazzi/sw/include/std.h ****       _code_3;								\
+ 201:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 202:/home/dino/paparazzi/sw/include/std.h ****     case 4:								\
+ 203:/home/dino/paparazzi/sw/include/std.h ****       _code_4;								\
+ 204:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 205:/home/dino/paparazzi/sw/include/std.h ****     case 5:								\
+ 206:/home/dino/paparazzi/sw/include/std.h ****       _code_5;								\
+ 207:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 208:/home/dino/paparazzi/sw/include/std.h ****     case 6:								\
+ 209:/home/dino/paparazzi/sw/include/std.h ****       _code_6;								\
+ 210:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 211:/home/dino/paparazzi/sw/include/std.h ****     case 7:								\
+ 212:/home/dino/paparazzi/sw/include/std.h ****       _code_7;								\
+ 213:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 214:/home/dino/paparazzi/sw/include/std.h ****     case 8:								\
+ 215:/home/dino/paparazzi/sw/include/std.h ****       _code_8;								\
+ 216:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 217:/home/dino/paparazzi/sw/include/std.h ****     case 9:								\
+ 218:/home/dino/paparazzi/sw/include/std.h ****     default:								\
+ 219:/home/dino/paparazzi/sw/include/std.h ****       _code_9;								\
+ 220:/home/dino/paparazzi/sw/include/std.h ****       break;								\
+ 221:/home/dino/paparazzi/sw/include/std.h ****     }									\
+ 222:/home/dino/paparazzi/sw/include/std.h ****   }
+ 223:/home/dino/paparazzi/sw/include/std.h **** 
+ 224:/home/dino/paparazzi/sw/include/std.h **** static inline bool_t str_equal(const char * a, const char * b) {
+ 225:/home/dino/paparazzi/sw/include/std.h ****   int i = 0;
+ 226:/home/dino/paparazzi/sw/include/std.h ****   while (!(a[i] == 0 && b[i] == 0)) {
+  60              		.loc 2 226 0 is_stmt 1
+  61 0018 15F8017B 		ldrb	r7, [r5], #1	@ zero_extendqisi2
+  62              	.LVL4:
+  63 001c 2FB1     		cbz	r7, .L15
+  64              	.L6:
+ 227:/home/dino/paparazzi/sw/include/std.h ****     if (a[i] != b[i]) return FALSE;
+  65              		.loc 2 227 0
+  66 001e 16F8013B 		ldrb	r3, [r6], #1	@ zero_extendqisi2
+  67 0022 9F42     		cmp	r7, r3
+  68 0024 F8D0     		beq	.L4
+  69              	.LVL5:
+  70 0026 0134     		adds	r4, r4, #1
+  71              	.LVL6:
+  72 0028 EFE7     		b	.L3
+  73              	.LVL7:
+  74              	.L15:
+ 226:/home/dino/paparazzi/sw/include/std.h ****     if (a[i] != b[i]) return FALSE;
+  75              		.loc 2 226 0
+  76 002a 3378     		ldrb	r3, [r6]	@ zero_extendqisi2
+  77 002c 002B     		cmp	r3, #0
+  78 002e F6D1     		bne	.L6
+  79 0030 01E0     		b	.L16
+  80              	.LVL8:
+  81              	.L14:
+  82              	.LBE5:
+  83              	.LBE4:
+  49:subsystems/datalink/telemetry.c ****   // look for message name
+  84              		.loc 1 49 0
+  85 0032 0020     		movs	r0, #0
+  86              	.LVL9:
+  87 0034 F0BD     		pop	{r4, r5, r6, r7, pc}
+  88              	.LVL10:
+  89              	.L16:
+  53:subsystems/datalink/telemetry.c ****     if (str_equal(_pt->msgs[i], _msg)) {
+  54:subsystems/datalink/telemetry.c ****       // register callback if not already done
+  55:subsystems/datalink/telemetry.c ****       if (_pt->cbs[i] == NULL) {
+  90              		.loc 1 55 0
+  91 0036 8168     		ldr	r1, [r0, #8]
+  92              	.LVL11:
+  93 0038 51F82400 		ldr	r0, [r1, r4, lsl #2]
+  94              	.LVL12:
+  95 003c 18B9     		cbnz	r0, .L17
+  56:subsystems/datalink/telemetry.c ****         _pt->cbs[i] = _cb;
+  96              		.loc 1 56 0
+  97 003e 41F82420 		str	r2, [r1, r4, lsl #2]
+  98              	.LVL13:
+  57:subsystems/datalink/telemetry.c ****         return TRUE;
+  99              		.loc 1 57 0
+ 100 0042 0120     		movs	r0, #1
+ 101 0044 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 102              	.LVL14:
+ 103              	.L17:
+  49:subsystems/datalink/telemetry.c ****   // look for message name
+ 104              		.loc 1 49 0
+ 105 0046 1846     		mov	r0, r3
+ 106              	.LVL15:
+ 107              	.L12:
+  58:subsystems/datalink/telemetry.c ****       } else { return FALSE; }
+  59:subsystems/datalink/telemetry.c ****     }
+  60:subsystems/datalink/telemetry.c ****   }
+  61:subsystems/datalink/telemetry.c ****   // message name is not in telemetry file
+  62:subsystems/datalink/telemetry.c ****   return FALSE;
+  63:subsystems/datalink/telemetry.c **** }
+ 108              		.loc 1 63 0
+ 109 0048 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 110              		.cfi_endproc
+ 111              	.LFE3:
+ 113              		.global	pprz_telemetry
+ 114              		.global	telemetry_cbs
+ 115              		.global	telemetry_msgs
+ 116              		.section	.data.pprz_telemetry,"aw",%progbits
+ 117              		.align	2
+ 120              	pprz_telemetry:
+ 121 0000 28       		.byte	40
+ 122 0001 000000   		.space	3
+ 123 0004 00000000 		.word	telemetry_msgs
+ 124 0008 00000000 		.word	telemetry_cbs
+ 125              		.section	.bss.telemetry_cbs,"aw",%nobits
+ 126              		.align	2
+ 129              	telemetry_cbs:
+ 130 0000 00000000 		.space	160
+ 130      00000000 
+ 130      00000000 
+ 130      00000000 
+ 130      00000000 
+ 131              		.section	.rodata.telemetry_msgs,"a",%progbits
+ 134              	telemetry_msgs:
+ 135 0000 4241524F 		.ascii	"BARO_MS5534A\000"
+ 135      5F4D5335 
+ 135      35333441 
+ 135      00
+ 136 000d 00000000 		.space	51
+ 136      00000000 
+ 136      00000000 
+ 136      00000000 
+ 136      00000000 
+ 137 0040 49525F53 		.ascii	"IR_SENSORS\000"
+ 137      454E534F 
+ 137      525300
+ 138 004b 00000000 		.space	53
+ 138      00000000 
+ 138      00000000 
+ 138      00000000 
+ 138      00000000 
+ 139 0080 45535449 		.ascii	"ESTIMATOR\000"
+ 139      4D41544F 
+ 139      5200
+ 140 008a 00000000 		.space	54
+ 140      00000000 
+ 140      00000000 
+ 140      00000000 
+ 140      00000000 
+ 141 00c0 504C4947 		.ascii	"PLIGHT\000"
+ 141      485400
+ 142 00c7 00000000 		.space	57
+ 142      00000000 
+ 142      00000000 
+ 142      00000000 
+ 142      00000000 
+ 143 0100 505A4700 		.ascii	"PZG\000"
+ 144 0104 00000000 		.space	60
+ 144      00000000 
+ 144      00000000 
+ 144      00000000 
+ 144      00000000 
+ 145 0140 43414C49 		.ascii	"CALIBRATION\000"
+ 145      42524154 
+ 145      494F4E00 
+ 146 014c 00000000 		.space	52
+ 146      00000000 
+ 146      00000000 
+ 146      00000000 
+ 146      00000000 
+ 147 0180 50504D00 		.ascii	"PPM\000"
+ 148 0184 00000000 		.space	60
+ 148      00000000 
+ 148      00000000 
+ 148      00000000 
+ 148      00000000 
+ 149 01c0 494D555F 		.ascii	"IMU_MAG\000"
+ 149      4D414700 
+ 150 01c8 00000000 		.space	56
+ 150      00000000 
+ 150      00000000 
+ 150      00000000 
+ 150      00000000 
+ 151 0200 42415400 		.ascii	"BAT\000"
+ 152 0204 00000000 		.space	60
+ 152      00000000 
+ 152      00000000 
+ 152      00000000 
+ 152      00000000 
+ 153 0240 41545449 		.ascii	"ATTITUDE\000"
+ 153      54554445 
+ 153      00
+ 154 0249 00000000 		.space	55
+ 154      00000000 
+ 154      00000000 
+ 154      00000000 
+ 154      00000000 
+ 155 0280 707000   		.ascii	"pp\000"
+ 156 0283 00000000 		.space	61
+ 156      00000000 
+ 156      00000000 
+ 156      00000000 
+ 156      00000000 
+ 157 02c0 53544154 		.ascii	"STATE_FILTER_STATUS\000"
+ 157      455F4649 
+ 157      4C544552 
+ 157      5F535441 
+ 157      54555300 
+ 158 02d4 00000000 		.space	44
+ 158      00000000 
+ 158      00000000 
+ 158      00000000 
+ 158      00000000 
+ 159 0300 4750535F 		.ascii	"GPS_SOL\000"
+ 159      534F4C00 
+ 160 0308 00000000 		.space	56
+ 160      00000000 
+ 160      00000000 
+ 160      00000000 
+ 160      00000000 
+ 161 0340 4642575F 		.ascii	"FBW_STATUS\000"
+ 161      53544154 
+ 161      555300
+ 162 034b 00000000 		.space	53
+ 162      00000000 
+ 162      00000000 
+ 162      00000000 
+ 162      00000000 
+ 163 0380 41435455 		.ascii	"ACTUATORS\000"
+ 163      41544F52 
+ 163      5300
+ 164 038a 00000000 		.space	54
+ 164      00000000 
+ 164      00000000 
+ 164      00000000 
+ 164      00000000 
+ 165 03c0 414C4956 		.ascii	"ALIVE\000"
+ 165      4500
+ 166 03c6 00000000 		.space	58
+ 166      00000000 
+ 166      00000000 
+ 166      00000000 
+ 166      00000000 
+ 167 0400 4E415649 		.ascii	"NAVIGATION\000"
+ 167      47415449 
+ 167      4F4E00
+ 168 040b 00000000 		.space	53
+ 168      00000000 
+ 168      00000000 
+ 168      00000000 
+ 168      00000000 
+ 169 0440 41495253 		.ascii	"AIRSPEED\000"
+ 169      50454544 
+ 169      00
+ 170 0449 00000000 		.space	55
+ 170      00000000 
+ 170      00000000 
+ 170      00000000 
+ 170      00000000 
+ 171 0480 5343505F 		.ascii	"SCP_STATUS\000"
+ 171      53544154 
+ 171      555300
+ 172 048b 00000000 		.space	53
+ 172      00000000 
+ 172      00000000 
+ 172      00000000 
+ 172      00000000 
+ 173 04c0 524300   		.ascii	"RC\000"
+ 174 04c3 00000000 		.space	61
+ 174      00000000 
+ 174      00000000 
+ 174      00000000 
+ 174      00000000 
+ 175 0500 494D555F 		.ascii	"IMU_ACCEL_RAW\000"
+ 175      41434345 
+ 175      4C5F5241 
+ 175      5700
+ 176 050e 00000000 		.space	50
+ 176      00000000 
+ 176      00000000 
+ 176      00000000 
+ 176      00000000 
+ 177 0540 5345474D 		.ascii	"SEGMENT\000"
+ 177      454E5400 
+ 178 0548 00000000 		.space	56
+ 178      00000000 
+ 178      00000000 
+ 178      00000000 
+ 178      00000000 
+ 179 0580 444C5F56 		.ascii	"DL_VALUE\000"
+ 179      414C5545 
+ 179      00
+ 180 0589 00000000 		.space	55
+ 180      00000000 
+ 180      00000000 
+ 180      00000000 
+ 180      00000000 
+ 181 05c0 494D555F 		.ascii	"IMU_GYRO\000"
+ 181      4759524F 
+ 181      00
+ 182 05c9 00000000 		.space	55
+ 182      00000000 
+ 182      00000000 
+ 182      00000000 
+ 182      00000000 
+ 183 0600 47505300 		.ascii	"GPS\000"
+ 184 0604 00000000 		.space	60
+ 184      00000000 
+ 184      00000000 
+ 184      00000000 
+ 184      00000000 
+ 185 0640 4154545F 		.ascii	"ATT_POL\000"
+ 185      504F4C00 
+ 186 0648 00000000 		.space	56
+ 186      00000000 
+ 186      00000000 
+ 186      00000000 
+ 186      00000000 
+ 187 0680 4E415649 		.ascii	"NAVIGATION_REF\000"
+ 187      47415449 
+ 187      4F4E5F52 
+ 187      454600
+ 188 068f 00000000 		.space	49
+ 188      00000000 
+ 188      00000000 
+ 188      00000000 
+ 188      00000000 
+ 189 06c0 57505F4D 		.ascii	"WP_MOVED\000"
+ 189      4F564544 
+ 189      00
+ 190 06c9 00000000 		.space	55
+ 190      00000000 
+ 190      00000000 
+ 190      00000000 
+ 190      00000000 
+ 191 0700 5050525A 		.ascii	"PPRZ_MODE\000"
+ 191      5F4D4F44 
+ 191      4500
+ 192 070a 00000000 		.space	54
+ 192      00000000 
+ 192      00000000 
+ 192      00000000 
+ 192      00000000 
+ 193 0740 494D555F 		.ascii	"IMU_GYRO_RAW\000"
+ 193      4759524F 
+ 193      5F524157 
+ 193      00
+ 194 074d 00000000 		.space	51
+ 194      00000000 
+ 194      00000000 
+ 194      00000000 
+ 194      00000000 
+ 195 0780 44455349 		.ascii	"DESIRED\000"
+ 195      52454400 
+ 196 0788 00000000 		.space	56
+ 196      00000000 
+ 196      00000000 
+ 196      00000000 
+ 196      00000000 
+ 197 07c0 53455454 		.ascii	"SETTINGS\000"
+ 197      494E4753 
+ 197      00
+ 198 07c9 00000000 		.space	55
+ 198      00000000 
+ 198      00000000 
+ 198      00000000 
+ 198      00000000 
+ 199 0800 454E4552 		.ascii	"ENERGY\000"
+ 199      475900
+ 200 0807 00000000 		.space	57
+ 200      00000000 
+ 200      00000000 
+ 200      00000000 
+ 200      00000000 
+ 201 0840 434F4D4D 		.ascii	"COMMANDS\000"
+ 201      414E4453 
+ 201      00
+ 202 0849 00000000 		.space	55
+ 202      00000000 
+ 202      00000000 
+ 202      00000000 
+ 202      00000000 
+ 203 0880 494D555F 		.ascii	"IMU_MAG_RAW\000"
+ 203      4D41475F 
+ 203      52415700 
+ 204 088c 00000000 		.space	52
+ 204      00000000 
+ 204      00000000 
+ 204      00000000 
+ 204      00000000 
+ 205 08c0 4241524F 		.ascii	"BARO_RAW\000"
+ 205      5F524157 
+ 205      00
+ 206 08c9 00000000 		.space	55
+ 206      00000000 
+ 206      00000000 
+ 206      00000000 
+ 206      00000000 
+ 207 0900 43495243 		.ascii	"CIRCLE\000"
+ 207      4C4500
+ 208 0907 00000000 		.space	57
+ 208      00000000 
+ 208      00000000 
+ 208      00000000 
+ 208      00000000 
+ 209 0940 444F574E 		.ascii	"DOWNLINK\000"
+ 209      4C494E4B 
+ 209      00
+ 210 0949 00000000 		.space	55
+ 210      00000000 
+ 210      00000000 
+ 210      00000000 
+ 210      00000000 
+ 211 0980 494D555F 		.ascii	"IMU_ACCEL\000"
+ 211      41434345 
+ 211      4C00
+ 212 098a 00000000 		.space	54
+ 212      00000000 
+ 212      00000000 
+ 212      00000000 
+ 212      00000000 
+ 213 09c0 53555256 		.ascii	"SURVEY\000"
+ 213      455900
+ 214 09c7 00000000 		.space	57
+ 214      00000000 
+ 214      00000000 
+ 214      00000000 
+ 214      00000000 
+ 215              		.text
+ 216              	.Letext0:
+ 217              		.file 3 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 218              		.file 4 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 219              		.file 5 "./mcu_periph/link_device.h"
+ 220              		.file 6 "./subsystems/datalink/transport.h"
+ 221              		.file 7 "./subsystems/datalink/telemetry_common.h"
+ 222              		.file 8 "/home/dino/paparazzi/var/aircrafts/MY_apogee/ap/generated/periodic_telemetry.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 telemetry.c
+     /tmp/cceIwwZW.s:20     .text.register_periodic_telemetry:00000000 $t
+     /tmp/cceIwwZW.s:25     .text.register_periodic_telemetry:00000000 register_periodic_telemetry
+     /tmp/cceIwwZW.s:120    .data.pprz_telemetry:00000000 pprz_telemetry
+     /tmp/cceIwwZW.s:129    .bss.telemetry_cbs:00000000 telemetry_cbs
+     /tmp/cceIwwZW.s:134    .rodata.telemetry_msgs:00000000 telemetry_msgs
+     /tmp/cceIwwZW.s:117    .data.pprz_telemetry:00000000 $d
+     /tmp/cceIwwZW.s:126    .bss.telemetry_cbs:00000000 $d
+     /tmp/cceIwwZW.s:136    .rodata.telemetry_msgs:0000000d $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.periodic_telemetry.h.11.f25aadf344a171d516cf4756f716329b
+
+NO UNDEFINED SYMBOLS

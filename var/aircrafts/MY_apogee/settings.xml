@@ -1,0 +1,30 @@
+<settings>
+  <rc_settings/>
+  <dl_settings>
+    <dl_settings name="Telemetry">
+      <dl_setting min="0" step="1" max="6" var="telemetry_mode_Ap" shortname="Ap" values="default|default1|minimal|extremal|raw_sensors|scaled_sensors|debug_imu" module="generated/periodic_telemetry"/>
+      <dl_setting min="0" step="1" max="1" var="telemetry_mode_Fbw" shortname="Fbw" values="default|debug" module="generated/periodic_telemetry"/>
+    </dl_settings>
+    <dl_settings name="flight params">
+      <dl_setting var="flight_altitude" step="10" shortname="altitude" min="0" max="1000"/>
+      <dl_setting var="nav_course" step="1" min="0" max="360"/>
+      <dl_setting var="nav_shift" step="5" shortname="inc. shift" module="firmwares/fixedwing/nav" min="-10" max="10" handler="IncreaseShift"/>
+      <dl_setting var="autopilot_flight_time" step="1" shortname="flight time" module="autopilot" min="0" max="0" handler="ResetFlightTimeAndLaunch"/>
+      <dl_setting var="nav_radius" step="10" module="firmwares/fixedwing/nav" min="-200" max="200" handler="SetNavRadius">
+        <strip_button value="1" name="Circle right" icon="circle-right.png" group="circle"/>
+        <strip_button value="-1" name="Circle left" icon="circle-left.png" group="circle"/>
+        <key_press value="1" key="greater"/>
+        <key_press value="-1" key="less"/>
+      </dl_setting>
+    </dl_settings>
+    <dl_settings name="mode">
+      <dl_setting var="pprz_mode" values="MANUAL|AUTO1|AUTO2|HOME|NOGPS|FAILSAFE" step="1" module="autopilot" min="0" max="2"/>
+      <dl_setting var="launch" step="1" min="0" max="1"/>
+      <dl_setting var="kill_throttle" step="1" min="0" max="1"/>
+      <dl_setting var="gps.reset" step="1" shortname="GPS reset" module="subsystems/gps" min="0" max="2" handler="Reset"/>
+    </dl_settings>
+    <dl_settings name="Modules">
+      <dl_setting min="2" max="3" step="1" var="gps_ubx_gps_ubx_ucenter_periodic_status" shortname="gps_ubx_ucenter_periodic" values="START|STOP"/>
+    </dl_settings>
+  </dl_settings>
+</settings>

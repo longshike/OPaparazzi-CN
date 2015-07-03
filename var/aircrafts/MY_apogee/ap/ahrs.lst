@@ -1,0 +1,377 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"ahrs.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.ahrs_register_impl,"ax",%progbits
+  20              		.align	1
+  21              		.global	ahrs_register_impl
+  22              		.thumb
+  23              		.thumb_func
+  25              	ahrs_register_impl:
+  26              	.LFB83:
+  27              		.file 1 "subsystems/ahrs.c"
+   1:subsystems/ahrs.c **** /*
+   2:subsystems/ahrs.c ****  * Copyright (C) 2008-2010 The Paparazzi Team
+   3:subsystems/ahrs.c ****  *
+   4:subsystems/ahrs.c ****  * This file is part of paparazzi.
+   5:subsystems/ahrs.c ****  *
+   6:subsystems/ahrs.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/ahrs.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/ahrs.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/ahrs.c ****  * any later version.
+  10:subsystems/ahrs.c ****  *
+  11:subsystems/ahrs.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/ahrs.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/ahrs.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/ahrs.c ****  * GNU General Public License for more details.
+  15:subsystems/ahrs.c ****  *
+  16:subsystems/ahrs.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/ahrs.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/ahrs.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/ahrs.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/ahrs.c ****  */
+  21:subsystems/ahrs.c **** 
+  22:subsystems/ahrs.c **** /**
+  23:subsystems/ahrs.c ****  * @file subsystems/ahrs.c
+  24:subsystems/ahrs.c ****  * Dispatcher to register actual AHRS implementations.
+  25:subsystems/ahrs.c ****  */
+  26:subsystems/ahrs.c **** 
+  27:subsystems/ahrs.c **** 
+  28:subsystems/ahrs.c **** #include "subsystems/ahrs.h"
+  29:subsystems/ahrs.c **** 
+  30:subsystems/ahrs.c **** #ifndef PRIMARY_AHRS
+  31:subsystems/ahrs.c **** #error "PRIMARY_AHRS not set!"
+  32:subsystems/ahrs.c **** #else
+  33:subsystems/ahrs.c **** PRINT_CONFIG_VAR(PRIMARY_AHRS)
+  34:subsystems/ahrs.c **** #endif
+  35:subsystems/ahrs.c **** 
+  36:subsystems/ahrs.c **** #ifdef SECONDARY_AHRS
+  37:subsystems/ahrs.c **** PRINT_CONFIG_VAR(SECONDARY_AHRS)
+  38:subsystems/ahrs.c **** #endif
+  39:subsystems/ahrs.c **** 
+  40:subsystems/ahrs.c **** #define __RegisterAhrs(_x) _x ## _register()
+  41:subsystems/ahrs.c **** #define _RegisterAhrs(_x) __RegisterAhrs(_x)
+  42:subsystems/ahrs.c **** #define RegisterAhrs(_x) _RegisterAhrs(_x)
+  43:subsystems/ahrs.c **** 
+  44:subsystems/ahrs.c **** /** maximum number of AHRS implementations that can register */
+  45:subsystems/ahrs.c **** #ifndef AHRS_NB_IMPL
+  46:subsystems/ahrs.c **** #define AHRS_NB_IMPL 2
+  47:subsystems/ahrs.c **** #endif
+  48:subsystems/ahrs.c **** 
+  49:subsystems/ahrs.c **** /** references a registered AHRS implementation */
+  50:subsystems/ahrs.c **** struct AhrsImpl {
+  51:subsystems/ahrs.c ****   AhrsEnableOutput enable;
+  52:subsystems/ahrs.c **** };
+  53:subsystems/ahrs.c **** 
+  54:subsystems/ahrs.c **** struct AhrsImpl ahrs_impls[AHRS_NB_IMPL];
+  55:subsystems/ahrs.c **** uint8_t ahrs_output_idx;
+  56:subsystems/ahrs.c **** 
+  57:subsystems/ahrs.c **** void ahrs_register_impl(AhrsEnableOutput enable)
+  58:subsystems/ahrs.c **** {
+  28              		.loc 1 58 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  59:subsystems/ahrs.c ****   int i;
+  60:subsystems/ahrs.c ****   for (i=0; i < AHRS_NB_IMPL; i++) {
+  61:subsystems/ahrs.c ****     if (ahrs_impls[i].enable == NULL) {
+  34              		.loc 1 61 0
+  35 0000 044B     		ldr	r3, .L6
+  36 0002 1A68     		ldr	r2, [r3]
+  37 0004 12B1     		cbz	r2, .L2
+  38              	.LVL1:
+  39 0006 5A68     		ldr	r2, [r3, #4]
+  40 0008 12B9     		cbnz	r2, .L1
+  60:subsystems/ahrs.c ****     if (ahrs_impls[i].enable == NULL) {
+  41              		.loc 1 60 0
+  42 000a 0122     		movs	r2, #1
+  43              	.LVL2:
+  44              	.L2:
+  62:subsystems/ahrs.c ****       ahrs_impls[i].enable = enable;
+  45              		.loc 1 62 0
+  46 000c 43F82200 		str	r0, [r3, r2, lsl #2]
+  47              	.L1:
+  48 0010 7047     		bx	lr
+  49              	.L7:
+  50 0012 00BF     		.align	2
+  51              	.L6:
+  52 0014 00000000 		.word	.LANCHOR0
+  53              		.cfi_endproc
+  54              	.LFE83:
+  56              		.section	.text.ahrs_switch,"ax",%progbits
+  57              		.align	1
+  58              		.global	ahrs_switch
+  59              		.thumb
+  60              		.thumb_func
+  62              	ahrs_switch:
+  63              	.LFB85:
+  63:subsystems/ahrs.c ****       break;
+  64:subsystems/ahrs.c ****     }
+  65:subsystems/ahrs.c ****   }
+  66:subsystems/ahrs.c **** }
+  67:subsystems/ahrs.c **** 
+  68:subsystems/ahrs.c **** void ahrs_init(void)
+  69:subsystems/ahrs.c **** {
+  70:subsystems/ahrs.c ****   int i;
+  71:subsystems/ahrs.c ****   for (i=0; i < AHRS_NB_IMPL; i++) {
+  72:subsystems/ahrs.c ****     ahrs_impls[i].enable = NULL;
+  73:subsystems/ahrs.c ****   }
+  74:subsystems/ahrs.c **** 
+  75:subsystems/ahrs.c ****   RegisterAhrs(PRIMARY_AHRS);
+  76:subsystems/ahrs.c **** #ifdef SECONDARY_AHRS
+  77:subsystems/ahrs.c ****   RegisterAhrs(SECONDARY_AHRS);
+  78:subsystems/ahrs.c **** #endif
+  79:subsystems/ahrs.c **** 
+  80:subsystems/ahrs.c ****   // enable primary AHRS by default
+  81:subsystems/ahrs.c ****   ahrs_switch(0);
+  82:subsystems/ahrs.c **** }
+  83:subsystems/ahrs.c **** 
+  84:subsystems/ahrs.c **** int ahrs_switch(uint8_t idx)
+  85:subsystems/ahrs.c **** {
+  64              		.loc 1 85 0
+  65              		.cfi_startproc
+  66              		@ args = 0, pretend = 0, frame = 0
+  67              		@ frame_needed = 0, uses_anonymous_args = 0
+  68              	.LVL3:
+  86:subsystems/ahrs.c ****   if (idx >= AHRS_NB_IMPL) { return -1; }
+  69              		.loc 1 86 0
+  70 0000 0128     		cmp	r0, #1
+  85:subsystems/ahrs.c ****   if (idx >= AHRS_NB_IMPL) { return -1; }
+  71              		.loc 1 85 0
+  72 0002 70B5     		push	{r4, r5, r6, lr}
+  73              		.cfi_def_cfa_offset 16
+  74              		.cfi_offset 4, -16
+  75              		.cfi_offset 5, -12
+  76              		.cfi_offset 6, -8
+  77              		.cfi_offset 14, -4
+  85:subsystems/ahrs.c ****   if (idx >= AHRS_NB_IMPL) { return -1; }
+  78              		.loc 1 85 0
+  79 0004 0546     		mov	r5, r0
+  80              		.loc 1 86 0
+  81 0006 13D8     		bhi	.L13
+  87:subsystems/ahrs.c ****   if (ahrs_impls[idx].enable == NULL) { return -1; }
+  82              		.loc 1 87 0
+  83 0008 0B4C     		ldr	r4, .L20
+  84 000a 54F82030 		ldr	r3, [r4, r0, lsl #2]
+  85 000e 0646     		mov	r6, r0
+  86 0010 73B1     		cbz	r3, .L13
+  87              	.LVL4:
+  88:subsystems/ahrs.c ****   /* first disable other AHRS output */
+  89:subsystems/ahrs.c ****   int i;
+  90:subsystems/ahrs.c ****   for (i=0; i < AHRS_NB_IMPL; i++) {
+  91:subsystems/ahrs.c ****     if (ahrs_impls[i].enable != NULL) {
+  88              		.loc 1 91 0 discriminator 1
+  89 0012 2368     		ldr	r3, [r4]
+  90 0014 0BB1     		cbz	r3, .L10
+  92:subsystems/ahrs.c ****       ahrs_impls[i].enable(FALSE);
+  91              		.loc 1 92 0
+  92 0016 0020     		movs	r0, #0
+  93              	.LVL5:
+  94 0018 9847     		blx	r3
+  95              	.LVL6:
+  96              	.L10:
+  91:subsystems/ahrs.c ****       ahrs_impls[i].enable(FALSE);
+  97              		.loc 1 91 0
+  98 001a 6368     		ldr	r3, [r4, #4]
+  99 001c 0BB1     		cbz	r3, .L11
+ 100              		.loc 1 92 0
+ 101 001e 0020     		movs	r0, #0
+ 102 0020 9847     		blx	r3
+ 103              	.LVL7:
+ 104              	.L11:
+  93:subsystems/ahrs.c ****     }
+  94:subsystems/ahrs.c ****   }
+  95:subsystems/ahrs.c ****   /* enable requested AHRS */
+  96:subsystems/ahrs.c ****   ahrs_impls[idx].enable(TRUE);
+ 105              		.loc 1 96 0
+ 106 0022 54F82530 		ldr	r3, [r4, r5, lsl #2]
+ 107 0026 0120     		movs	r0, #1
+ 108 0028 9847     		blx	r3
+ 109              	.LVL8:
+  97:subsystems/ahrs.c ****   ahrs_output_idx = idx;
+ 110              		.loc 1 97 0
+ 111 002a 044B     		ldr	r3, .L20+4
+ 112 002c 1D70     		strb	r5, [r3]
+  98:subsystems/ahrs.c ****   return ahrs_output_idx;
+ 113              		.loc 1 98 0
+ 114 002e 01E0     		b	.L9
+ 115              	.LVL9:
+ 116              	.L13:
+  86:subsystems/ahrs.c ****   if (ahrs_impls[idx].enable == NULL) { return -1; }
+ 117              		.loc 1 86 0
+ 118 0030 4FF0FF36 		mov	r6, #-1
+ 119              	.LVL10:
+ 120              	.L9:
+  99:subsystems/ahrs.c **** }
+ 121              		.loc 1 99 0
+ 122 0034 3046     		mov	r0, r6
+ 123 0036 70BD     		pop	{r4, r5, r6, pc}
+ 124              	.L21:
+ 125              		.align	2
+ 126              	.L20:
+ 127 0038 00000000 		.word	.LANCHOR0
+ 128 003c 00000000 		.word	.LANCHOR1
+ 129              		.cfi_endproc
+ 130              	.LFE85:
+ 132              		.section	.text.ahrs_init,"ax",%progbits
+ 133              		.align	1
+ 134              		.global	ahrs_init
+ 135              		.thumb
+ 136              		.thumb_func
+ 138              	ahrs_init:
+ 139              	.LFB84:
+  69:subsystems/ahrs.c ****   int i;
+ 140              		.loc 1 69 0
+ 141              		.cfi_startproc
+ 142              		@ args = 0, pretend = 0, frame = 0
+ 143              		@ frame_needed = 0, uses_anonymous_args = 0
+ 144              	.LVL11:
+ 145 0000 10B5     		push	{r4, lr}
+ 146              		.cfi_def_cfa_offset 8
+ 147              		.cfi_offset 4, -8
+ 148              		.cfi_offset 14, -4
+  72:subsystems/ahrs.c ****   }
+ 149              		.loc 1 72 0
+ 150 0002 054B     		ldr	r3, .L23
+ 151 0004 0024     		movs	r4, #0
+ 152 0006 1C60     		str	r4, [r3]
+ 153              	.LVL12:
+ 154 0008 5C60     		str	r4, [r3, #4]
+ 155              	.LVL13:
+  75:subsystems/ahrs.c **** #ifdef SECONDARY_AHRS
+ 156              		.loc 1 75 0
+ 157 000a FFF7FEFF 		bl	ahrs_icq_register
+ 158              	.LVL14:
+  81:subsystems/ahrs.c **** }
+ 159              		.loc 1 81 0
+ 160 000e 2046     		mov	r0, r4
+  82:subsystems/ahrs.c **** 
+ 161              		.loc 1 82 0
+ 162 0010 BDE81040 		pop	{r4, lr}
+ 163              		.cfi_restore 14
+ 164              		.cfi_restore 4
+ 165              		.cfi_def_cfa_offset 0
+  81:subsystems/ahrs.c **** }
+ 166              		.loc 1 81 0
+ 167 0014 FFF7FEBF 		b	ahrs_switch
+ 168              	.LVL15:
+ 169              	.L24:
+ 170              		.align	2
+ 171              	.L23:
+ 172 0018 00000000 		.word	.LANCHOR0
+ 173              		.cfi_endproc
+ 174              	.LFE84:
+ 176              		.global	ahrs_output_idx
+ 177              		.global	ahrs_impls
+ 178              		.section	.bss.ahrs_output_idx,"aw",%nobits
+ 179              		.set	.LANCHOR1,. + 0
+ 182              	ahrs_output_idx:
+ 183 0000 00       		.space	1
+ 184              		.section	.bss.ahrs_impls,"aw",%nobits
+ 185              		.align	2
+ 186              		.set	.LANCHOR0,. + 0
+ 189              	ahrs_impls:
+ 190 0000 00000000 		.space	8
+ 190      00000000 
+ 191              		.text
+ 192              	.Letext0:
+ 193              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 194              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 195              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 196              		.file 5 "./math/pprz_algebra_int.h"
+ 197              		.file 6 "./math/pprz_geodetic_int.h"
+ 198              		.file 7 "./mcu_periph/sys_time.h"
+ 199              		.file 8 "./mcu_periph/link_device.h"
+ 200              		.file 9 "./mcu_periph/uart.h"
+ 201              		.file 10 "./subsystems/gps/gps_ubx.h"
+ 202              		.file 11 "./subsystems/gps.h"
+ 203              		.file 12 "./math/pprz_algebra_float.h"
+ 204              		.file 13 "./math/pprz_orientation_conversion.h"
+ 205              		.file 14 "./subsystems/ahrs/ahrs_int_cmpl_quat.h"
+ 206              		.file 15 "./subsystems/ahrs.h"
+ 207              		.file 16 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 208              		.file 17 "./subsystems/ahrs/ahrs_int_cmpl_quat_wrapper.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 ahrs.c
+     /tmp/cczBWv8I.s:20     .text.ahrs_register_impl:00000000 $t
+     /tmp/cczBWv8I.s:25     .text.ahrs_register_impl:00000000 ahrs_register_impl
+     /tmp/cczBWv8I.s:52     .text.ahrs_register_impl:00000014 $d
+     /tmp/cczBWv8I.s:57     .text.ahrs_switch:00000000 $t
+     /tmp/cczBWv8I.s:62     .text.ahrs_switch:00000000 ahrs_switch
+     /tmp/cczBWv8I.s:127    .text.ahrs_switch:00000038 $d
+     /tmp/cczBWv8I.s:133    .text.ahrs_init:00000000 $t
+     /tmp/cczBWv8I.s:138    .text.ahrs_init:00000000 ahrs_init
+     /tmp/cczBWv8I.s:172    .text.ahrs_init:00000018 $d
+     /tmp/cczBWv8I.s:182    .bss.ahrs_output_idx:00000000 ahrs_output_idx
+     /tmp/cczBWv8I.s:189    .bss.ahrs_impls:00000000 ahrs_impls
+     /tmp/cczBWv8I.s:183    .bss.ahrs_output_idx:00000000 $d
+     /tmp/cczBWv8I.s:185    .bss.ahrs_impls:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.gps.h.41.79d1c69e44dd427f855100ff8e932fbe
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+
+UNDEFINED SYMBOLS
+ahrs_icq_register

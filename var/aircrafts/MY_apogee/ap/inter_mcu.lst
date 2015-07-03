@@ -1,0 +1,131 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"inter_mcu.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	time_since_last_ap
+  20              		.global	ap_ok
+  21              		.global	inter_mcu_received_ap
+  22              		.global	inter_mcu_received_fbw
+  23              		.global	ap_state
+  24              		.global	fbw_state
+  25              		.section	.bss.inter_mcu_received_ap,"aw",%nobits
+  28              	inter_mcu_received_ap:
+  29 0000 00       		.space	1
+  30              		.section	.bss._ap_state,"aw",%nobits
+  31              		.align	1
+  34              	_ap_state:
+  35 0000 00000000 		.space	14
+  35      00000000 
+  35      00000000 
+  35      0000
+  36              		.section	.bss.ap_ok,"aw",%nobits
+  39              	ap_ok:
+  40 0000 00       		.space	1
+  41              		.section	.data.fbw_state,"aw",%progbits
+  42              		.align	2
+  45              	fbw_state:
+  46 0000 00000000 		.word	_fbw_state
+  47              		.section	.bss.time_since_last_ap,"aw",%nobits
+  50              	time_since_last_ap:
+  51 0000 00       		.space	1
+  52              		.section	.bss.inter_mcu_received_fbw,"aw",%nobits
+  55              	inter_mcu_received_fbw:
+  56 0000 00       		.space	1
+  57              		.section	.data.ap_state,"aw",%progbits
+  58              		.align	2
+  61              	ap_state:
+  62 0000 00000000 		.word	_ap_state
+  63              		.section	.bss._fbw_state,"aw",%nobits
+  64              		.align	2
+  67              	_fbw_state:
+  68 0000 00000000 		.space	32
+  68      00000000 
+  68      00000000 
+  68      00000000 
+  68      00000000 
+  69              		.text
+  70              	.Letext0:
+  71              		.file 1 "/usr/arm-none-eabi/include/machine/_default_types.h"
+  72              		.file 2 "/usr/arm-none-eabi/include/sys/_stdint.h"
+  73              		.file 3 "/home/dino/paparazzi/sw/include/std.h"
+  74              		.file 4 "paparazzi.h"
+  75              		.file 5 "subsystems/radio_control.h"
+  76              		.file 6 "subsystems/electrical.h"
+  77              		.file 7 "inter_mcu.h"
+  78              		.file 8 "inter_mcu.c"
+  79              		.file 9 "firmwares/fixedwing/main_fbw.h"
+  80              		.file 10 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 inter_mcu.c
+     /tmp/ccz9ct4o.s:50     .bss.time_since_last_ap:00000000 time_since_last_ap
+     /tmp/ccz9ct4o.s:39     .bss.ap_ok:00000000 ap_ok
+     /tmp/ccz9ct4o.s:28     .bss.inter_mcu_received_ap:00000000 inter_mcu_received_ap
+     /tmp/ccz9ct4o.s:55     .bss.inter_mcu_received_fbw:00000000 inter_mcu_received_fbw
+     /tmp/ccz9ct4o.s:61     .data.ap_state:00000000 ap_state
+     /tmp/ccz9ct4o.s:45     .data.fbw_state:00000000 fbw_state
+     /tmp/ccz9ct4o.s:29     .bss.inter_mcu_received_ap:00000000 $d
+     /tmp/ccz9ct4o.s:31     .bss._ap_state:00000000 $d
+     /tmp/ccz9ct4o.s:34     .bss._ap_state:00000000 _ap_state
+     /tmp/ccz9ct4o.s:40     .bss.ap_ok:00000000 $d
+     /tmp/ccz9ct4o.s:42     .data.fbw_state:00000000 $d
+     /tmp/ccz9ct4o.s:67     .bss._fbw_state:00000000 _fbw_state
+     /tmp/ccz9ct4o.s:51     .bss.time_since_last_ap:00000000 $d
+     /tmp/ccz9ct4o.s:56     .bss.inter_mcu_received_fbw:00000000 $d
+     /tmp/ccz9ct4o.s:58     .data.ap_state:00000000 $d
+     /tmp/ccz9ct4o.s:64     .bss._fbw_state:00000000 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.paparazzi.h.2.eeb1c9dc8e5acded3c1d3014b2b23af3
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.led_hw.h.40.8014fb3594847a9d275099fc6ed94641
+                           .group:00000000 wm4.led.h.99.0116146560b22524df8538874a4f60bf
+                           .group:00000000 wm4.ppm_arch.h.30.0c8951ed5389d834f3146640146f52ff
+                           .group:00000000 wm4.radio.h.5.bef73564d5978192f7cd5fea2ca51500
+                           .group:00000000 wm4.ppm.h.47.0149fce522ef0e315e524566a6409a2a
+                           .group:00000000 wm4.radio_control.h.42.d43f9142844e08da852d6ed343ba2de3
+                           .group:00000000 wm4.main_fbw.h.30.cd540a85a950acc45a6cf70c916a3a6b
+                           .group:00000000 wm4.inter_mcu.h.70.46538c70524fe1108f4c29ffbb912cdc
+
+NO UNDEFINED SYMBOLS

@@ -1,0 +1,2165 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"pprz_algebra_double.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	__aeabi_dmul
+  20              		.global	__aeabi_dsub
+  21              		.global	__aeabi_dadd
+  22              		.section	.text.double_rmat_of_eulers_321,"ax",%progbits
+  23              		.align	1
+  24              		.global	double_rmat_of_eulers_321
+  25              		.thumb
+  26              		.thumb_func
+  28              	double_rmat_of_eulers_321:
+  29              	.LFB40:
+  30              		.file 1 "math/pprz_algebra_double.c"
+   1:math/pprz_algebra_double.c **** /*
+   2:math/pprz_algebra_double.c ****  * Copyright (C) 2008-2014 The Paparazzi Team
+   3:math/pprz_algebra_double.c ****  *
+   4:math/pprz_algebra_double.c ****  * This file is part of paparazzi.
+   5:math/pprz_algebra_double.c ****  *
+   6:math/pprz_algebra_double.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:math/pprz_algebra_double.c ****  * it under the terms of the GNU General Public License as published by
+   8:math/pprz_algebra_double.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:math/pprz_algebra_double.c ****  * any later version.
+  10:math/pprz_algebra_double.c ****  *
+  11:math/pprz_algebra_double.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:math/pprz_algebra_double.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:math/pprz_algebra_double.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:math/pprz_algebra_double.c ****  * GNU General Public License for more details.
+  15:math/pprz_algebra_double.c ****  *
+  16:math/pprz_algebra_double.c ****  * You should have received a copy of the GNU General Public License
+  17:math/pprz_algebra_double.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:math/pprz_algebra_double.c ****  * <http://www.gnu.org/licenses/>.
+  19:math/pprz_algebra_double.c ****  */
+  20:math/pprz_algebra_double.c **** 
+  21:math/pprz_algebra_double.c **** /**
+  22:math/pprz_algebra_double.c ****  * @file pprz_algebra_double.c
+  23:math/pprz_algebra_double.c ****  * @brief Paparazzi double precision floating point algebra.
+  24:math/pprz_algebra_double.c ****  *
+  25:math/pprz_algebra_double.c ****  */
+  26:math/pprz_algebra_double.c **** 
+  27:math/pprz_algebra_double.c **** #include "pprz_algebra_double.h"
+  28:math/pprz_algebra_double.c **** 
+  29:math/pprz_algebra_double.c **** void double_rmat_of_eulers_321(struct DoubleRMat *rm, struct DoubleEulers *e)
+  30:math/pprz_algebra_double.c **** {
+  31              		.loc 1 30 0
+  32              		.cfi_startproc
+  33              		@ args = 0, pretend = 0, frame = 40
+  34              		@ frame_needed = 0, uses_anonymous_args = 0
+  35              	.LVL0:
+  36 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+  37              		.cfi_def_cfa_offset 32
+  38              		.cfi_offset 4, -32
+  39              		.cfi_offset 5, -28
+  40              		.cfi_offset 6, -24
+  41              		.cfi_offset 7, -20
+  42              		.cfi_offset 8, -16
+  43              		.cfi_offset 9, -12
+  44              		.cfi_offset 10, -8
+  45              		.cfi_offset 14, -4
+  31:math/pprz_algebra_double.c ****   const double sphi   = sin(e->phi);
+  46              		.loc 1 31 0
+  47 0004 D1E90045 		ldrd	r4, [r1]
+  30:math/pprz_algebra_double.c ****   const double sphi   = sin(e->phi);
+  48              		.loc 1 30 0
+  49 0008 8AB0     		sub	sp, sp, #40
+  50              		.cfi_def_cfa_offset 72
+  30:math/pprz_algebra_double.c ****   const double sphi   = sin(e->phi);
+  51              		.loc 1 30 0
+  52 000a 8246     		mov	r10, r0
+  53 000c 8846     		mov	r8, r1
+  54              		.loc 1 31 0
+  55 000e 2046     		mov	r0, r4
+  56              	.LVL1:
+  57 0010 2946     		mov	r1, r5
+  58              	.LVL2:
+  59 0012 FFF7FEFF 		bl	sin
+  60              	.LVL3:
+  61 0016 CDE90201 		strd	r0, [sp, #8]
+  62              	.LVL4:
+  32:math/pprz_algebra_double.c ****   const double cphi   = cos(e->phi);
+  63              		.loc 1 32 0
+  64 001a 2046     		mov	r0, r4
+  65              	.LVL5:
+  66 001c 2946     		mov	r1, r5
+  67 001e FFF7FEFF 		bl	cos
+  68              	.LVL6:
+  33:math/pprz_algebra_double.c ****   const double stheta = sin(e->theta);
+  69              		.loc 1 33 0
+  70 0022 D8E90267 		ldrd	r6, [r8, #8]
+  32:math/pprz_algebra_double.c ****   const double cphi   = cos(e->phi);
+  71              		.loc 1 32 0
+  72 0026 CDE90401 		strd	r0, [sp, #16]
+  73              	.LVL7:
+  74              		.loc 1 33 0
+  75 002a 3046     		mov	r0, r6
+  76              	.LVL8:
+  77 002c 3946     		mov	r1, r7
+  78 002e FFF7FEFF 		bl	sin
+  79              	.LVL9:
+  80 0032 0446     		mov	r4, r0
+  81 0034 0D46     		mov	r5, r1
+  82              	.LVL10:
+  34:math/pprz_algebra_double.c ****   const double ctheta = cos(e->theta);
+  83              		.loc 1 34 0
+  84 0036 3046     		mov	r0, r6
+  85 0038 3946     		mov	r1, r7
+  86 003a FFF7FEFF 		bl	cos
+  87              	.LVL11:
+  35:math/pprz_algebra_double.c ****   const double spsi   = sin(e->psi);
+  88              		.loc 1 35 0
+  89 003e D8E90467 		ldrd	r6, [r8, #16]
+  34:math/pprz_algebra_double.c ****   const double ctheta = cos(e->theta);
+  90              		.loc 1 34 0
+  91 0042 CDE90601 		strd	r0, [sp, #24]
+  92              	.LVL12:
+  93              		.loc 1 35 0
+  94 0046 3046     		mov	r0, r6
+  95              	.LVL13:
+  96 0048 3946     		mov	r1, r7
+  97 004a FFF7FEFF 		bl	sin
+  98              	.LVL14:
+  99 004e CDE90001 		strd	r0, [sp]
+ 100              	.LVL15:
+  36:math/pprz_algebra_double.c ****   const double cpsi   = cos(e->psi);
+ 101              		.loc 1 36 0
+ 102 0052 3046     		mov	r0, r6
+ 103              	.LVL16:
+ 104 0054 3946     		mov	r1, r7
+ 105 0056 FFF7FEFF 		bl	cos
+ 106              	.LVL17:
+ 107 005a 8046     		mov	r8, r0
+ 108              	.LVL18:
+ 109 005c 8946     		mov	r9, r1
+ 110              	.LVL19:
+  37:math/pprz_algebra_double.c **** 
+  38:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 0) = ctheta * cpsi;
+ 111              		.loc 1 38 0
+ 112 005e 4246     		mov	r2, r8
+ 113 0060 DDE90601 		ldrd	r0, [sp, #24]
+ 114 0064 4B46     		mov	r3, r9
+ 115 0066 FFF7FEFF 		bl	__aeabi_dmul
+ 116              	.LVL20:
+  39:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 1) = ctheta * spsi;
+ 117              		.loc 1 39 0
+ 118 006a DDE90023 		ldrd	r2, [sp]
+  38:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 1) = ctheta * spsi;
+ 119              		.loc 1 38 0
+ 120 006e CAE90001 		strd	r0, [r10]
+ 121              		.loc 1 39 0
+ 122 0072 DDE90601 		ldrd	r0, [sp, #24]
+ 123 0076 FFF7FEFF 		bl	__aeabi_dmul
+ 124              	.LVL21:
+  40:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 2) = -stheta;
+ 125              		.loc 1 40 0
+ 126 007a 05F10043 		add	r3, r5, #-2147483648
+  39:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 1) = ctheta * spsi;
+ 127              		.loc 1 39 0
+ 128 007e CAE90201 		strd	r0, [r10, #8]
+ 129              		.loc 1 40 0
+ 130 0082 CAF81040 		str	r4, [r10, #16]
+ 131 0086 CAF81430 		str	r3, [r10, #20]
+  41:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 0) = sphi * stheta * cpsi - cphi * spsi;
+ 132              		.loc 1 41 0
+ 133 008a DDE90201 		ldrd	r0, [sp, #8]
+ 134 008e 2246     		mov	r2, r4
+ 135 0090 2B46     		mov	r3, r5
+ 136 0092 FFF7FEFF 		bl	__aeabi_dmul
+ 137              	.LVL22:
+ 138 0096 4246     		mov	r2, r8
+ 139 0098 4B46     		mov	r3, r9
+ 140 009a 0646     		mov	r6, r0
+ 141 009c 0F46     		mov	r7, r1
+ 142 009e FFF7FEFF 		bl	__aeabi_dmul
+ 143              	.LVL23:
+ 144 00a2 DDE90023 		ldrd	r2, [sp]
+ 145 00a6 CDE90801 		strd	r0, [sp, #32]
+ 146 00aa DDE90401 		ldrd	r0, [sp, #16]
+ 147 00ae FFF7FEFF 		bl	__aeabi_dmul
+ 148              	.LVL24:
+ 149 00b2 0246     		mov	r2, r0
+ 150 00b4 0B46     		mov	r3, r1
+ 151 00b6 DDE90801 		ldrd	r0, [sp, #32]
+ 152 00ba FFF7FEFF 		bl	__aeabi_dsub
+ 153              	.LVL25:
+  42:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 1) = sphi * stheta * spsi + cphi * cpsi;
+ 154              		.loc 1 42 0
+ 155 00be DDE90023 		ldrd	r2, [sp]
+  41:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 0) = sphi * stheta * cpsi - cphi * spsi;
+ 156              		.loc 1 41 0
+ 157 00c2 CAE90601 		strd	r0, [r10, #24]
+ 158              		.loc 1 42 0
+ 159 00c6 3046     		mov	r0, r6
+ 160 00c8 3946     		mov	r1, r7
+ 161 00ca FFF7FEFF 		bl	__aeabi_dmul
+ 162              	.LVL26:
+ 163 00ce 4246     		mov	r2, r8
+ 164 00d0 0646     		mov	r6, r0
+ 165 00d2 0F46     		mov	r7, r1
+ 166 00d4 4B46     		mov	r3, r9
+ 167 00d6 DDE90401 		ldrd	r0, [sp, #16]
+ 168 00da FFF7FEFF 		bl	__aeabi_dmul
+ 169              	.LVL27:
+ 170 00de 0246     		mov	r2, r0
+ 171 00e0 0B46     		mov	r3, r1
+ 172 00e2 3046     		mov	r0, r6
+ 173 00e4 3946     		mov	r1, r7
+ 174 00e6 FFF7FEFF 		bl	__aeabi_dadd
+ 175              	.LVL28:
+  43:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 2) = sphi * ctheta;
+ 176              		.loc 1 43 0
+ 177 00ea DDE90623 		ldrd	r2, [sp, #24]
+  42:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 1) = sphi * stheta * spsi + cphi * cpsi;
+ 178              		.loc 1 42 0
+ 179 00ee CAE90801 		strd	r0, [r10, #32]
+ 180              		.loc 1 43 0
+ 181 00f2 DDE90201 		ldrd	r0, [sp, #8]
+ 182 00f6 FFF7FEFF 		bl	__aeabi_dmul
+ 183              	.LVL29:
+  44:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 0) = cphi * stheta * cpsi + sphi * spsi;
+ 184              		.loc 1 44 0
+ 185 00fa 2246     		mov	r2, r4
+  43:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 2) = sphi * ctheta;
+ 186              		.loc 1 43 0
+ 187 00fc CAE90A01 		strd	r0, [r10, #40]
+ 188              		.loc 1 44 0
+ 189 0100 2B46     		mov	r3, r5
+ 190 0102 DDE90401 		ldrd	r0, [sp, #16]
+ 191 0106 FFF7FEFF 		bl	__aeabi_dmul
+ 192              	.LVL30:
+ 193 010a 4246     		mov	r2, r8
+ 194 010c 4B46     		mov	r3, r9
+ 195 010e 0446     		mov	r4, r0
+ 196              	.LVL31:
+ 197 0110 0D46     		mov	r5, r1
+ 198 0112 FFF7FEFF 		bl	__aeabi_dmul
+ 199              	.LVL32:
+ 200 0116 0646     		mov	r6, r0
+ 201 0118 0F46     		mov	r7, r1
+ 202 011a DDE90201 		ldrd	r0, [sp, #8]
+ 203 011e DDE90023 		ldrd	r2, [sp]
+ 204 0122 FFF7FEFF 		bl	__aeabi_dmul
+ 205              	.LVL33:
+ 206 0126 0246     		mov	r2, r0
+ 207 0128 0B46     		mov	r3, r1
+ 208 012a 3046     		mov	r0, r6
+ 209 012c 3946     		mov	r1, r7
+ 210 012e FFF7FEFF 		bl	__aeabi_dadd
+ 211              	.LVL34:
+  45:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 1) = cphi * stheta * spsi - sphi * cpsi;
+ 212              		.loc 1 45 0
+ 213 0132 DDE90023 		ldrd	r2, [sp]
+  44:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 0) = cphi * stheta * cpsi + sphi * spsi;
+ 214              		.loc 1 44 0
+ 215 0136 CAE90C01 		strd	r0, [r10, #48]
+ 216              		.loc 1 45 0
+ 217 013a 2046     		mov	r0, r4
+ 218 013c 2946     		mov	r1, r5
+ 219 013e FFF7FEFF 		bl	__aeabi_dmul
+ 220              	.LVL35:
+ 221 0142 4246     		mov	r2, r8
+ 222 0144 0446     		mov	r4, r0
+ 223 0146 0D46     		mov	r5, r1
+ 224 0148 4B46     		mov	r3, r9
+ 225 014a DDE90201 		ldrd	r0, [sp, #8]
+ 226 014e FFF7FEFF 		bl	__aeabi_dmul
+ 227              	.LVL36:
+ 228 0152 0246     		mov	r2, r0
+ 229 0154 0B46     		mov	r3, r1
+ 230 0156 2046     		mov	r0, r4
+ 231 0158 2946     		mov	r1, r5
+ 232 015a FFF7FEFF 		bl	__aeabi_dsub
+ 233              	.LVL37:
+  46:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 2) = cphi * ctheta;
+ 234              		.loc 1 46 0
+ 235 015e DDE90623 		ldrd	r2, [sp, #24]
+  45:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 1) = cphi * stheta * spsi - sphi * cpsi;
+ 236              		.loc 1 45 0
+ 237 0162 CAE90E01 		strd	r0, [r10, #56]
+ 238              		.loc 1 46 0
+ 239 0166 DDE90401 		ldrd	r0, [sp, #16]
+ 240 016a FFF7FEFF 		bl	__aeabi_dmul
+ 241              	.LVL38:
+ 242 016e CAE91001 		strd	r0, [r10, #64]
+  47:math/pprz_algebra_double.c **** }
+ 243              		.loc 1 47 0
+ 244 0172 0AB0     		add	sp, sp, #40
+ 245              		.cfi_def_cfa_offset 32
+ 246              	.LVL39:
+ 247              		@ sp needed
+ 248 0174 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 249              		.cfi_endproc
+ 250              	.LFE40:
+ 252              		.section	.text.double_quat_of_eulers,"ax",%progbits
+ 253              		.align	1
+ 254              		.global	double_quat_of_eulers
+ 255              		.thumb
+ 256              		.thumb_func
+ 258              	double_quat_of_eulers:
+ 259              	.LFB41:
+  48:math/pprz_algebra_double.c **** 
+  49:math/pprz_algebra_double.c **** void double_quat_of_eulers(struct DoubleQuat *q, struct DoubleEulers *e)
+  50:math/pprz_algebra_double.c **** {
+ 260              		.loc 1 50 0
+ 261              		.cfi_startproc
+ 262              		@ args = 0, pretend = 0, frame = 48
+ 263              		@ frame_needed = 0, uses_anonymous_args = 0
+ 264              	.LVL40:
+ 265 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 266              		.cfi_def_cfa_offset 32
+ 267              		.cfi_offset 4, -32
+ 268              		.cfi_offset 5, -28
+ 269              		.cfi_offset 6, -24
+ 270              		.cfi_offset 7, -20
+ 271              		.cfi_offset 8, -16
+ 272              		.cfi_offset 9, -12
+ 273              		.cfi_offset 10, -8
+ 274              		.cfi_offset 14, -4
+  51:math/pprz_algebra_double.c ****   const double phi2   = e->phi / 2.0;
+ 275              		.loc 1 51 0
+ 276 0004 0022     		movs	r2, #0
+  50:math/pprz_algebra_double.c ****   const double phi2   = e->phi / 2.0;
+ 277              		.loc 1 50 0
+ 278 0006 8CB0     		sub	sp, sp, #48
+ 279              		.cfi_def_cfa_offset 80
+  50:math/pprz_algebra_double.c ****   const double phi2   = e->phi / 2.0;
+ 280              		.loc 1 50 0
+ 281 0008 8246     		mov	r10, r0
+ 282 000a 0C46     		mov	r4, r1
+ 283              		.loc 1 51 0
+ 284 000c 5B4B     		ldr	r3, .L3
+ 285 000e D1E90001 		ldrd	r0, [r1]
+ 286              	.LVL41:
+ 287 0012 FFF7FEFF 		bl	__aeabi_dmul
+ 288              	.LVL42:
+  52:math/pprz_algebra_double.c ****   const double theta2 = e->theta / 2.0;
+ 289              		.loc 1 52 0
+ 290 0016 0022     		movs	r2, #0
+  51:math/pprz_algebra_double.c ****   const double phi2   = e->phi / 2.0;
+ 291              		.loc 1 51 0
+ 292 0018 8046     		mov	r8, r0
+ 293 001a 8946     		mov	r9, r1
+ 294              	.LVL43:
+ 295              		.loc 1 52 0
+ 296 001c 574B     		ldr	r3, .L3
+ 297 001e D4E90201 		ldrd	r0, [r4, #8]
+ 298 0022 FFF7FEFF 		bl	__aeabi_dmul
+ 299              	.LVL44:
+  53:math/pprz_algebra_double.c ****   const double psi2   = e->psi / 2.0;
+ 300              		.loc 1 53 0
+ 301 0026 0022     		movs	r2, #0
+ 302 0028 544B     		ldr	r3, .L3
+  52:math/pprz_algebra_double.c ****   const double theta2 = e->theta / 2.0;
+ 303              		.loc 1 52 0
+ 304 002a 0646     		mov	r6, r0
+ 305 002c 0F46     		mov	r7, r1
+ 306              	.LVL45:
+ 307              		.loc 1 53 0
+ 308 002e D4E90401 		ldrd	r0, [r4, #16]
+ 309 0032 FFF7FEFF 		bl	__aeabi_dmul
+ 310              	.LVL46:
+ 311 0036 0446     		mov	r4, r0
+ 312              	.LVL47:
+ 313 0038 0D46     		mov	r5, r1
+ 314              	.LVL48:
+  54:math/pprz_algebra_double.c **** 
+  55:math/pprz_algebra_double.c ****   const double s_phi2   = sin(phi2);
+ 315              		.loc 1 55 0
+ 316 003a 4046     		mov	r0, r8
+ 317 003c 4946     		mov	r1, r9
+ 318 003e FFF7FEFF 		bl	sin
+ 319              	.LVL49:
+ 320 0042 CDE90601 		strd	r0, [sp, #24]
+ 321              	.LVL50:
+  56:math/pprz_algebra_double.c ****   const double c_phi2   = cos(phi2);
+ 322              		.loc 1 56 0
+ 323 0046 4046     		mov	r0, r8
+ 324              	.LVL51:
+ 325 0048 4946     		mov	r1, r9
+ 326 004a FFF7FEFF 		bl	cos
+ 327              	.LVL52:
+ 328 004e 8046     		mov	r8, r0
+ 329              	.LVL53:
+ 330 0050 8946     		mov	r9, r1
+ 331              	.LVL54:
+  57:math/pprz_algebra_double.c ****   const double s_theta2 = sin(theta2);
+ 332              		.loc 1 57 0
+ 333 0052 3046     		mov	r0, r6
+ 334 0054 3946     		mov	r1, r7
+ 335 0056 FFF7FEFF 		bl	sin
+ 336              	.LVL55:
+ 337 005a CDE90401 		strd	r0, [sp, #16]
+ 338              	.LVL56:
+  58:math/pprz_algebra_double.c ****   const double c_theta2 = cos(theta2);
+ 339              		.loc 1 58 0
+ 340 005e 3046     		mov	r0, r6
+ 341              	.LVL57:
+ 342 0060 3946     		mov	r1, r7
+ 343 0062 FFF7FEFF 		bl	cos
+ 344              	.LVL58:
+ 345 0066 0646     		mov	r6, r0
+ 346              	.LVL59:
+ 347 0068 0F46     		mov	r7, r1
+ 348              	.LVL60:
+  59:math/pprz_algebra_double.c ****   const double s_psi2   = sin(psi2);
+ 349              		.loc 1 59 0
+ 350 006a 2046     		mov	r0, r4
+ 351 006c 2946     		mov	r1, r5
+ 352 006e FFF7FEFF 		bl	sin
+ 353              	.LVL61:
+ 354 0072 CDE90001 		strd	r0, [sp]
+ 355              	.LVL62:
+  60:math/pprz_algebra_double.c ****   const double c_psi2   = cos(psi2);
+ 356              		.loc 1 60 0
+ 357 0076 2046     		mov	r0, r4
+ 358              	.LVL63:
+ 359 0078 2946     		mov	r1, r5
+ 360 007a FFF7FEFF 		bl	cos
+ 361              	.LVL64:
+  61:math/pprz_algebra_double.c **** 
+  62:math/pprz_algebra_double.c ****   q->qi =  c_phi2 * c_theta2 * c_psi2 + s_phi2 * s_theta2 * s_psi2;
+ 362              		.loc 1 62 0
+ 363 007e 3246     		mov	r2, r6
+  60:math/pprz_algebra_double.c ****   const double c_psi2   = cos(psi2);
+ 364              		.loc 1 60 0
+ 365 0080 CDE90201 		strd	r0, [sp, #8]
+ 366              	.LVL65:
+ 367              		.loc 1 62 0
+ 368 0084 3B46     		mov	r3, r7
+ 369 0086 4046     		mov	r0, r8
+ 370              	.LVL66:
+ 371 0088 4946     		mov	r1, r9
+ 372 008a FFF7FEFF 		bl	__aeabi_dmul
+ 373              	.LVL67:
+ 374 008e DDE90423 		ldrd	r2, [sp, #16]
+ 375 0092 CDE90801 		strd	r0, [sp, #32]
+ 376 0096 DDE90601 		ldrd	r0, [sp, #24]
+ 377 009a FFF7FEFF 		bl	__aeabi_dmul
+ 378              	.LVL68:
+ 379 009e DDE90223 		ldrd	r2, [sp, #8]
+ 380 00a2 CDE90A01 		strd	r0, [sp, #40]
+ 381 00a6 DDE90801 		ldrd	r0, [sp, #32]
+ 382 00aa FFF7FEFF 		bl	__aeabi_dmul
+ 383              	.LVL69:
+ 384 00ae DDE90023 		ldrd	r2, [sp]
+ 385 00b2 0446     		mov	r4, r0
+ 386              	.LVL70:
+ 387 00b4 0D46     		mov	r5, r1
+ 388 00b6 DDE90A01 		ldrd	r0, [sp, #40]
+ 389 00ba FFF7FEFF 		bl	__aeabi_dmul
+ 390              	.LVL71:
+ 391 00be 0246     		mov	r2, r0
+ 392 00c0 0B46     		mov	r3, r1
+ 393 00c2 2046     		mov	r0, r4
+ 394 00c4 2946     		mov	r1, r5
+ 395 00c6 FFF7FEFF 		bl	__aeabi_dadd
+ 396              	.LVL72:
+  63:math/pprz_algebra_double.c ****   q->qx = -c_phi2 * s_theta2 * s_psi2 + s_phi2 * c_theta2 * c_psi2;
+ 397              		.loc 1 63 0
+ 398 00ca 3246     		mov	r2, r6
+  62:math/pprz_algebra_double.c ****   q->qx = -c_phi2 * s_theta2 * s_psi2 + s_phi2 * c_theta2 * c_psi2;
+ 399              		.loc 1 62 0
+ 400 00cc CAE90001 		strd	r0, [r10]
+ 401              		.loc 1 63 0
+ 402 00d0 3B46     		mov	r3, r7
+ 403 00d2 DDE90601 		ldrd	r0, [sp, #24]
+ 404 00d6 FFF7FEFF 		bl	__aeabi_dmul
+ 405              	.LVL73:
+ 406 00da DDE90423 		ldrd	r2, [sp, #16]
+ 407 00de 0446     		mov	r4, r0
+ 408 00e0 0D46     		mov	r5, r1
+ 409 00e2 4046     		mov	r0, r8
+ 410 00e4 09F10041 		add	r1, r9, #-2147483648
+ 411 00e8 FFF7FEFF 		bl	__aeabi_dmul
+ 412              	.LVL74:
+ 413 00ec DDE90023 		ldrd	r2, [sp]
+ 414 00f0 FFF7FEFF 		bl	__aeabi_dmul
+ 415              	.LVL75:
+ 416 00f4 DDE90223 		ldrd	r2, [sp, #8]
+ 417 00f8 0646     		mov	r6, r0
+ 418              	.LVL76:
+ 419 00fa 0F46     		mov	r7, r1
+ 420 00fc 2046     		mov	r0, r4
+ 421 00fe 2946     		mov	r1, r5
+ 422 0100 FFF7FEFF 		bl	__aeabi_dmul
+ 423              	.LVL77:
+ 424 0104 0246     		mov	r2, r0
+ 425 0106 0B46     		mov	r3, r1
+ 426 0108 3046     		mov	r0, r6
+ 427 010a 3946     		mov	r1, r7
+ 428 010c FFF7FEFF 		bl	__aeabi_dadd
+ 429              	.LVL78:
+ 430 0110 CAE90201 		strd	r0, [r10, #8]
+  64:math/pprz_algebra_double.c ****   q->qy =  c_phi2 * s_theta2 * c_psi2 + s_phi2 * c_theta2 * s_psi2;
+ 431              		.loc 1 64 0
+ 432 0114 DDE90423 		ldrd	r2, [sp, #16]
+ 433 0118 4046     		mov	r0, r8
+ 434 011a 4946     		mov	r1, r9
+ 435 011c FFF7FEFF 		bl	__aeabi_dmul
+ 436              	.LVL79:
+ 437 0120 DDE90223 		ldrd	r2, [sp, #8]
+ 438 0124 FFF7FEFF 		bl	__aeabi_dmul
+ 439              	.LVL80:
+ 440 0128 DDE90023 		ldrd	r2, [sp]
+ 441 012c 0646     		mov	r6, r0
+ 442 012e 0F46     		mov	r7, r1
+ 443 0130 2046     		mov	r0, r4
+ 444 0132 2946     		mov	r1, r5
+ 445 0134 FFF7FEFF 		bl	__aeabi_dmul
+ 446              	.LVL81:
+ 447 0138 0246     		mov	r2, r0
+ 448 013a 0B46     		mov	r3, r1
+ 449 013c 3046     		mov	r0, r6
+ 450 013e 3946     		mov	r1, r7
+ 451 0140 FFF7FEFF 		bl	__aeabi_dadd
+ 452              	.LVL82:
+  65:math/pprz_algebra_double.c ****   q->qz =  c_phi2 * c_theta2 * s_psi2 - s_phi2 * s_theta2 * c_psi2;
+ 453              		.loc 1 65 0
+ 454 0144 DDE90023 		ldrd	r2, [sp]
+  64:math/pprz_algebra_double.c ****   q->qy =  c_phi2 * s_theta2 * c_psi2 + s_phi2 * c_theta2 * s_psi2;
+ 455              		.loc 1 64 0
+ 456 0148 CAE90401 		strd	r0, [r10, #16]
+ 457              		.loc 1 65 0
+ 458 014c DDE90801 		ldrd	r0, [sp, #32]
+ 459 0150 FFF7FEFF 		bl	__aeabi_dmul
+ 460              	.LVL83:
+ 461 0154 DDE90223 		ldrd	r2, [sp, #8]
+ 462 0158 0446     		mov	r4, r0
+ 463 015a 0D46     		mov	r5, r1
+ 464 015c DDE90A01 		ldrd	r0, [sp, #40]
+ 465 0160 FFF7FEFF 		bl	__aeabi_dmul
+ 466              	.LVL84:
+ 467 0164 0246     		mov	r2, r0
+ 468 0166 0B46     		mov	r3, r1
+ 469 0168 2046     		mov	r0, r4
+ 470 016a 2946     		mov	r1, r5
+ 471 016c FFF7FEFF 		bl	__aeabi_dsub
+ 472              	.LVL85:
+ 473 0170 CAE90601 		strd	r0, [r10, #24]
+  66:math/pprz_algebra_double.c **** }
+ 474              		.loc 1 66 0
+ 475 0174 0CB0     		add	sp, sp, #48
+ 476              		.cfi_def_cfa_offset 32
+ 477              	.LVL86:
+ 478              		@ sp needed
+ 479 0176 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 480              	.LVL87:
+ 481              	.L4:
+ 482 017a 00BF     		.align	2
+ 483              	.L3:
+ 484 017c 0000E03F 		.word	1071644672
+ 485              		.cfi_endproc
+ 486              	.LFE41:
+ 488              		.section	.text.double_eulers_of_quat,"ax",%progbits
+ 489              		.align	1
+ 490              		.global	double_eulers_of_quat
+ 491              		.thumb
+ 492              		.thumb_func
+ 494              	double_eulers_of_quat:
+ 495              	.LFB42:
+  67:math/pprz_algebra_double.c **** 
+  68:math/pprz_algebra_double.c **** void double_eulers_of_quat(struct DoubleEulers *e, struct DoubleQuat *q)
+  69:math/pprz_algebra_double.c **** {
+ 496              		.loc 1 69 0
+ 497              		.cfi_startproc
+ 498              		@ args = 0, pretend = 0, frame = 24
+ 499              		@ frame_needed = 0, uses_anonymous_args = 0
+ 500              	.LVL88:
+ 501 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 502              		.cfi_def_cfa_offset 36
+ 503              		.cfi_offset 4, -36
+ 504              		.cfi_offset 5, -32
+ 505              		.cfi_offset 6, -28
+ 506              		.cfi_offset 7, -24
+ 507              		.cfi_offset 8, -20
+ 508              		.cfi_offset 9, -16
+ 509              		.cfi_offset 10, -12
+ 510              		.cfi_offset 11, -8
+ 511              		.cfi_offset 14, -4
+  70:math/pprz_algebra_double.c ****   const double qx2  = q->qx * q->qx;
+  71:math/pprz_algebra_double.c ****   const double qy2  = q->qy * q->qy;
+ 512              		.loc 1 71 0
+ 513 0004 D1E90445 		ldrd	r4, [r1, #16]
+  69:math/pprz_algebra_double.c ****   const double qx2  = q->qx * q->qx;
+ 514              		.loc 1 69 0
+ 515 0008 87B0     		sub	sp, sp, #28
+ 516              		.cfi_def_cfa_offset 64
+  70:math/pprz_algebra_double.c ****   const double qx2  = q->qx * q->qx;
+ 517              		.loc 1 70 0
+ 518 000a D1E90267 		ldrd	r6, [r1, #8]
+ 519              	.LVL89:
+  69:math/pprz_algebra_double.c ****   const double qx2  = q->qx * q->qx;
+ 520              		.loc 1 69 0
+ 521 000e 8846     		mov	r8, r1
+ 522 0010 0190     		str	r0, [sp, #4]
+ 523              		.loc 1 71 0
+ 524 0012 2246     		mov	r2, r4
+ 525 0014 2B46     		mov	r3, r5
+ 526 0016 2046     		mov	r0, r4
+ 527              	.LVL90:
+ 528 0018 2946     		mov	r1, r5
+ 529              	.LVL91:
+ 530 001a FFF7FEFF 		bl	__aeabi_dmul
+ 531              	.LVL92:
+  72:math/pprz_algebra_double.c ****   const double qz2  = q->qz * q->qz;
+ 532              		.loc 1 72 0
+ 533 001e D8E906AB 		ldrd	r10, [r8, #24]
+  73:math/pprz_algebra_double.c ****   const double qiqx = q->qi * q->qx;
+ 534              		.loc 1 73 0
+ 535 0022 98ED007B 		fldd	d7, [r8]
+  71:math/pprz_algebra_double.c ****   const double qz2  = q->qz * q->qz;
+ 536              		.loc 1 71 0
+ 537 0026 CDE90401 		strd	r0, [sp, #16]
+ 538              	.LVL93:
+  74:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+  75:math/pprz_algebra_double.c ****   const double qiqz = q->qi * q->qz;
+  76:math/pprz_algebra_double.c ****   const double qxqy = q->qx * q->qy;
+  77:math/pprz_algebra_double.c ****   const double qxqz = q->qx * q->qz;
+  78:math/pprz_algebra_double.c ****   const double qyqz = q->qy * q->qz;
+ 539              		.loc 1 78 0
+ 540 002a 5246     		mov	r2, r10
+ 541 002c 5B46     		mov	r3, fp
+ 542 002e 2046     		mov	r0, r4
+ 543              	.LVL94:
+ 544 0030 2946     		mov	r1, r5
+  73:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+ 545              		.loc 1 73 0
+ 546 0032 8DED027B 		fstd	d7, [sp, #8]
+ 547              	.LVL95:
+ 548              		.loc 1 78 0
+ 549 0036 FFF7FEFF 		bl	__aeabi_dmul
+ 550              	.LVL96:
+  73:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+ 551              		.loc 1 73 0
+ 552 003a 3246     		mov	r2, r6
+ 553              		.loc 1 78 0
+ 554 003c 8046     		mov	r8, r0
+ 555              	.LVL97:
+ 556 003e 8946     		mov	r9, r1
+  73:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+ 557              		.loc 1 73 0
+ 558 0040 3B46     		mov	r3, r7
+ 559 0042 DDE90201 		ldrd	r0, [sp, #8]
+ 560 0046 FFF7FEFF 		bl	__aeabi_dmul
+ 561              	.LVL98:
+ 562 004a 0246     		mov	r2, r0
+ 563 004c 0B46     		mov	r3, r1
+  79:math/pprz_algebra_double.c ****   const double dcm00 = 1.0 - 2.*(qy2 +  qz2);
+  80:math/pprz_algebra_double.c ****   const double dcm01 =       2.*(qxqy + qiqz);
+  81:math/pprz_algebra_double.c ****   const double dcm02 =       2.*(qxqz - qiqy);
+  82:math/pprz_algebra_double.c ****   const double dcm12 =       2.*(qyqz + qiqx);
+ 564              		.loc 1 82 0
+ 565 004e 4046     		mov	r0, r8
+ 566 0050 4946     		mov	r1, r9
+ 567 0052 FFF7FEFF 		bl	__aeabi_dadd
+ 568              	.LVL99:
+ 569 0056 0246     		mov	r2, r0
+ 570 0058 0B46     		mov	r3, r1
+ 571 005a FFF7FEFF 		bl	__aeabi_dadd
+ 572              	.LVL100:
+  70:math/pprz_algebra_double.c ****   const double qy2  = q->qy * q->qy;
+ 573              		.loc 1 70 0
+ 574 005e 3246     		mov	r2, r6
+ 575              		.loc 1 82 0
+ 576 0060 8046     		mov	r8, r0
+ 577 0062 8946     		mov	r9, r1
+  70:math/pprz_algebra_double.c ****   const double qy2  = q->qy * q->qy;
+ 578              		.loc 1 70 0
+ 579 0064 3B46     		mov	r3, r7
+ 580 0066 3046     		mov	r0, r6
+ 581 0068 3946     		mov	r1, r7
+ 582 006a FFF7FEFF 		bl	__aeabi_dmul
+ 583              	.LVL101:
+  83:math/pprz_algebra_double.c ****   const double dcm22 = 1.0 - 2.*(qx2 +  qy2);
+ 584              		.loc 1 83 0
+ 585 006e DDE90423 		ldrd	r2, [sp, #16]
+ 586 0072 FFF7FEFF 		bl	__aeabi_dadd
+ 587              	.LVL102:
+ 588 0076 0246     		mov	r2, r0
+ 589 0078 0B46     		mov	r3, r1
+ 590 007a FFF7FEFF 		bl	__aeabi_dadd
+ 591              	.LVL103:
+ 592 007e 0246     		mov	r2, r0
+ 593 0080 0B46     		mov	r3, r1
+ 594 0082 0020     		movs	r0, #0
+ 595 0084 3349     		ldr	r1, .L6
+ 596 0086 FFF7FEFF 		bl	__aeabi_dsub
+ 597              	.LVL104:
+ 598 008a 0246     		mov	r2, r0
+ 599 008c 0B46     		mov	r3, r1
+  84:math/pprz_algebra_double.c **** 
+  85:math/pprz_algebra_double.c ****   e->phi = atan2(dcm12, dcm22);
+ 600              		.loc 1 85 0
+ 601 008e 4046     		mov	r0, r8
+ 602 0090 4946     		mov	r1, r9
+ 603 0092 FFF7FEFF 		bl	atan2
+ 604              	.LVL105:
+ 605 0096 019B     		ldr	r3, [sp, #4]
+  77:math/pprz_algebra_double.c ****   const double qyqz = q->qy * q->qz;
+ 606              		.loc 1 77 0
+ 607 0098 5246     		mov	r2, r10
+ 608              		.loc 1 85 0
+ 609 009a C3E90001 		strd	r0, [r3]
+  77:math/pprz_algebra_double.c ****   const double qyqz = q->qy * q->qz;
+ 610              		.loc 1 77 0
+ 611 009e 5B46     		mov	r3, fp
+ 612 00a0 3046     		mov	r0, r6
+ 613 00a2 3946     		mov	r1, r7
+ 614 00a4 FFF7FEFF 		bl	__aeabi_dmul
+ 615              	.LVL106:
+  74:math/pprz_algebra_double.c ****   const double qiqz = q->qi * q->qz;
+ 616              		.loc 1 74 0
+ 617 00a8 2246     		mov	r2, r4
+  77:math/pprz_algebra_double.c ****   const double qyqz = q->qy * q->qz;
+ 618              		.loc 1 77 0
+ 619 00aa 8046     		mov	r8, r0
+ 620 00ac 8946     		mov	r9, r1
+  74:math/pprz_algebra_double.c ****   const double qiqz = q->qi * q->qz;
+ 621              		.loc 1 74 0
+ 622 00ae 2B46     		mov	r3, r5
+ 623 00b0 DDE90201 		ldrd	r0, [sp, #8]
+ 624 00b4 FFF7FEFF 		bl	__aeabi_dmul
+ 625              	.LVL107:
+ 626 00b8 0246     		mov	r2, r0
+ 627 00ba 0B46     		mov	r3, r1
+  81:math/pprz_algebra_double.c ****   const double dcm12 =       2.*(qyqz + qiqx);
+ 628              		.loc 1 81 0
+ 629 00bc 4046     		mov	r0, r8
+ 630 00be 4946     		mov	r1, r9
+ 631 00c0 FFF7FEFF 		bl	__aeabi_dsub
+ 632              	.LVL108:
+ 633 00c4 0246     		mov	r2, r0
+ 634 00c6 0B46     		mov	r3, r1
+ 635 00c8 FFF7FEFF 		bl	__aeabi_dadd
+ 636              	.LVL109:
+  86:math/pprz_algebra_double.c ****   e->theta = -asin(dcm02);
+ 637              		.loc 1 86 0
+ 638 00cc FFF7FEFF 		bl	asin
+ 639              	.LVL110:
+ 640 00d0 019A     		ldr	r2, [sp, #4]
+ 641 00d2 01F10043 		add	r3, r1, #-2147483648
+ 642 00d6 9060     		str	r0, [r2, #8]
+ 643 00d8 D360     		str	r3, [r2, #12]
+  76:math/pprz_algebra_double.c ****   const double qxqz = q->qx * q->qz;
+ 644              		.loc 1 76 0
+ 645 00da 3046     		mov	r0, r6
+ 646 00dc 2246     		mov	r2, r4
+ 647 00de 2B46     		mov	r3, r5
+ 648 00e0 3946     		mov	r1, r7
+ 649 00e2 FFF7FEFF 		bl	__aeabi_dmul
+ 650              	.LVL111:
+  75:math/pprz_algebra_double.c ****   const double qxqy = q->qx * q->qy;
+ 651              		.loc 1 75 0
+ 652 00e6 5246     		mov	r2, r10
+  76:math/pprz_algebra_double.c ****   const double qxqz = q->qx * q->qz;
+ 653              		.loc 1 76 0
+ 654 00e8 0446     		mov	r4, r0
+ 655              	.LVL112:
+ 656 00ea 0D46     		mov	r5, r1
+  75:math/pprz_algebra_double.c ****   const double qxqy = q->qx * q->qy;
+ 657              		.loc 1 75 0
+ 658 00ec 5B46     		mov	r3, fp
+ 659 00ee DDE90201 		ldrd	r0, [sp, #8]
+ 660 00f2 FFF7FEFF 		bl	__aeabi_dmul
+ 661              	.LVL113:
+ 662 00f6 0246     		mov	r2, r0
+ 663 00f8 0B46     		mov	r3, r1
+  80:math/pprz_algebra_double.c ****   const double dcm02 =       2.*(qxqz - qiqy);
+ 664              		.loc 1 80 0
+ 665 00fa 2046     		mov	r0, r4
+ 666 00fc 2946     		mov	r1, r5
+ 667 00fe FFF7FEFF 		bl	__aeabi_dadd
+ 668              	.LVL114:
+ 669 0102 0246     		mov	r2, r0
+ 670 0104 0B46     		mov	r3, r1
+ 671 0106 FFF7FEFF 		bl	__aeabi_dadd
+ 672              	.LVL115:
+  72:math/pprz_algebra_double.c ****   const double qiqx = q->qi * q->qx;
+ 673              		.loc 1 72 0
+ 674 010a 5246     		mov	r2, r10
+  80:math/pprz_algebra_double.c ****   const double dcm02 =       2.*(qxqz - qiqy);
+ 675              		.loc 1 80 0
+ 676 010c 0446     		mov	r4, r0
+ 677 010e 0D46     		mov	r5, r1
+  72:math/pprz_algebra_double.c ****   const double qiqx = q->qi * q->qx;
+ 678              		.loc 1 72 0
+ 679 0110 5B46     		mov	r3, fp
+ 680 0112 5046     		mov	r0, r10
+ 681 0114 5946     		mov	r1, fp
+ 682 0116 FFF7FEFF 		bl	__aeabi_dmul
+ 683              	.LVL116:
+ 684 011a 0246     		mov	r2, r0
+ 685 011c 0B46     		mov	r3, r1
+  79:math/pprz_algebra_double.c ****   const double dcm01 =       2.*(qxqy + qiqz);
+ 686              		.loc 1 79 0
+ 687 011e DDE90401 		ldrd	r0, [sp, #16]
+ 688 0122 FFF7FEFF 		bl	__aeabi_dadd
+ 689              	.LVL117:
+ 690 0126 0246     		mov	r2, r0
+ 691 0128 0B46     		mov	r3, r1
+ 692 012a FFF7FEFF 		bl	__aeabi_dadd
+ 693              	.LVL118:
+ 694 012e 0246     		mov	r2, r0
+ 695 0130 0B46     		mov	r3, r1
+ 696 0132 0020     		movs	r0, #0
+ 697 0134 0749     		ldr	r1, .L6
+ 698 0136 FFF7FEFF 		bl	__aeabi_dsub
+ 699              	.LVL119:
+ 700 013a 0246     		mov	r2, r0
+ 701 013c 0B46     		mov	r3, r1
+  87:math/pprz_algebra_double.c ****   e->psi = atan2(dcm01, dcm00);
+ 702              		.loc 1 87 0
+ 703 013e 2046     		mov	r0, r4
+ 704 0140 2946     		mov	r1, r5
+ 705 0142 FFF7FEFF 		bl	atan2
+ 706              	.LVL120:
+ 707 0146 019B     		ldr	r3, [sp, #4]
+ 708 0148 C3E90401 		strd	r0, [r3, #16]
+  88:math/pprz_algebra_double.c **** }
+ 709              		.loc 1 88 0
+ 710 014c 07B0     		add	sp, sp, #28
+ 711              		.cfi_def_cfa_offset 36
+ 712              		@ sp needed
+ 713 014e BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 714              	.LVL121:
+ 715              	.L7:
+ 716 0152 00BF     		.align	2
+ 717              	.L6:
+ 718 0154 0000F03F 		.word	1072693248
+ 719              		.cfi_endproc
+ 720              	.LFE42:
+ 722              		.section	.text.double_quat_vmult,"ax",%progbits
+ 723              		.align	1
+ 724              		.global	double_quat_vmult
+ 725              		.thumb
+ 726              		.thumb_func
+ 728              	double_quat_vmult:
+ 729              	.LFB43:
+  89:math/pprz_algebra_double.c **** 
+  90:math/pprz_algebra_double.c **** void double_quat_vmult(struct DoubleVect3 *v_out, struct DoubleQuat *q, struct DoubleVect3 *v_in)
+  91:math/pprz_algebra_double.c **** {
+ 730              		.loc 1 91 0
+ 731              		.cfi_startproc
+ 732              		@ args = 0, pretend = 0, frame = 80
+ 733              		@ frame_needed = 0, uses_anonymous_args = 0
+ 734              	.LVL122:
+ 735 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 736              		.cfi_def_cfa_offset 36
+ 737              		.cfi_offset 4, -36
+ 738              		.cfi_offset 5, -32
+ 739              		.cfi_offset 6, -28
+ 740              		.cfi_offset 7, -24
+ 741              		.cfi_offset 8, -20
+ 742              		.cfi_offset 9, -16
+ 743              		.cfi_offset 10, -12
+ 744              		.cfi_offset 11, -8
+ 745              		.cfi_offset 14, -4
+  92:math/pprz_algebra_double.c ****   const double qi2_M1_2  = q->qi * q->qi - 0.5;
+ 746              		.loc 1 92 0
+ 747 0004 D1E90067 		ldrd	r6, [r1]
+  91:math/pprz_algebra_double.c ****   const double qi2_M1_2  = q->qi * q->qi - 0.5;
+ 748              		.loc 1 91 0
+ 749 0008 95B0     		sub	sp, sp, #84
+ 750              		.cfi_def_cfa_offset 120
+  91:math/pprz_algebra_double.c ****   const double qi2_M1_2  = q->qi * q->qi - 0.5;
+ 751              		.loc 1 91 0
+ 752 000a 1446     		mov	r4, r2
+ 753 000c 0546     		mov	r5, r0
+ 754 000e 8A46     		mov	r10, r1
+ 755              		.loc 1 92 0
+ 756 0010 3246     		mov	r2, r6
+ 757              	.LVL123:
+ 758 0012 3B46     		mov	r3, r7
+ 759 0014 3046     		mov	r0, r6
+ 760              	.LVL124:
+ 761 0016 3946     		mov	r1, r7
+ 762              	.LVL125:
+ 763 0018 FFF7FEFF 		bl	__aeabi_dmul
+ 764              	.LVL126:
+ 765 001c 0022     		movs	r2, #0
+ 766 001e 7D4B     		ldr	r3, .L9
+ 767 0020 FFF7FEFF 		bl	__aeabi_dsub
+ 768              	.LVL127:
+  93:math/pprz_algebra_double.c ****   const double qiqx = q->qi * q->qx;
+ 769              		.loc 1 93 0
+ 770 0024 DAE90289 		ldrd	r8, [r10, #8]
+  92:math/pprz_algebra_double.c ****   const double qi2_M1_2  = q->qi * q->qi - 0.5;
+ 771              		.loc 1 92 0
+ 772 0028 CDE90401 		strd	r0, [sp, #16]
+ 773              	.LVL128:
+ 774              		.loc 1 93 0
+ 775 002c 4246     		mov	r2, r8
+ 776 002e 4B46     		mov	r3, r9
+ 777 0030 3046     		mov	r0, r6
+ 778              	.LVL129:
+ 779 0032 3946     		mov	r1, r7
+ 780 0034 FFF7FEFF 		bl	__aeabi_dmul
+ 781              	.LVL130:
+  94:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+ 782              		.loc 1 94 0
+ 783 0038 9AED047B 		fldd	d7, [r10, #16]
+  93:math/pprz_algebra_double.c ****   const double qiqx = q->qi * q->qx;
+ 784              		.loc 1 93 0
+ 785 003c CDE90801 		strd	r0, [sp, #32]
+ 786              	.LVL131:
+ 787              		.loc 1 94 0
+ 788 0040 53EC172B 		fmrrd	r2, r3, d7
+ 789 0044 3046     		mov	r0, r6
+ 790              	.LVL132:
+ 791 0046 3946     		mov	r1, r7
+ 792 0048 8DED007B 		fstd	d7, [sp]
+ 793 004c FFF7FEFF 		bl	__aeabi_dmul
+ 794              	.LVL133:
+  95:math/pprz_algebra_double.c ****   const double qiqz = q->qi * q->qz;
+ 795              		.loc 1 95 0
+ 796 0050 0AF1180B 		add	fp, r10, #24
+ 797 0054 DBE900AB 		ldrd	r10, [fp]
+ 798              	.LVL134:
+  94:math/pprz_algebra_double.c ****   const double qiqy = q->qi * q->qy;
+ 799              		.loc 1 94 0
+ 800 0058 CDE90A01 		strd	r0, [sp, #40]
+ 801              	.LVL135:
+ 802              		.loc 1 95 0
+ 803 005c 5246     		mov	r2, r10
+ 804 005e 5B46     		mov	r3, fp
+ 805 0060 3046     		mov	r0, r6
+ 806              	.LVL136:
+ 807 0062 3946     		mov	r1, r7
+ 808 0064 FFF7FEFF 		bl	__aeabi_dmul
+ 809              	.LVL137:
+  96:math/pprz_algebra_double.c ****   double m01  = q->qx * q->qy; /* aka qxqy */
+ 810              		.loc 1 96 0
+ 811 0068 DDE90023 		ldrd	r2, [sp]
+  95:math/pprz_algebra_double.c ****   const double qiqz = q->qi * q->qz;
+ 812              		.loc 1 95 0
+ 813 006c CDE90C01 		strd	r0, [sp, #48]
+ 814              	.LVL138:
+ 815              		.loc 1 96 0
+ 816 0070 4046     		mov	r0, r8
+ 817              	.LVL139:
+ 818 0072 4946     		mov	r1, r9
+ 819 0074 FFF7FEFF 		bl	__aeabi_dmul
+ 820              	.LVL140:
+  97:math/pprz_algebra_double.c ****   double m02  = q->qx * q->qz; /* aka qxqz */
+ 821              		.loc 1 97 0
+ 822 0078 5246     		mov	r2, r10
+  96:math/pprz_algebra_double.c ****   double m01  = q->qx * q->qy; /* aka qxqy */
+ 823              		.loc 1 96 0
+ 824 007a CDE90E01 		strd	r0, [sp, #56]
+ 825              	.LVL141:
+ 826              		.loc 1 97 0
+ 827 007e 5B46     		mov	r3, fp
+ 828 0080 4046     		mov	r0, r8
+ 829              	.LVL142:
+ 830 0082 4946     		mov	r1, r9
+ 831 0084 FFF7FEFF 		bl	__aeabi_dmul
+ 832              	.LVL143:
+  98:math/pprz_algebra_double.c ****   double m12  = q->qy * q->qz; /* aka qyqz */
+ 833              		.loc 1 98 0
+ 834 0088 5246     		mov	r2, r10
+  97:math/pprz_algebra_double.c ****   double m02  = q->qx * q->qz; /* aka qxqz */
+ 835              		.loc 1 97 0
+ 836 008a CDE91001 		strd	r0, [sp, #64]
+ 837              	.LVL144:
+ 838              		.loc 1 98 0
+ 839 008e 5B46     		mov	r3, fp
+ 840 0090 DDE90001 		ldrd	r0, [sp]
+ 841              	.LVL145:
+ 842 0094 FFF7FEFF 		bl	__aeabi_dmul
+ 843              	.LVL146:
+  99:math/pprz_algebra_double.c **** 
+ 100:math/pprz_algebra_double.c ****   const double m00  = qi2_M1_2 + q->qx * q->qx;
+ 101:math/pprz_algebra_double.c ****   const double m10  = m01 - qiqz;
+ 102:math/pprz_algebra_double.c ****   const double m20  = m02 + qiqy;
+ 103:math/pprz_algebra_double.c ****   const double m21  = m12 - qiqx;
+ 104:math/pprz_algebra_double.c ****   m01 += qiqz;
+ 105:math/pprz_algebra_double.c ****   m02 -= qiqy;
+ 106:math/pprz_algebra_double.c ****   m12 += qiqx;
+ 107:math/pprz_algebra_double.c ****   const double m11  = qi2_M1_2 + q->qy * q->qy;
+ 108:math/pprz_algebra_double.c ****   const double m22  = qi2_M1_2 + q->qz * q->qz;
+ 109:math/pprz_algebra_double.c ****   v_out->x = 2 * (m00 * v_in->x + m01 * v_in->y + m02 * v_in->z);
+ 844              		.loc 1 109 0
+ 845 0098 94ED027B 		fldd	d7, [r4, #8]
+ 846 009c 8DED067B 		fstd	d7, [sp, #24]
+ 847 00a0 94ED047B 		fldd	d7, [r4, #16]
+  98:math/pprz_algebra_double.c ****   double m12  = q->qy * q->qz; /* aka qyqz */
+ 848              		.loc 1 98 0
+ 849 00a4 CDE91201 		strd	r0, [sp, #72]
+ 850              	.LVL147:
+ 100:math/pprz_algebra_double.c ****   const double m10  = m01 - qiqz;
+ 851              		.loc 1 100 0
+ 852 00a8 4246     		mov	r2, r8
+ 853 00aa 4B46     		mov	r3, r9
+ 854 00ac 4046     		mov	r0, r8
+ 855              	.LVL148:
+ 856 00ae 4946     		mov	r1, r9
+ 857              		.loc 1 109 0
+ 858 00b0 8DED027B 		fstd	d7, [sp, #8]
+ 100:math/pprz_algebra_double.c ****   const double m10  = m01 - qiqz;
+ 859              		.loc 1 100 0
+ 860 00b4 FFF7FEFF 		bl	__aeabi_dmul
+ 861              	.LVL149:
+ 862 00b8 0246     		mov	r2, r0
+ 863 00ba 0B46     		mov	r3, r1
+ 864 00bc DDE90401 		ldrd	r0, [sp, #16]
+ 865 00c0 FFF7FEFF 		bl	__aeabi_dadd
+ 866              	.LVL150:
+ 867              		.loc 1 109 0
+ 868 00c4 D4E90023 		ldrd	r2, [r4]
+ 869 00c8 FFF7FEFF 		bl	__aeabi_dmul
+ 870              	.LVL151:
+ 104:math/pprz_algebra_double.c ****   m02 -= qiqy;
+ 871              		.loc 1 104 0
+ 872 00cc DDE90C23 		ldrd	r2, [sp, #48]
+ 873              		.loc 1 109 0
+ 874 00d0 0646     		mov	r6, r0
+ 875 00d2 0F46     		mov	r7, r1
+ 104:math/pprz_algebra_double.c ****   m02 -= qiqy;
+ 876              		.loc 1 104 0
+ 877 00d4 DDE90E01 		ldrd	r0, [sp, #56]
+ 878 00d8 FFF7FEFF 		bl	__aeabi_dadd
+ 879              	.LVL152:
+ 880              		.loc 1 109 0
+ 881 00dc DDE90623 		ldrd	r2, [sp, #24]
+ 882 00e0 FFF7FEFF 		bl	__aeabi_dmul
+ 883              	.LVL153:
+ 884 00e4 0246     		mov	r2, r0
+ 885 00e6 0B46     		mov	r3, r1
+ 886 00e8 3046     		mov	r0, r6
+ 887 00ea 3946     		mov	r1, r7
+ 888 00ec FFF7FEFF 		bl	__aeabi_dadd
+ 889              	.LVL154:
+ 105:math/pprz_algebra_double.c ****   m12 += qiqx;
+ 890              		.loc 1 105 0
+ 891 00f0 DDE90A23 		ldrd	r2, [sp, #40]
+ 892              		.loc 1 109 0
+ 893 00f4 0646     		mov	r6, r0
+ 894 00f6 0F46     		mov	r7, r1
+ 105:math/pprz_algebra_double.c ****   m12 += qiqx;
+ 895              		.loc 1 105 0
+ 896 00f8 DDE91001 		ldrd	r0, [sp, #64]
+ 897 00fc FFF7FEFF 		bl	__aeabi_dsub
+ 898              	.LVL155:
+ 899              		.loc 1 109 0
+ 900 0100 DDE90223 		ldrd	r2, [sp, #8]
+ 901 0104 FFF7FEFF 		bl	__aeabi_dmul
+ 902              	.LVL156:
+ 903 0108 0246     		mov	r2, r0
+ 904 010a 0B46     		mov	r3, r1
+ 905 010c 3046     		mov	r0, r6
+ 906 010e 3946     		mov	r1, r7
+ 907 0110 FFF7FEFF 		bl	__aeabi_dadd
+ 908              	.LVL157:
+ 909 0114 0246     		mov	r2, r0
+ 910 0116 0B46     		mov	r3, r1
+ 911 0118 FFF7FEFF 		bl	__aeabi_dadd
+ 912              	.LVL158:
+ 913 011c C5E90001 		strd	r0, [r5]
+ 110:math/pprz_algebra_double.c ****   v_out->y = 2 * (m10 * v_in->x + m11 * v_in->y + m12 * v_in->z);
+ 914              		.loc 1 110 0
+ 915 0120 D4E90089 		ldrd	r8, [r4]
+ 916              	.LVL159:
+ 101:math/pprz_algebra_double.c ****   const double m20  = m02 + qiqy;
+ 917              		.loc 1 101 0
+ 918 0124 DDE90C23 		ldrd	r2, [sp, #48]
+ 919 0128 DDE90E01 		ldrd	r0, [sp, #56]
+ 920 012c FFF7FEFF 		bl	__aeabi_dsub
+ 921              	.LVL160:
+ 922              		.loc 1 110 0
+ 923 0130 4246     		mov	r2, r8
+ 924 0132 4B46     		mov	r3, r9
+ 925 0134 FFF7FEFF 		bl	__aeabi_dmul
+ 926              	.LVL161:
+ 927 0138 0646     		mov	r6, r0
+ 928 013a 0F46     		mov	r7, r1
+ 107:math/pprz_algebra_double.c ****   const double m22  = qi2_M1_2 + q->qz * q->qz;
+ 929              		.loc 1 107 0
+ 930 013c DDE90001 		ldrd	r0, [sp]
+ 931 0140 0246     		mov	r2, r0
+ 932 0142 0B46     		mov	r3, r1
+ 933 0144 FFF7FEFF 		bl	__aeabi_dmul
+ 934              	.LVL162:
+ 935 0148 0246     		mov	r2, r0
+ 936 014a 0B46     		mov	r3, r1
+ 937 014c DDE90401 		ldrd	r0, [sp, #16]
+ 938 0150 FFF7FEFF 		bl	__aeabi_dadd
+ 939              	.LVL163:
+ 940              		.loc 1 110 0
+ 941 0154 DDE90623 		ldrd	r2, [sp, #24]
+ 942 0158 FFF7FEFF 		bl	__aeabi_dmul
+ 943              	.LVL164:
+ 944 015c 0246     		mov	r2, r0
+ 945 015e 0B46     		mov	r3, r1
+ 946 0160 3046     		mov	r0, r6
+ 947 0162 3946     		mov	r1, r7
+ 948 0164 FFF7FEFF 		bl	__aeabi_dadd
+ 949              	.LVL165:
+ 106:math/pprz_algebra_double.c ****   const double m11  = qi2_M1_2 + q->qy * q->qy;
+ 950              		.loc 1 106 0
+ 951 0168 DDE90823 		ldrd	r2, [sp, #32]
+ 952              		.loc 1 110 0
+ 953 016c 0646     		mov	r6, r0
+ 954 016e 0F46     		mov	r7, r1
+ 106:math/pprz_algebra_double.c ****   const double m11  = qi2_M1_2 + q->qy * q->qy;
+ 955              		.loc 1 106 0
+ 956 0170 DDE91201 		ldrd	r0, [sp, #72]
+ 957 0174 FFF7FEFF 		bl	__aeabi_dadd
+ 958              	.LVL166:
+ 959              		.loc 1 110 0
+ 960 0178 DDE90223 		ldrd	r2, [sp, #8]
+ 961 017c FFF7FEFF 		bl	__aeabi_dmul
+ 962              	.LVL167:
+ 963 0180 0246     		mov	r2, r0
+ 964 0182 0B46     		mov	r3, r1
+ 965 0184 3046     		mov	r0, r6
+ 966 0186 3946     		mov	r1, r7
+ 967 0188 FFF7FEFF 		bl	__aeabi_dadd
+ 968              	.LVL168:
+ 969 018c 0246     		mov	r2, r0
+ 970 018e 0B46     		mov	r3, r1
+ 971 0190 FFF7FEFF 		bl	__aeabi_dadd
+ 972              	.LVL169:
+ 102:math/pprz_algebra_double.c ****   const double m21  = m12 - qiqx;
+ 973              		.loc 1 102 0
+ 974 0194 DDE90A23 		ldrd	r2, [sp, #40]
+ 975              		.loc 1 110 0
+ 976 0198 C5E90201 		strd	r0, [r5, #8]
+ 102:math/pprz_algebra_double.c ****   const double m21  = m12 - qiqx;
+ 977              		.loc 1 102 0
+ 978 019c DDE91001 		ldrd	r0, [sp, #64]
+ 979 01a0 FFF7FEFF 		bl	__aeabi_dadd
+ 980              	.LVL170:
+ 111:math/pprz_algebra_double.c ****   v_out->z = 2 * (m20 * v_in->x + m21 * v_in->y + m22 * v_in->z);
+ 981              		.loc 1 111 0
+ 982 01a4 4246     		mov	r2, r8
+ 983 01a6 4B46     		mov	r3, r9
+ 984 01a8 FFF7FEFF 		bl	__aeabi_dmul
+ 985              	.LVL171:
+ 103:math/pprz_algebra_double.c ****   m01 += qiqz;
+ 986              		.loc 1 103 0
+ 987 01ac DDE90823 		ldrd	r2, [sp, #32]
+ 988              		.loc 1 111 0
+ 989 01b0 0646     		mov	r6, r0
+ 990 01b2 0F46     		mov	r7, r1
+ 103:math/pprz_algebra_double.c ****   m01 += qiqz;
+ 991              		.loc 1 103 0
+ 992 01b4 DDE91201 		ldrd	r0, [sp, #72]
+ 993 01b8 FFF7FEFF 		bl	__aeabi_dsub
+ 994              	.LVL172:
+ 995              		.loc 1 111 0
+ 996 01bc D4E90223 		ldrd	r2, [r4, #8]
+ 997 01c0 FFF7FEFF 		bl	__aeabi_dmul
+ 998              	.LVL173:
+ 999 01c4 0246     		mov	r2, r0
+ 1000 01c6 0B46     		mov	r3, r1
+ 1001 01c8 3046     		mov	r0, r6
+ 1002 01ca 3946     		mov	r1, r7
+ 1003 01cc FFF7FEFF 		bl	__aeabi_dadd
+ 1004              	.LVL174:
+ 108:math/pprz_algebra_double.c ****   v_out->x = 2 * (m00 * v_in->x + m01 * v_in->y + m02 * v_in->z);
+ 1005              		.loc 1 108 0
+ 1006 01d0 5246     		mov	r2, r10
+ 1007              		.loc 1 111 0
+ 1008 01d2 0646     		mov	r6, r0
+ 1009 01d4 0F46     		mov	r7, r1
+ 108:math/pprz_algebra_double.c ****   v_out->x = 2 * (m00 * v_in->x + m01 * v_in->y + m02 * v_in->z);
+ 1010              		.loc 1 108 0
+ 1011 01d6 5B46     		mov	r3, fp
+ 1012 01d8 5046     		mov	r0, r10
+ 1013 01da 5946     		mov	r1, fp
+ 1014 01dc FFF7FEFF 		bl	__aeabi_dmul
+ 1015              	.LVL175:
+ 1016 01e0 0246     		mov	r2, r0
+ 1017 01e2 0B46     		mov	r3, r1
+ 1018 01e4 DDE90401 		ldrd	r0, [sp, #16]
+ 1019 01e8 FFF7FEFF 		bl	__aeabi_dadd
+ 1020              	.LVL176:
+ 1021              		.loc 1 111 0
+ 1022 01ec DDE90223 		ldrd	r2, [sp, #8]
+ 1023 01f0 FFF7FEFF 		bl	__aeabi_dmul
+ 1024              	.LVL177:
+ 1025 01f4 0246     		mov	r2, r0
+ 1026 01f6 0B46     		mov	r3, r1
+ 1027 01f8 3046     		mov	r0, r6
+ 1028 01fa 3946     		mov	r1, r7
+ 1029 01fc FFF7FEFF 		bl	__aeabi_dadd
+ 1030              	.LVL178:
+ 1031 0200 0246     		mov	r2, r0
+ 1032 0202 0B46     		mov	r3, r1
+ 1033 0204 FFF7FEFF 		bl	__aeabi_dadd
+ 1034              	.LVL179:
+ 1035 0208 C5E90401 		strd	r0, [r5, #16]
+ 112:math/pprz_algebra_double.c **** }
+ 1036              		.loc 1 112 0
+ 1037 020c 15B0     		add	sp, sp, #84
+ 1038              		.cfi_def_cfa_offset 36
+ 1039              	.LVL180:
+ 1040              		@ sp needed
+ 1041 020e BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 1042              	.LVL181:
+ 1043              	.L10:
+ 1044 0212 00BF     		.align	2
+ 1045              	.L9:
+ 1046 0214 0000E03F 		.word	1071644672
+ 1047              		.cfi_endproc
+ 1048              	.LFE43:
+ 1050              		.section	.text.double_rmat_inv,"ax",%progbits
+ 1051              		.align	1
+ 1052              		.global	double_rmat_inv
+ 1053              		.thumb
+ 1054              		.thumb_func
+ 1056              	double_rmat_inv:
+ 1057              	.LFB44:
+ 113:math/pprz_algebra_double.c **** 
+ 114:math/pprz_algebra_double.c **** void double_rmat_inv(struct DoubleRMat *m_b2a, struct DoubleRMat *m_a2b)
+ 115:math/pprz_algebra_double.c **** {
+ 1058              		.loc 1 115 0
+ 1059              		.cfi_startproc
+ 1060              		@ args = 0, pretend = 0, frame = 0
+ 1061              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1062              		@ link register save eliminated.
+ 1063              	.LVL182:
+ 116:math/pprz_algebra_double.c ****   /*RMAT_ELMT(*m_b2a, 0, 0) = RMAT_ELMT(*m_a2b, 0, 0);*/
+ 117:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 0, 1) = RMAT_ELMT(*m_a2b, 1, 0);
+ 1064              		.loc 1 117 0
+ 1065 0000 D1E90623 		ldrd	r2, [r1, #24]
+ 1066 0004 C0E90223 		strd	r2, [r0, #8]
+ 118:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 0, 2) = RMAT_ELMT(*m_a2b, 2, 0);
+ 1067              		.loc 1 118 0
+ 1068 0008 D1E90C23 		ldrd	r2, [r1, #48]
+ 1069 000c C0E90423 		strd	r2, [r0, #16]
+ 119:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 1, 0) = RMAT_ELMT(*m_a2b, 0, 1);
+ 1070              		.loc 1 119 0
+ 1071 0010 D1E90223 		ldrd	r2, [r1, #8]
+ 1072 0014 C0E90623 		strd	r2, [r0, #24]
+ 120:math/pprz_algebra_double.c ****   /*RMAT_ELMT(*m_b2a, 1, 1) = RMAT_ELMT(*m_a2b, 1, 1);*/
+ 121:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 1, 2) = RMAT_ELMT(*m_a2b, 2, 1);
+ 1073              		.loc 1 121 0
+ 1074 0018 D1E90E23 		ldrd	r2, [r1, #56]
+ 1075 001c C0E90A23 		strd	r2, [r0, #40]
+ 122:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 2, 0) = RMAT_ELMT(*m_a2b, 0, 2);
+ 1076              		.loc 1 122 0
+ 1077 0020 D1E90423 		ldrd	r2, [r1, #16]
+ 1078 0024 C0E90C23 		strd	r2, [r0, #48]
+ 123:math/pprz_algebra_double.c ****   RMAT_ELMT(*m_b2a, 2, 1) = RMAT_ELMT(*m_a2b, 1, 2);
+ 1079              		.loc 1 123 0
+ 1080 0028 D1E90A23 		ldrd	r2, [r1, #40]
+ 1081 002c C0E90E23 		strd	r2, [r0, #56]
+ 1082 0030 7047     		bx	lr
+ 1083              		.cfi_endproc
+ 1084              	.LFE44:
+ 1086              		.section	.text.double_rmat_comp,"ax",%progbits
+ 1087              		.align	1
+ 1088              		.global	double_rmat_comp
+ 1089              		.thumb
+ 1090              		.thumb_func
+ 1092              	double_rmat_comp:
+ 1093              	.LFB45:
+ 124:math/pprz_algebra_double.c ****   /*RMAT_ELMT(*m_b2a, 2, 2) = RMAT_ELMT(*m_a2b, 2, 2);*/
+ 125:math/pprz_algebra_double.c **** }
+ 126:math/pprz_algebra_double.c **** 
+ 127:math/pprz_algebra_double.c **** /** Composition (multiplication) of two rotation matrices.
+ 128:math/pprz_algebra_double.c ****  * m_a2c = m_a2b comp m_b2c , aka  m_a2c = m_b2c * m_a2b
+ 129:math/pprz_algebra_double.c ****  */
+ 130:math/pprz_algebra_double.c **** void double_rmat_comp(struct DoubleRMat *m_a2c, struct DoubleRMat *m_a2b, struct DoubleRMat *m_b2c)
+ 131:math/pprz_algebra_double.c **** {
+ 1094              		.loc 1 131 0
+ 1095              		.cfi_startproc
+ 1096              		@ args = 0, pretend = 0, frame = 72
+ 1097              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1098              	.LVL183:
+ 1099 0000 2DE9704F 		push	{r4, r5, r6, r8, r9, r10, fp, lr}
+ 1100              		.cfi_def_cfa_offset 32
+ 1101              		.cfi_offset 4, -32
+ 1102              		.cfi_offset 5, -28
+ 1103              		.cfi_offset 6, -24
+ 1104              		.cfi_offset 8, -20
+ 1105              		.cfi_offset 9, -16
+ 1106              		.cfi_offset 10, -12
+ 1107              		.cfi_offset 11, -8
+ 1108              		.cfi_offset 14, -4
+ 132:math/pprz_algebra_double.c ****   m_a2c->m[0] = m_b2c->m[0] * m_a2b->m[0] + m_b2c->m[1] * m_a2b->m[3] + m_b2c->m[2] * m_a2b->m[6];
+ 1109              		.loc 1 132 0
+ 1110 0004 92ED027B 		fldd	d7, [r2, #8]
+ 131:math/pprz_algebra_double.c ****   m_a2c->m[0] = m_b2c->m[0] * m_a2b->m[0] + m_b2c->m[1] * m_a2b->m[3] + m_b2c->m[2] * m_a2b->m[6];
+ 1111              		.loc 1 131 0
+ 1112 0008 92B0     		sub	sp, sp, #72
+ 1113              		.cfi_def_cfa_offset 104
+ 1114              		.loc 1 132 0
+ 1115 000a 8DED047B 		fstd	d7, [sp, #16]
+ 1116 000e 91ED067B 		fldd	d7, [r1, #24]
+ 1117 0012 8DED067B 		fstd	d7, [sp, #24]
+ 1118 0016 91ED0C7B 		fldd	d7, [r1, #48]
+ 131:math/pprz_algebra_double.c ****   m_a2c->m[0] = m_b2c->m[0] * m_a2b->m[0] + m_b2c->m[1] * m_a2b->m[3] + m_b2c->m[2] * m_a2b->m[6];
+ 1119              		.loc 1 131 0
+ 1120 001a 0C46     		mov	r4, r1
+ 1121 001c 1546     		mov	r5, r2
+ 1122 001e 0646     		mov	r6, r0
+ 1123              		.loc 1 132 0
+ 1124 0020 D2E904AB 		ldrd	r10, [r2, #16]
+ 1125 0024 D2E90001 		ldrd	r0, [r2]
+ 1126              	.LVL184:
+ 1127 0028 D4E90023 		ldrd	r2, [r4]
+ 1128              	.LVL185:
+ 1129 002c 8DED007B 		fstd	d7, [sp]
+ 1130 0030 FFF7FEFF 		bl	__aeabi_dmul
+ 1131              	.LVL186:
+ 1132 0034 DDE90623 		ldrd	r2, [sp, #24]
+ 1133 0038 8046     		mov	r8, r0
+ 1134 003a 8946     		mov	r9, r1
+ 1135 003c DDE90401 		ldrd	r0, [sp, #16]
+ 1136 0040 FFF7FEFF 		bl	__aeabi_dmul
+ 1137              	.LVL187:
+ 1138 0044 0246     		mov	r2, r0
+ 1139 0046 0B46     		mov	r3, r1
+ 1140 0048 4046     		mov	r0, r8
+ 1141 004a 4946     		mov	r1, r9
+ 1142 004c FFF7FEFF 		bl	__aeabi_dadd
+ 1143              	.LVL188:
+ 1144 0050 DDE90023 		ldrd	r2, [sp]
+ 1145 0054 8046     		mov	r8, r0
+ 1146 0056 8946     		mov	r9, r1
+ 1147 0058 5046     		mov	r0, r10
+ 1148 005a 5946     		mov	r1, fp
+ 1149 005c FFF7FEFF 		bl	__aeabi_dmul
+ 1150              	.LVL189:
+ 1151 0060 0246     		mov	r2, r0
+ 1152 0062 0B46     		mov	r3, r1
+ 1153 0064 4046     		mov	r0, r8
+ 1154 0066 4946     		mov	r1, r9
+ 1155 0068 FFF7FEFF 		bl	__aeabi_dadd
+ 1156              	.LVL190:
+ 1157 006c C6E90001 		strd	r0, [r6]
+ 133:math/pprz_algebra_double.c ****   m_a2c->m[1] = m_b2c->m[0] * m_a2b->m[1] + m_b2c->m[1] * m_a2b->m[4] + m_b2c->m[2] * m_a2b->m[7];
+ 1158              		.loc 1 133 0
+ 1159 0070 95ED007B 		fldd	d7, [r5]
+ 1160 0074 8DED087B 		fstd	d7, [sp, #32]
+ 1161 0078 94ED087B 		fldd	d7, [r4, #32]
+ 1162 007c 8DED0A7B 		fstd	d7, [sp, #40]
+ 1163 0080 94ED0E7B 		fldd	d7, [r4, #56]
+ 1164 0084 D4E90223 		ldrd	r2, [r4, #8]
+ 1165 0088 DDE90801 		ldrd	r0, [sp, #32]
+ 1166 008c 8DED027B 		fstd	d7, [sp, #8]
+ 1167 0090 FFF7FEFF 		bl	__aeabi_dmul
+ 1168              	.LVL191:
+ 1169 0094 DDE90A23 		ldrd	r2, [sp, #40]
+ 1170 0098 8046     		mov	r8, r0
+ 1171 009a 8946     		mov	r9, r1
+ 1172 009c DDE90401 		ldrd	r0, [sp, #16]
+ 1173 00a0 FFF7FEFF 		bl	__aeabi_dmul
+ 1174              	.LVL192:
+ 1175 00a4 0246     		mov	r2, r0
+ 1176 00a6 0B46     		mov	r3, r1
+ 1177 00a8 4046     		mov	r0, r8
+ 1178 00aa 4946     		mov	r1, r9
+ 1179 00ac FFF7FEFF 		bl	__aeabi_dadd
+ 1180              	.LVL193:
+ 1181 00b0 DDE90223 		ldrd	r2, [sp, #8]
+ 1182 00b4 8046     		mov	r8, r0
+ 1183 00b6 8946     		mov	r9, r1
+ 1184 00b8 5046     		mov	r0, r10
+ 1185 00ba 5946     		mov	r1, fp
+ 1186 00bc FFF7FEFF 		bl	__aeabi_dmul
+ 1187              	.LVL194:
+ 1188 00c0 0246     		mov	r2, r0
+ 1189 00c2 0B46     		mov	r3, r1
+ 1190 00c4 4046     		mov	r0, r8
+ 1191 00c6 4946     		mov	r1, r9
+ 1192 00c8 FFF7FEFF 		bl	__aeabi_dadd
+ 1193              	.LVL195:
+ 1194 00cc C6E90201 		strd	r0, [r6, #8]
+ 134:math/pprz_algebra_double.c ****   m_a2c->m[2] = m_b2c->m[0] * m_a2b->m[2] + m_b2c->m[1] * m_a2b->m[5] + m_b2c->m[2] * m_a2b->m[8];
+ 1195              		.loc 1 134 0
+ 1196 00d0 94ED0A7B 		fldd	d7, [r4, #40]
+ 1197 00d4 8DED0C7B 		fstd	d7, [sp, #48]
+ 1198 00d8 94ED107B 		fldd	d7, [r4, #64]
+ 1199 00dc DDE90801 		ldrd	r0, [sp, #32]
+ 1200 00e0 8DED047B 		fstd	d7, [sp, #16]
+ 1201 00e4 D4E90423 		ldrd	r2, [r4, #16]
+ 1202 00e8 FFF7FEFF 		bl	__aeabi_dmul
+ 1203              	.LVL196:
+ 1204 00ec D5E90223 		ldrd	r2, [r5, #8]
+ 1205 00f0 8046     		mov	r8, r0
+ 1206 00f2 8946     		mov	r9, r1
+ 1207 00f4 DDE90C01 		ldrd	r0, [sp, #48]
+ 1208 00f8 FFF7FEFF 		bl	__aeabi_dmul
+ 1209              	.LVL197:
+ 1210 00fc 0246     		mov	r2, r0
+ 1211 00fe 0B46     		mov	r3, r1
+ 1212 0100 4046     		mov	r0, r8
+ 1213 0102 4946     		mov	r1, r9
+ 1214 0104 FFF7FEFF 		bl	__aeabi_dadd
+ 1215              	.LVL198:
+ 1216 0108 DDE90423 		ldrd	r2, [sp, #16]
+ 1217 010c 8046     		mov	r8, r0
+ 1218 010e 8946     		mov	r9, r1
+ 1219 0110 5046     		mov	r0, r10
+ 1220 0112 5946     		mov	r1, fp
+ 1221 0114 FFF7FEFF 		bl	__aeabi_dmul
+ 1222              	.LVL199:
+ 1223 0118 0246     		mov	r2, r0
+ 1224 011a 0B46     		mov	r3, r1
+ 1225 011c 4046     		mov	r0, r8
+ 1226 011e 4946     		mov	r1, r9
+ 1227 0120 FFF7FEFF 		bl	__aeabi_dadd
+ 1228              	.LVL200:
+ 1229 0124 C6E90401 		strd	r0, [r6, #16]
+ 135:math/pprz_algebra_double.c ****   m_a2c->m[3] = m_b2c->m[3] * m_a2b->m[0] + m_b2c->m[4] * m_a2b->m[3] + m_b2c->m[5] * m_a2b->m[6];
+ 1230              		.loc 1 135 0
+ 1231 0128 94ED007B 		fldd	d7, [r4]
+ 1232 012c 8DED087B 		fstd	d7, [sp, #32]
+ 1233 0130 95ED087B 		fldd	d7, [r5, #32]
+ 1234 0134 D5E90623 		ldrd	r2, [r5, #24]
+ 1235 0138 DDE90801 		ldrd	r0, [sp, #32]
+ 1236 013c 8DED0E7B 		fstd	d7, [sp, #56]
+ 1237 0140 FFF7FEFF 		bl	__aeabi_dmul
+ 1238              	.LVL201:
+ 1239 0144 DDE90623 		ldrd	r2, [sp, #24]
+ 1240 0148 8046     		mov	r8, r0
+ 1241 014a 8946     		mov	r9, r1
+ 1242 014c DDE90E01 		ldrd	r0, [sp, #56]
+ 1243 0150 FFF7FEFF 		bl	__aeabi_dmul
+ 1244              	.LVL202:
+ 1245 0154 0246     		mov	r2, r0
+ 1246 0156 0B46     		mov	r3, r1
+ 1247 0158 4046     		mov	r0, r8
+ 1248 015a 4946     		mov	r1, r9
+ 1249 015c FFF7FEFF 		bl	__aeabi_dadd
+ 1250              	.LVL203:
+ 1251 0160 D5E90AAB 		ldrd	r10, [r5, #40]
+ 1252 0164 DDE90023 		ldrd	r2, [sp]
+ 1253 0168 8046     		mov	r8, r0
+ 1254 016a 8946     		mov	r9, r1
+ 1255 016c 5046     		mov	r0, r10
+ 1256 016e 5946     		mov	r1, fp
+ 1257 0170 FFF7FEFF 		bl	__aeabi_dmul
+ 1258              	.LVL204:
+ 1259 0174 0246     		mov	r2, r0
+ 1260 0176 0B46     		mov	r3, r1
+ 1261 0178 4046     		mov	r0, r8
+ 1262 017a 4946     		mov	r1, r9
+ 1263 017c FFF7FEFF 		bl	__aeabi_dadd
+ 1264              	.LVL205:
+ 1265 0180 C6E90601 		strd	r0, [r6, #24]
+ 136:math/pprz_algebra_double.c ****   m_a2c->m[4] = m_b2c->m[3] * m_a2b->m[1] + m_b2c->m[4] * m_a2b->m[4] + m_b2c->m[5] * m_a2b->m[7];
+ 1266              		.loc 1 136 0
+ 1267 0184 95ED067B 		fldd	d7, [r5, #24]
+ 1268 0188 8DED067B 		fstd	d7, [sp, #24]
+ 1269 018c 94ED027B 		fldd	d7, [r4, #8]
+ 1270 0190 DDE90601 		ldrd	r0, [sp, #24]
+ 1271 0194 53EC172B 		fmrrd	r2, r3, d7
+ 1272 0198 8DED107B 		fstd	d7, [sp, #64]
+ 1273 019c FFF7FEFF 		bl	__aeabi_dmul
+ 1274              	.LVL206:
+ 1275 01a0 DDE90A23 		ldrd	r2, [sp, #40]
+ 1276 01a4 8046     		mov	r8, r0
+ 1277 01a6 8946     		mov	r9, r1
+ 1278 01a8 DDE90E01 		ldrd	r0, [sp, #56]
+ 1279 01ac FFF7FEFF 		bl	__aeabi_dmul
+ 1280              	.LVL207:
+ 1281 01b0 0246     		mov	r2, r0
+ 1282 01b2 0B46     		mov	r3, r1
+ 1283 01b4 4046     		mov	r0, r8
+ 1284 01b6 4946     		mov	r1, r9
+ 1285 01b8 FFF7FEFF 		bl	__aeabi_dadd
+ 1286              	.LVL208:
+ 1287 01bc DDE90223 		ldrd	r2, [sp, #8]
+ 1288 01c0 8046     		mov	r8, r0
+ 1289 01c2 8946     		mov	r9, r1
+ 1290 01c4 5046     		mov	r0, r10
+ 1291 01c6 5946     		mov	r1, fp
+ 1292 01c8 FFF7FEFF 		bl	__aeabi_dmul
+ 1293              	.LVL209:
+ 1294 01cc 0246     		mov	r2, r0
+ 1295 01ce 0B46     		mov	r3, r1
+ 1296 01d0 4046     		mov	r0, r8
+ 1297 01d2 4946     		mov	r1, r9
+ 1298 01d4 FFF7FEFF 		bl	__aeabi_dadd
+ 1299              	.LVL210:
+ 1300 01d8 C6E90801 		strd	r0, [r6, #32]
+ 137:math/pprz_algebra_double.c ****   m_a2c->m[5] = m_b2c->m[3] * m_a2b->m[2] + m_b2c->m[4] * m_a2b->m[5] + m_b2c->m[5] * m_a2b->m[8];
+ 1301              		.loc 1 137 0
+ 1302 01dc 94ED047B 		fldd	d7, [r4, #16]
+ 1303 01e0 DDE90601 		ldrd	r0, [sp, #24]
+ 1304 01e4 53EC172B 		fmrrd	r2, r3, d7
+ 1305 01e8 8DED0A7B 		fstd	d7, [sp, #40]
+ 1306 01ec FFF7FEFF 		bl	__aeabi_dmul
+ 1307              	.LVL211:
+ 1308 01f0 D5E90823 		ldrd	r2, [r5, #32]
+ 1309 01f4 8046     		mov	r8, r0
+ 1310 01f6 8946     		mov	r9, r1
+ 1311 01f8 DDE90C01 		ldrd	r0, [sp, #48]
+ 1312 01fc FFF7FEFF 		bl	__aeabi_dmul
+ 1313              	.LVL212:
+ 1314 0200 0246     		mov	r2, r0
+ 1315 0202 0B46     		mov	r3, r1
+ 1316 0204 4046     		mov	r0, r8
+ 1317 0206 4946     		mov	r1, r9
+ 1318 0208 FFF7FEFF 		bl	__aeabi_dadd
+ 1319              	.LVL213:
+ 1320 020c DDE90423 		ldrd	r2, [sp, #16]
+ 1321 0210 8046     		mov	r8, r0
+ 1322 0212 8946     		mov	r9, r1
+ 1323 0214 5046     		mov	r0, r10
+ 1324 0216 5946     		mov	r1, fp
+ 1325 0218 FFF7FEFF 		bl	__aeabi_dmul
+ 1326              	.LVL214:
+ 1327 021c 0246     		mov	r2, r0
+ 1328 021e 0B46     		mov	r3, r1
+ 1329 0220 4046     		mov	r0, r8
+ 1330 0222 4946     		mov	r1, r9
+ 1331 0224 FFF7FEFF 		bl	__aeabi_dadd
+ 1332              	.LVL215:
+ 1333 0228 C6E90A01 		strd	r0, [r6, #40]
+ 138:math/pprz_algebra_double.c ****   m_a2c->m[6] = m_b2c->m[6] * m_a2b->m[0] + m_b2c->m[7] * m_a2b->m[3] + m_b2c->m[8] * m_a2b->m[6];
+ 1334              		.loc 1 138 0
+ 1335 022c 95ED0E7B 		fldd	d7, [r5, #56]
+ 1336 0230 D5E90C23 		ldrd	r2, [r5, #48]
+ 1337 0234 DDE90801 		ldrd	r0, [sp, #32]
+ 1338 0238 8DED067B 		fstd	d7, [sp, #24]
+ 1339 023c FFF7FEFF 		bl	__aeabi_dmul
+ 1340              	.LVL216:
+ 1341 0240 D4E90623 		ldrd	r2, [r4, #24]
+ 1342 0244 8046     		mov	r8, r0
+ 1343 0246 8946     		mov	r9, r1
+ 1344 0248 DDE90601 		ldrd	r0, [sp, #24]
+ 1345 024c FFF7FEFF 		bl	__aeabi_dmul
+ 1346              	.LVL217:
+ 1347 0250 0246     		mov	r2, r0
+ 1348 0252 0B46     		mov	r3, r1
+ 1349 0254 4046     		mov	r0, r8
+ 1350 0256 4946     		mov	r1, r9
+ 1351 0258 D5E910AB 		ldrd	r10, [r5, #64]
+ 1352 025c FFF7FEFF 		bl	__aeabi_dadd
+ 1353              	.LVL218:
+ 1354 0260 DDE90023 		ldrd	r2, [sp]
+ 1355 0264 8046     		mov	r8, r0
+ 1356 0266 8946     		mov	r9, r1
+ 1357 0268 5046     		mov	r0, r10
+ 1358 026a 5946     		mov	r1, fp
+ 1359 026c FFF7FEFF 		bl	__aeabi_dmul
+ 1360              	.LVL219:
+ 1361 0270 0246     		mov	r2, r0
+ 1362 0272 0B46     		mov	r3, r1
+ 1363 0274 4046     		mov	r0, r8
+ 1364 0276 4946     		mov	r1, r9
+ 1365 0278 FFF7FEFF 		bl	__aeabi_dadd
+ 1366              	.LVL220:
+ 1367 027c C6E90C01 		strd	r0, [r6, #48]
+ 139:math/pprz_algebra_double.c ****   m_a2c->m[7] = m_b2c->m[6] * m_a2b->m[1] + m_b2c->m[7] * m_a2b->m[4] + m_b2c->m[8] * m_a2b->m[7];
+ 1368              		.loc 1 139 0
+ 1369 0280 95ED0C7B 		fldd	d7, [r5, #48]
+ 1370 0284 DDE91023 		ldrd	r2, [sp, #64]
+ 1371 0288 51EC170B 		fmrrd	r0, r1, d7
+ 1372 028c 8DED007B 		fstd	d7, [sp]
+ 1373 0290 FFF7FEFF 		bl	__aeabi_dmul
+ 1374              	.LVL221:
+ 1375 0294 D4E90823 		ldrd	r2, [r4, #32]
+ 1376 0298 8046     		mov	r8, r0
+ 1377 029a 8946     		mov	r9, r1
+ 1378 029c DDE90601 		ldrd	r0, [sp, #24]
+ 1379 02a0 FFF7FEFF 		bl	__aeabi_dmul
+ 1380              	.LVL222:
+ 1381 02a4 0246     		mov	r2, r0
+ 1382 02a6 0B46     		mov	r3, r1
+ 1383 02a8 4046     		mov	r0, r8
+ 1384 02aa 4946     		mov	r1, r9
+ 1385 02ac FFF7FEFF 		bl	__aeabi_dadd
+ 1386              	.LVL223:
+ 1387 02b0 DDE90223 		ldrd	r2, [sp, #8]
+ 1388 02b4 8046     		mov	r8, r0
+ 1389 02b6 8946     		mov	r9, r1
+ 1390 02b8 5046     		mov	r0, r10
+ 1391 02ba 5946     		mov	r1, fp
+ 1392 02bc FFF7FEFF 		bl	__aeabi_dmul
+ 1393              	.LVL224:
+ 1394 02c0 0246     		mov	r2, r0
+ 1395 02c2 0B46     		mov	r3, r1
+ 1396 02c4 4046     		mov	r0, r8
+ 1397 02c6 4946     		mov	r1, r9
+ 1398 02c8 FFF7FEFF 		bl	__aeabi_dadd
+ 1399              	.LVL225:
+ 1400 02cc C6E90E01 		strd	r0, [r6, #56]
+ 140:math/pprz_algebra_double.c ****   m_a2c->m[8] = m_b2c->m[6] * m_a2b->m[2] + m_b2c->m[7] * m_a2b->m[5] + m_b2c->m[8] * m_a2b->m[8];
+ 1401              		.loc 1 140 0
+ 1402 02d0 DDE90001 		ldrd	r0, [sp]
+ 1403 02d4 DDE90A23 		ldrd	r2, [sp, #40]
+ 1404 02d8 FFF7FEFF 		bl	__aeabi_dmul
+ 1405              	.LVL226:
+ 1406 02dc D4E90A23 		ldrd	r2, [r4, #40]
+ 1407 02e0 8046     		mov	r8, r0
+ 1408 02e2 8946     		mov	r9, r1
+ 1409 02e4 D5E90E01 		ldrd	r0, [r5, #56]
+ 1410 02e8 FFF7FEFF 		bl	__aeabi_dmul
+ 1411              	.LVL227:
+ 1412 02ec 0246     		mov	r2, r0
+ 1413 02ee 0B46     		mov	r3, r1
+ 1414 02f0 4046     		mov	r0, r8
+ 1415 02f2 4946     		mov	r1, r9
+ 1416 02f4 FFF7FEFF 		bl	__aeabi_dadd
+ 1417              	.LVL228:
+ 1418 02f8 DDE90423 		ldrd	r2, [sp, #16]
+ 1419 02fc 0446     		mov	r4, r0
+ 1420              	.LVL229:
+ 1421 02fe 0D46     		mov	r5, r1
+ 1422              	.LVL230:
+ 1423 0300 5046     		mov	r0, r10
+ 1424 0302 5946     		mov	r1, fp
+ 1425 0304 FFF7FEFF 		bl	__aeabi_dmul
+ 1426              	.LVL231:
+ 1427 0308 0246     		mov	r2, r0
+ 1428 030a 0B46     		mov	r3, r1
+ 1429 030c 2046     		mov	r0, r4
+ 1430 030e 2946     		mov	r1, r5
+ 1431 0310 FFF7FEFF 		bl	__aeabi_dadd
+ 1432              	.LVL232:
+ 1433 0314 C6E91001 		strd	r0, [r6, #64]
+ 141:math/pprz_algebra_double.c **** }
+ 1434              		.loc 1 141 0
+ 1435 0318 12B0     		add	sp, sp, #72
+ 1436              		.cfi_def_cfa_offset 32
+ 1437              		@ sp needed
+ 1438 031a BDE8708F 		pop	{r4, r5, r6, r8, r9, r10, fp, pc}
+ 1439              		.cfi_endproc
+ 1440              	.LFE45:
+ 1442              		.section	.text.double_rmat_vmult,"ax",%progbits
+ 1443              		.align	1
+ 1444              		.global	double_rmat_vmult
+ 1445              		.thumb
+ 1446              		.thumb_func
+ 1448              	double_rmat_vmult:
+ 1449              	.LFB46:
+ 142:math/pprz_algebra_double.c **** 
+ 143:math/pprz_algebra_double.c **** /** rotate 3D vector by rotation matrix.
+ 144:math/pprz_algebra_double.c ****  * vb = m_a2b * va
+ 145:math/pprz_algebra_double.c ****  */
+ 146:math/pprz_algebra_double.c **** void double_rmat_vmult(struct DoubleVect3 *vb, struct DoubleRMat *m_a2b, struct DoubleVect3 *va)
+ 147:math/pprz_algebra_double.c **** {
+ 1450              		.loc 1 147 0
+ 1451              		.cfi_startproc
+ 1452              		@ args = 0, pretend = 0, frame = 16
+ 1453              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1454              	.LVL233:
+ 1455 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 1456              		.cfi_def_cfa_offset 36
+ 1457              		.cfi_offset 4, -36
+ 1458              		.cfi_offset 5, -32
+ 1459              		.cfi_offset 6, -28
+ 1460              		.cfi_offset 7, -24
+ 1461              		.cfi_offset 8, -20
+ 1462              		.cfi_offset 9, -16
+ 1463              		.cfi_offset 10, -12
+ 1464              		.cfi_offset 11, -8
+ 1465              		.cfi_offset 14, -4
+ 1466 0004 85B0     		sub	sp, sp, #20
+ 1467              		.cfi_def_cfa_offset 56
+ 148:math/pprz_algebra_double.c ****   vb->x = m_a2b->m[0] * va->x + m_a2b->m[1] * va->y + m_a2b->m[2] * va->z;
+ 1468              		.loc 1 148 0
+ 1469 0006 D2E90289 		ldrd	r8, [r2, #8]
+ 1470 000a D2E90445 		ldrd	r4, [r2, #16]
+ 147:math/pprz_algebra_double.c ****   vb->x = m_a2b->m[0] * va->x + m_a2b->m[1] * va->y + m_a2b->m[2] * va->z;
+ 1471              		.loc 1 147 0
+ 1472 000e 8A46     		mov	r10, r1
+ 1473 0010 9446     		mov	ip, r2
+ 1474 0012 8346     		mov	fp, r0
+ 1475              		.loc 1 148 0
+ 1476 0014 0CCA     		ldmia	r2, {r2-r3}
+ 1477              	.LVL234:
+ 1478 0016 D1E90001 		ldrd	r0, [r1]
+ 1479              	.LVL235:
+ 1480 001a CDF800C0 		str	ip, [sp]
+ 1481 001e FFF7FEFF 		bl	__aeabi_dmul
+ 1482              	.LVL236:
+ 1483 0022 DAE90223 		ldrd	r2, [r10, #8]
+ 1484 0026 0646     		mov	r6, r0
+ 1485 0028 0F46     		mov	r7, r1
+ 1486 002a 4046     		mov	r0, r8
+ 1487 002c 4946     		mov	r1, r9
+ 1488 002e FFF7FEFF 		bl	__aeabi_dmul
+ 1489              	.LVL237:
+ 1490 0032 0246     		mov	r2, r0
+ 1491 0034 0B46     		mov	r3, r1
+ 1492 0036 3046     		mov	r0, r6
+ 1493 0038 3946     		mov	r1, r7
+ 1494 003a FFF7FEFF 		bl	__aeabi_dadd
+ 1495              	.LVL238:
+ 1496 003e DAE90423 		ldrd	r2, [r10, #16]
+ 1497 0042 0646     		mov	r6, r0
+ 1498 0044 0F46     		mov	r7, r1
+ 1499 0046 2046     		mov	r0, r4
+ 1500 0048 2946     		mov	r1, r5
+ 1501 004a FFF7FEFF 		bl	__aeabi_dmul
+ 1502              	.LVL239:
+ 1503 004e 0246     		mov	r2, r0
+ 1504 0050 0B46     		mov	r3, r1
+ 1505 0052 3046     		mov	r0, r6
+ 1506 0054 3946     		mov	r1, r7
+ 1507 0056 FFF7FEFF 		bl	__aeabi_dadd
+ 1508              	.LVL240:
+ 1509 005a CBE90001 		strd	r0, [fp]
+ 149:math/pprz_algebra_double.c ****   vb->y = m_a2b->m[3] * va->x + m_a2b->m[4] * va->y + m_a2b->m[5] * va->z;
+ 1510              		.loc 1 149 0
+ 1511 005e DDF800C0 		ldr	ip, [sp]
+ 1512 0062 CDF80CC0 		str	ip, [sp, #12]
+ 1513 0066 DCE90067 		ldrd	r6, [ip]
+ 1514 006a DAE90623 		ldrd	r2, [r10, #24]
+ 1515 006e 3046     		mov	r0, r6
+ 1516 0070 3946     		mov	r1, r7
+ 1517 0072 FFF7FEFF 		bl	__aeabi_dmul
+ 1518              	.LVL241:
+ 1519 0076 DAE90823 		ldrd	r2, [r10, #32]
+ 1520 007a CDE90001 		strd	r0, [sp]
+ 1521              	.LVL242:
+ 1522 007e 4046     		mov	r0, r8
+ 1523 0080 4946     		mov	r1, r9
+ 1524 0082 FFF7FEFF 		bl	__aeabi_dmul
+ 1525              	.LVL243:
+ 1526 0086 0246     		mov	r2, r0
+ 1527 0088 0B46     		mov	r3, r1
+ 1528 008a DDE90001 		ldrd	r0, [sp]
+ 1529 008e FFF7FEFF 		bl	__aeabi_dadd
+ 1530              	.LVL244:
+ 1531 0092 DAE90A23 		ldrd	r2, [r10, #40]
+ 1532 0096 8046     		mov	r8, r0
+ 1533 0098 8946     		mov	r9, r1
+ 1534 009a 2046     		mov	r0, r4
+ 1535 009c 2946     		mov	r1, r5
+ 1536 009e FFF7FEFF 		bl	__aeabi_dmul
+ 1537              	.LVL245:
+ 1538 00a2 0246     		mov	r2, r0
+ 1539 00a4 0B46     		mov	r3, r1
+ 1540 00a6 4046     		mov	r0, r8
+ 1541 00a8 4946     		mov	r1, r9
+ 1542 00aa FFF7FEFF 		bl	__aeabi_dadd
+ 1543              	.LVL246:
+ 150:math/pprz_algebra_double.c ****   vb->z = m_a2b->m[6] * va->x + m_a2b->m[7] * va->y + m_a2b->m[8] * va->z;
+ 1544              		.loc 1 150 0
+ 1545 00ae DAE90C23 		ldrd	r2, [r10, #48]
+ 149:math/pprz_algebra_double.c ****   vb->y = m_a2b->m[3] * va->x + m_a2b->m[4] * va->y + m_a2b->m[5] * va->z;
+ 1546              		.loc 1 149 0
+ 1547 00b2 CBE90201 		strd	r0, [fp, #8]
+ 1548              		.loc 1 150 0
+ 1549 00b6 3046     		mov	r0, r6
+ 1550 00b8 3946     		mov	r1, r7
+ 1551 00ba FFF7FEFF 		bl	__aeabi_dmul
+ 1552              	.LVL247:
+ 1553 00be DDF80CC0 		ldr	ip, [sp, #12]
+ 1554 00c2 0646     		mov	r6, r0
+ 1555 00c4 DCE90223 		ldrd	r2, [ip, #8]
+ 1556 00c8 0F46     		mov	r7, r1
+ 1557 00ca DAE90E01 		ldrd	r0, [r10, #56]
+ 1558 00ce FFF7FEFF 		bl	__aeabi_dmul
+ 1559              	.LVL248:
+ 1560 00d2 0246     		mov	r2, r0
+ 1561 00d4 0B46     		mov	r3, r1
+ 1562 00d6 3046     		mov	r0, r6
+ 1563 00d8 3946     		mov	r1, r7
+ 1564 00da FFF7FEFF 		bl	__aeabi_dadd
+ 1565              	.LVL249:
+ 1566 00de DAE91023 		ldrd	r2, [r10, #64]
+ 1567 00e2 0646     		mov	r6, r0
+ 1568 00e4 0F46     		mov	r7, r1
+ 1569 00e6 2046     		mov	r0, r4
+ 1570 00e8 2946     		mov	r1, r5
+ 1571 00ea FFF7FEFF 		bl	__aeabi_dmul
+ 1572              	.LVL250:
+ 1573 00ee 0246     		mov	r2, r0
+ 1574 00f0 0B46     		mov	r3, r1
+ 1575 00f2 3046     		mov	r0, r6
+ 1576 00f4 3946     		mov	r1, r7
+ 1577 00f6 FFF7FEFF 		bl	__aeabi_dadd
+ 1578              	.LVL251:
+ 1579 00fa CBE90401 		strd	r0, [fp, #16]
+ 151:math/pprz_algebra_double.c **** }
+ 1580              		.loc 1 151 0
+ 1581 00fe 05B0     		add	sp, sp, #20
+ 1582              		.cfi_def_cfa_offset 36
+ 1583              		@ sp needed
+ 1584 0100 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 1585              		.cfi_endproc
+ 1586              	.LFE46:
+ 1588              		.section	.text.double_rmat_of_quat,"ax",%progbits
+ 1589              		.align	1
+ 1590              		.global	double_rmat_of_quat
+ 1591              		.thumb
+ 1592              		.thumb_func
+ 1594              	double_rmat_of_quat:
+ 1595              	.LFB47:
+ 152:math/pprz_algebra_double.c **** 
+ 153:math/pprz_algebra_double.c **** /* C n->b rotation matrix */
+ 154:math/pprz_algebra_double.c **** void double_rmat_of_quat(struct DoubleRMat *rm, struct DoubleQuat *q)
+ 155:math/pprz_algebra_double.c **** {
+ 1596              		.loc 1 155 0
+ 1597              		.cfi_startproc
+ 1598              		@ args = 0, pretend = 0, frame = 56
+ 1599              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1600              	.LVL252:
+ 1601 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 1602              		.cfi_def_cfa_offset 36
+ 1603              		.cfi_offset 4, -36
+ 1604              		.cfi_offset 5, -32
+ 1605              		.cfi_offset 6, -28
+ 1606              		.cfi_offset 7, -24
+ 1607              		.cfi_offset 8, -20
+ 1608              		.cfi_offset 9, -16
+ 1609              		.cfi_offset 10, -12
+ 1610              		.cfi_offset 11, -8
+ 1611              		.cfi_offset 14, -4
+ 156:math/pprz_algebra_double.c ****   const double _a = M_SQRT2 * q->qi;
+ 1612              		.loc 1 156 0
+ 1613 0004 61A3     		adr	r3, .L15+4
+ 1614 0006 D3E90023 		ldrd	r2, [r3]
+ 155:math/pprz_algebra_double.c ****   const double _a = M_SQRT2 * q->qi;
+ 1615              		.loc 1 155 0
+ 1616 000a 8FB0     		sub	sp, sp, #60
+ 1617              		.cfi_def_cfa_offset 96
+ 155:math/pprz_algebra_double.c ****   const double _a = M_SQRT2 * q->qi;
+ 1618              		.loc 1 155 0
+ 1619 000c 8346     		mov	fp, r0
+ 1620 000e 8A46     		mov	r10, r1
+ 1621              		.loc 1 156 0
+ 1622 0010 D1E90001 		ldrd	r0, [r1]
+ 1623              	.LVL253:
+ 1624 0014 FFF7FEFF 		bl	__aeabi_dmul
+ 1625              	.LVL254:
+ 157:math/pprz_algebra_double.c ****   const double _b = M_SQRT2 * q->qx;
+ 1626              		.loc 1 157 0
+ 1627 0018 5CA3     		adr	r3, .L15+4
+ 1628 001a D3E90023 		ldrd	r2, [r3]
+ 156:math/pprz_algebra_double.c ****   const double _a = M_SQRT2 * q->qi;
+ 1629              		.loc 1 156 0
+ 1630 001e 8046     		mov	r8, r0
+ 1631 0020 8946     		mov	r9, r1
+ 1632              	.LVL255:
+ 1633              		.loc 1 157 0
+ 1634 0022 DAE90201 		ldrd	r0, [r10, #8]
+ 1635 0026 FFF7FEFF 		bl	__aeabi_dmul
+ 1636              	.LVL256:
+ 158:math/pprz_algebra_double.c ****   const double _c = M_SQRT2 * q->qy;
+ 1637              		.loc 1 158 0
+ 1638 002a 58A3     		adr	r3, .L15+4
+ 1639 002c D3E90023 		ldrd	r2, [r3]
+ 157:math/pprz_algebra_double.c ****   const double _b = M_SQRT2 * q->qx;
+ 1640              		.loc 1 157 0
+ 1641 0030 0646     		mov	r6, r0
+ 1642 0032 0F46     		mov	r7, r1
+ 1643              	.LVL257:
+ 1644              		.loc 1 158 0
+ 1645 0034 DAE90401 		ldrd	r0, [r10, #16]
+ 1646 0038 FFF7FEFF 		bl	__aeabi_dmul
+ 1647              	.LVL258:
+ 159:math/pprz_algebra_double.c ****   const double _d = M_SQRT2 * q->qz;
+ 1648              		.loc 1 159 0
+ 1649 003c 53A3     		adr	r3, .L15+4
+ 1650 003e D3E90023 		ldrd	r2, [r3]
+ 158:math/pprz_algebra_double.c ****   const double _c = M_SQRT2 * q->qy;
+ 1651              		.loc 1 158 0
+ 1652 0042 0446     		mov	r4, r0
+ 1653 0044 0D46     		mov	r5, r1
+ 1654              	.LVL259:
+ 1655              		.loc 1 159 0
+ 1656 0046 DAE90601 		ldrd	r0, [r10, #24]
+ 1657 004a FFF7FEFF 		bl	__aeabi_dmul
+ 1658              	.LVL260:
+ 160:math/pprz_algebra_double.c ****   const double a2_1 = _a * _a - 1;
+ 1659              		.loc 1 160 0
+ 1660 004e 4246     		mov	r2, r8
+ 159:math/pprz_algebra_double.c ****   const double _d = M_SQRT2 * q->qz;
+ 1661              		.loc 1 159 0
+ 1662 0050 CDE90001 		strd	r0, [sp]
+ 1663              	.LVL261:
+ 1664              		.loc 1 160 0
+ 1665 0054 4B46     		mov	r3, r9
+ 1666 0056 4046     		mov	r0, r8
+ 1667              	.LVL262:
+ 1668 0058 4946     		mov	r1, r9
+ 1669 005a FFF7FEFF 		bl	__aeabi_dmul
+ 1670              	.LVL263:
+ 1671 005e 0022     		movs	r2, #0
+ 1672 0060 494B     		ldr	r3, .L15
+ 1673 0062 FFF7FEFF 		bl	__aeabi_dsub
+ 1674              	.LVL264:
+ 161:math/pprz_algebra_double.c ****   const double ab = _a * _b;
+ 1675              		.loc 1 161 0
+ 1676 0066 3246     		mov	r2, r6
+ 160:math/pprz_algebra_double.c ****   const double a2_1 = _a * _a - 1;
+ 1677              		.loc 1 160 0
+ 1678 0068 CDE90201 		strd	r0, [sp, #8]
+ 1679              	.LVL265:
+ 1680              		.loc 1 161 0
+ 1681 006c 3B46     		mov	r3, r7
+ 1682 006e 4046     		mov	r0, r8
+ 1683              	.LVL266:
+ 1684 0070 4946     		mov	r1, r9
+ 1685 0072 FFF7FEFF 		bl	__aeabi_dmul
+ 1686              	.LVL267:
+ 162:math/pprz_algebra_double.c ****   const double ac = _a * _c;
+ 1687              		.loc 1 162 0
+ 1688 0076 2246     		mov	r2, r4
+ 161:math/pprz_algebra_double.c ****   const double ab = _a * _b;
+ 1689              		.loc 1 161 0
+ 1690 0078 CDE90401 		strd	r0, [sp, #16]
+ 1691              	.LVL268:
+ 1692              		.loc 1 162 0
+ 1693 007c 2B46     		mov	r3, r5
+ 1694 007e 4046     		mov	r0, r8
+ 1695              	.LVL269:
+ 1696 0080 4946     		mov	r1, r9
+ 1697 0082 FFF7FEFF 		bl	__aeabi_dmul
+ 1698              	.LVL270:
+ 163:math/pprz_algebra_double.c ****   const double ad = _a * _d;
+ 1699              		.loc 1 163 0
+ 1700 0086 DDE90023 		ldrd	r2, [sp]
+ 162:math/pprz_algebra_double.c ****   const double ac = _a * _c;
+ 1701              		.loc 1 162 0
+ 1702 008a CDE90601 		strd	r0, [sp, #24]
+ 1703              	.LVL271:
+ 1704              		.loc 1 163 0
+ 1705 008e 4046     		mov	r0, r8
+ 1706              	.LVL272:
+ 1707 0090 4946     		mov	r1, r9
+ 1708 0092 FFF7FEFF 		bl	__aeabi_dmul
+ 1709              	.LVL273:
+ 164:math/pprz_algebra_double.c ****   const double bc = _b * _c;
+ 1710              		.loc 1 164 0
+ 1711 0096 2246     		mov	r2, r4
+ 163:math/pprz_algebra_double.c ****   const double ad = _a * _d;
+ 1712              		.loc 1 163 0
+ 1713 0098 CDE90801 		strd	r0, [sp, #32]
+ 1714              	.LVL274:
+ 1715              		.loc 1 164 0
+ 1716 009c 2B46     		mov	r3, r5
+ 1717 009e 3046     		mov	r0, r6
+ 1718              	.LVL275:
+ 1719 00a0 3946     		mov	r1, r7
+ 1720 00a2 FFF7FEFF 		bl	__aeabi_dmul
+ 1721              	.LVL276:
+ 165:math/pprz_algebra_double.c ****   const double bd = _b * _d;
+ 1722              		.loc 1 165 0
+ 1723 00a6 DDE90023 		ldrd	r2, [sp]
+ 164:math/pprz_algebra_double.c ****   const double bc = _b * _c;
+ 1724              		.loc 1 164 0
+ 1725 00aa 8046     		mov	r8, r0
+ 1726              	.LVL277:
+ 1727 00ac 8946     		mov	r9, r1
+ 1728              	.LVL278:
+ 1729              		.loc 1 165 0
+ 1730 00ae 3046     		mov	r0, r6
+ 1731 00b0 3946     		mov	r1, r7
+ 1732 00b2 FFF7FEFF 		bl	__aeabi_dmul
+ 1733              	.LVL279:
+ 166:math/pprz_algebra_double.c ****   const double cd = _c * _d;
+ 1734              		.loc 1 166 0
+ 1735 00b6 DDE90023 		ldrd	r2, [sp]
+ 165:math/pprz_algebra_double.c ****   const double bd = _b * _d;
+ 1736              		.loc 1 165 0
+ 1737 00ba CDE90A01 		strd	r0, [sp, #40]
+ 1738              	.LVL280:
+ 1739              		.loc 1 166 0
+ 1740 00be 2046     		mov	r0, r4
+ 1741              	.LVL281:
+ 1742 00c0 2946     		mov	r1, r5
+ 1743 00c2 FFF7FEFF 		bl	__aeabi_dmul
+ 1744              	.LVL282:
+ 167:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 0) = a2_1 + _b * _b;
+ 1745              		.loc 1 167 0
+ 1746 00c6 3246     		mov	r2, r6
+ 166:math/pprz_algebra_double.c ****   const double cd = _c * _d;
+ 1747              		.loc 1 166 0
+ 1748 00c8 CDE90C01 		strd	r0, [sp, #48]
+ 1749              	.LVL283:
+ 1750              		.loc 1 167 0
+ 1751 00cc 3B46     		mov	r3, r7
+ 1752 00ce 3046     		mov	r0, r6
+ 1753              	.LVL284:
+ 1754 00d0 3946     		mov	r1, r7
+ 1755 00d2 FFF7FEFF 		bl	__aeabi_dmul
+ 1756              	.LVL285:
+ 1757 00d6 0246     		mov	r2, r0
+ 1758 00d8 0B46     		mov	r3, r1
+ 1759 00da DDE90201 		ldrd	r0, [sp, #8]
+ 1760 00de FFF7FEFF 		bl	__aeabi_dadd
+ 1761              	.LVL286:
+ 168:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 1) = bc + ad;
+ 1762              		.loc 1 168 0
+ 1763 00e2 DDE90823 		ldrd	r2, [sp, #32]
+ 167:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 0) = a2_1 + _b * _b;
+ 1764              		.loc 1 167 0
+ 1765 00e6 CBE90001 		strd	r0, [fp]
+ 1766              		.loc 1 168 0
+ 1767 00ea 4046     		mov	r0, r8
+ 1768 00ec 4946     		mov	r1, r9
+ 1769 00ee FFF7FEFF 		bl	__aeabi_dadd
+ 1770              	.LVL287:
+ 169:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 2) = bd - ac;
+ 1771              		.loc 1 169 0
+ 1772 00f2 DDE90623 		ldrd	r2, [sp, #24]
+ 168:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 1) = bc + ad;
+ 1773              		.loc 1 168 0
+ 1774 00f6 CBE90201 		strd	r0, [fp, #8]
+ 1775              		.loc 1 169 0
+ 1776 00fa DDE90A01 		ldrd	r0, [sp, #40]
+ 1777 00fe FFF7FEFF 		bl	__aeabi_dsub
+ 1778              	.LVL288:
+ 170:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 0) = bc - ad;
+ 1779              		.loc 1 170 0
+ 1780 0102 DDE90823 		ldrd	r2, [sp, #32]
+ 169:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 0, 2) = bd - ac;
+ 1781              		.loc 1 169 0
+ 1782 0106 CBE90401 		strd	r0, [fp, #16]
+ 1783              		.loc 1 170 0
+ 1784 010a 4046     		mov	r0, r8
+ 1785 010c 4946     		mov	r1, r9
+ 1786 010e FFF7FEFF 		bl	__aeabi_dsub
+ 1787              	.LVL289:
+ 171:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 1) = a2_1 + _c * _c;
+ 1788              		.loc 1 171 0
+ 1789 0112 2246     		mov	r2, r4
+ 170:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 0) = bc - ad;
+ 1790              		.loc 1 170 0
+ 1791 0114 CBE90601 		strd	r0, [fp, #24]
+ 1792              		.loc 1 171 0
+ 1793 0118 2B46     		mov	r3, r5
+ 1794 011a 2046     		mov	r0, r4
+ 1795 011c 2946     		mov	r1, r5
+ 1796 011e FFF7FEFF 		bl	__aeabi_dmul
+ 1797              	.LVL290:
+ 1798 0122 0246     		mov	r2, r0
+ 1799 0124 0B46     		mov	r3, r1
+ 1800 0126 DDE90201 		ldrd	r0, [sp, #8]
+ 1801 012a FFF7FEFF 		bl	__aeabi_dadd
+ 1802              	.LVL291:
+ 1803 012e CBE90801 		strd	r0, [fp, #32]
+ 172:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 2) = cd + ab;
+ 1804              		.loc 1 172 0
+ 1805 0132 DDE90C01 		ldrd	r0, [sp, #48]
+ 1806 0136 DDE90423 		ldrd	r2, [sp, #16]
+ 1807 013a FFF7FEFF 		bl	__aeabi_dadd
+ 1808              	.LVL292:
+ 173:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 0) = bd + ac;
+ 1809              		.loc 1 173 0
+ 1810 013e DDE90623 		ldrd	r2, [sp, #24]
+ 172:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 1, 2) = cd + ab;
+ 1811              		.loc 1 172 0
+ 1812 0142 CBE90A01 		strd	r0, [fp, #40]
+ 1813              		.loc 1 173 0
+ 1814 0146 DDE90A01 		ldrd	r0, [sp, #40]
+ 1815 014a FFF7FEFF 		bl	__aeabi_dadd
+ 1816              	.LVL293:
+ 174:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 1) = cd - ab;
+ 1817              		.loc 1 174 0
+ 1818 014e DDE90423 		ldrd	r2, [sp, #16]
+ 173:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 0) = bd + ac;
+ 1819              		.loc 1 173 0
+ 1820 0152 CBE90C01 		strd	r0, [fp, #48]
+ 1821              		.loc 1 174 0
+ 1822 0156 DDE90C01 		ldrd	r0, [sp, #48]
+ 1823 015a FFF7FEFF 		bl	__aeabi_dsub
+ 1824              	.LVL294:
+ 1825 015e CBE90E01 		strd	r0, [fp, #56]
+ 175:math/pprz_algebra_double.c ****   RMAT_ELMT(*rm, 2, 2) = a2_1 + _d * _d;
+ 1826              		.loc 1 175 0
+ 1827 0162 DDE90001 		ldrd	r0, [sp]
+ 1828 0166 0246     		mov	r2, r0
+ 1829 0168 0B46     		mov	r3, r1
+ 1830 016a FFF7FEFF 		bl	__aeabi_dmul
+ 1831              	.LVL295:
+ 1832 016e 0246     		mov	r2, r0
+ 1833 0170 0B46     		mov	r3, r1
+ 1834 0172 DDE90201 		ldrd	r0, [sp, #8]
+ 1835 0176 FFF7FEFF 		bl	__aeabi_dadd
+ 1836              	.LVL296:
+ 1837 017a CBE91001 		strd	r0, [fp, #64]
+ 176:math/pprz_algebra_double.c **** }
+ 1838              		.loc 1 176 0
+ 1839 017e 0FB0     		add	sp, sp, #60
+ 1840              		.cfi_def_cfa_offset 36
+ 1841              	.LVL297:
+ 1842              		@ sp needed
+ 1843 0180 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 1844              	.LVL298:
+ 1845              	.L16:
+ 1846 0184 AFF30080 		.align	3
+ 1847              	.L15:
+ 1848 0188 0000F03F 		.word	1072693248
+ 1849 018c CD3B7F66 		.word	1719614413
+ 1850 0190 9EA0F63F 		.word	1073127582
+ 1851              		.cfi_endproc
+ 1852              	.LFE47:
+ 1854              		.text
+ 1855              	.Letext0:
+ 1856              		.file 2 "math/pprz_algebra_double.h"
+ 1857              		.file 3 "/usr/arm-none-eabi/include/math.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 pprz_algebra_double.c
+     /tmp/ccWDbpaM.s:23     .text.double_rmat_of_eulers_321:00000000 $t
+     /tmp/ccWDbpaM.s:28     .text.double_rmat_of_eulers_321:00000000 double_rmat_of_eulers_321
+     /tmp/ccWDbpaM.s:253    .text.double_quat_of_eulers:00000000 $t
+     /tmp/ccWDbpaM.s:258    .text.double_quat_of_eulers:00000000 double_quat_of_eulers
+     /tmp/ccWDbpaM.s:484    .text.double_quat_of_eulers:0000017c $d
+     /tmp/ccWDbpaM.s:489    .text.double_eulers_of_quat:00000000 $t
+     /tmp/ccWDbpaM.s:494    .text.double_eulers_of_quat:00000000 double_eulers_of_quat
+     /tmp/ccWDbpaM.s:718    .text.double_eulers_of_quat:00000154 $d
+     /tmp/ccWDbpaM.s:723    .text.double_quat_vmult:00000000 $t
+     /tmp/ccWDbpaM.s:728    .text.double_quat_vmult:00000000 double_quat_vmult
+     /tmp/ccWDbpaM.s:1046   .text.double_quat_vmult:00000214 $d
+     /tmp/ccWDbpaM.s:1051   .text.double_rmat_inv:00000000 $t
+     /tmp/ccWDbpaM.s:1056   .text.double_rmat_inv:00000000 double_rmat_inv
+     /tmp/ccWDbpaM.s:1087   .text.double_rmat_comp:00000000 $t
+     /tmp/ccWDbpaM.s:1092   .text.double_rmat_comp:00000000 double_rmat_comp
+     /tmp/ccWDbpaM.s:1443   .text.double_rmat_vmult:00000000 $t
+     /tmp/ccWDbpaM.s:1448   .text.double_rmat_vmult:00000000 double_rmat_vmult
+     /tmp/ccWDbpaM.s:1589   .text.double_rmat_of_quat:00000000 $t
+     /tmp/ccWDbpaM.s:1594   .text.double_rmat_of_quat:00000000 double_rmat_of_quat
+     /tmp/ccWDbpaM.s:1848   .text.double_rmat_of_quat:00000188 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._ansi.h.23.9f8fcfa20193763fcf364fb91705c94b
+                           .group:00000000 wm4.stddef.h.39.daafd3d79fe2f3a84d2d73d7d4e706f8
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.math.h.35.1ee5c20b09553bed5d7eb3c445ef70bd
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_algebra_float.h.32.544614e70075e1ed5693f00f6a441312
+                           .group:00000000 wm4.pprz_algebra_double.h.91.82ca62ae962f4b4f295322d977f2dad5
+
+UNDEFINED SYMBOLS
+__aeabi_dmul
+__aeabi_dsub
+__aeabi_dadd
+sin
+cos
+atan2
+asin

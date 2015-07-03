@@ -1,0 +1,2010 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"pprz_geodetic_int.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	__aeabi_f2d
+  20              		.global	__aeabi_dmul
+  21              		.global	__aeabi_ddiv
+  22              		.global	__aeabi_d2f
+  23              		.global	__aeabi_d2iz
+  24              		.section	.text.ltp_of_ecef_rmat_from_lla_i,"ax",%progbits
+  25              		.align	1
+  26              		.global	ltp_of_ecef_rmat_from_lla_i
+  27              		.thumb
+  28              		.thumb_func
+  30              	ltp_of_ecef_rmat_from_lla_i:
+  31              	.LFB9:
+  32              		.file 1 "math/pprz_geodetic_int.c"
+   1:math/pprz_geodetic_int.c **** /*
+   2:math/pprz_geodetic_int.c ****  * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+   3:math/pprz_geodetic_int.c ****  *               2009-2014 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+   4:math/pprz_geodetic_int.c ****  *               2010-2014 Felix Ruess <felix.ruess@gmail.com>
+   5:math/pprz_geodetic_int.c ****  *
+   6:math/pprz_geodetic_int.c ****  * This file is part of paparazzi.
+   7:math/pprz_geodetic_int.c ****  *
+   8:math/pprz_geodetic_int.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   9:math/pprz_geodetic_int.c ****  * it under the terms of the GNU General Public License as published by
+  10:math/pprz_geodetic_int.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  11:math/pprz_geodetic_int.c ****  * any later version.
+  12:math/pprz_geodetic_int.c ****  *
+  13:math/pprz_geodetic_int.c ****  * paparazzi is distributed in the hope that it will be useful,
+  14:math/pprz_geodetic_int.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  15:math/pprz_geodetic_int.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  16:math/pprz_geodetic_int.c ****  * GNU General Public License for more details.
+  17:math/pprz_geodetic_int.c ****  *
+  18:math/pprz_geodetic_int.c ****  * You should have received a copy of the GNU General Public License
+  19:math/pprz_geodetic_int.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  20:math/pprz_geodetic_int.c ****  * <http://www.gnu.org/licenses/>.
+  21:math/pprz_geodetic_int.c ****  */
+  22:math/pprz_geodetic_int.c **** 
+  23:math/pprz_geodetic_int.c **** /**
+  24:math/pprz_geodetic_int.c ****  * @file pprz_geodetic_int.c
+  25:math/pprz_geodetic_int.c ****  * @brief Paparazzi fixed point math for geodetic calculations.
+  26:math/pprz_geodetic_int.c ****  *
+  27:math/pprz_geodetic_int.c ****  *
+  28:math/pprz_geodetic_int.c ****  */
+  29:math/pprz_geodetic_int.c **** 
+  30:math/pprz_geodetic_int.c **** #include "pprz_geodetic_int.h"
+  31:math/pprz_geodetic_int.c **** #include "pprz_algebra_int.h"
+  32:math/pprz_geodetic_int.c **** 
+  33:math/pprz_geodetic_int.c **** 
+  34:math/pprz_geodetic_int.c **** void ltp_of_ecef_rmat_from_lla_i(struct Int32RMat *ltp_of_ecef, struct LlaCoor_i *lla)
+  35:math/pprz_geodetic_int.c **** {
+  33              		.loc 1 35 0
+  34              		.cfi_startproc
+  35              		@ args = 0, pretend = 0, frame = 0
+  36              		@ frame_needed = 0, uses_anonymous_args = 0
+  37              	.LVL0:
+  38 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+  39              		.cfi_def_cfa_offset 32
+  40              		.cfi_offset 3, -32
+  41              		.cfi_offset 4, -28
+  42              		.cfi_offset 5, -24
+  43              		.cfi_offset 6, -20
+  44              		.cfi_offset 7, -16
+  45              		.cfi_offset 8, -12
+  46              		.cfi_offset 9, -8
+  47              		.cfi_offset 14, -4
+  36:math/pprz_geodetic_int.c **** 
+  37:math/pprz_geodetic_int.c **** #if USE_DOUBLE_PRECISION_TRIG
+  38:math/pprz_geodetic_int.c ****   int32_t sin_lat = rint(BFP_OF_REAL(sin(RAD_OF_EM7DEG((double)lla->lat)), HIGH_RES_TRIG_FRAC));
+  39:math/pprz_geodetic_int.c ****   int32_t cos_lat = rint(BFP_OF_REAL(cos(RAD_OF_EM7DEG((double)lla->lat)), HIGH_RES_TRIG_FRAC));
+  40:math/pprz_geodetic_int.c ****   int32_t sin_lon = rint(BFP_OF_REAL(sin(RAD_OF_EM7DEG((double)lla->lon)), HIGH_RES_TRIG_FRAC));
+  41:math/pprz_geodetic_int.c ****   int32_t cos_lon = rint(BFP_OF_REAL(cos(RAD_OF_EM7DEG((double)lla->lon)), HIGH_RES_TRIG_FRAC));
+  42:math/pprz_geodetic_int.c **** #else
+  43:math/pprz_geodetic_int.c ****   int32_t sin_lat = rint(BFP_OF_REAL(sinf(RAD_OF_EM7DEG((float)lla->lat)), HIGH_RES_TRIG_FRAC));
+  48              		.loc 1 43 0
+  49 0004 D1ED007A 		flds	s15, [r1]	@ int
+  50 0008 F8EEE77A 		fsitos	s15, s15
+  35:math/pprz_geodetic_int.c **** 
+  51              		.loc 1 35 0
+  52 000c 2DED028B 		fstmfdd	sp!, {d8}
+  53              		.cfi_def_cfa_offset 40
+  54              		.cfi_offset 80, -40
+  55              		.cfi_offset 81, -36
+  35:math/pprz_geodetic_int.c **** 
+  56              		.loc 1 35 0
+  57 0010 0446     		mov	r4, r0
+  58              		.loc 1 43 0
+  59 0012 17EE900A 		fmrs	r0, s15
+  60              	.LVL1:
+  35:math/pprz_geodetic_int.c **** 
+  61              		.loc 1 35 0
+  62 0016 8846     		mov	r8, r1
+  63              		.loc 1 43 0
+  64 0018 FFF7FEFF 		bl	__aeabi_f2d
+  65              	.LVL2:
+  66 001c 5EA3     		adr	r3, .L2
+  67 001e D3E90023 		ldrd	r2, [r3]
+  68 0022 FFF7FEFF 		bl	__aeabi_dmul
+  69              	.LVL3:
+  70 0026 5EA3     		adr	r3, .L2+8
+  71 0028 D3E90023 		ldrd	r2, [r3]
+  72 002c FFF7FEFF 		bl	__aeabi_ddiv
+  73              	.LVL4:
+  74 0030 FFF7FEFF 		bl	__aeabi_d2f
+  75              	.LVL5:
+  76 0034 FFF7FEFF 		bl	sinf
+  77              	.LVL6:
+  78 0038 9FED5B8A 		flds	s16, .L2+16
+  79 003c 07EE900A 		fmsr	s15, r0
+  80 0040 67EE887A 		fmuls	s15, s15, s16
+  81 0044 17EE900A 		fmrs	r0, s15
+  82 0048 FFF7FEFF 		bl	__aeabi_f2d
+  83              	.LVL7:
+  84 004c FFF7FEFF 		bl	rint
+  85              	.LVL8:
+  86 0050 FFF7FEFF 		bl	__aeabi_d2iz
+  87              	.LVL9:
+  44:math/pprz_geodetic_int.c ****   int32_t cos_lat = rint(BFP_OF_REAL(cosf(RAD_OF_EM7DEG((float)lla->lat)), HIGH_RES_TRIG_FRAC));
+  88              		.loc 1 44 0
+  89 0054 D8ED007A 		flds	s15, [r8]	@ int
+  90 0058 F8EEE77A 		fsitos	s15, s15
+  43:math/pprz_geodetic_int.c ****   int32_t cos_lat = rint(BFP_OF_REAL(cosf(RAD_OF_EM7DEG((float)lla->lat)), HIGH_RES_TRIG_FRAC));
+  91              		.loc 1 43 0
+  92 005c 0746     		mov	r7, r0
+  93              	.LVL10:
+  94              		.loc 1 44 0
+  95 005e 17EE900A 		fmrs	r0, s15
+  96              	.LVL11:
+  97 0062 FFF7FEFF 		bl	__aeabi_f2d
+  98              	.LVL12:
+  99 0066 4CA3     		adr	r3, .L2
+ 100 0068 D3E90023 		ldrd	r2, [r3]
+ 101 006c FFF7FEFF 		bl	__aeabi_dmul
+ 102              	.LVL13:
+ 103 0070 4BA3     		adr	r3, .L2+8
+ 104 0072 D3E90023 		ldrd	r2, [r3]
+ 105 0076 FFF7FEFF 		bl	__aeabi_ddiv
+ 106              	.LVL14:
+ 107 007a FFF7FEFF 		bl	__aeabi_d2f
+ 108              	.LVL15:
+ 109 007e FFF7FEFF 		bl	cosf
+ 110              	.LVL16:
+ 111 0082 07EE900A 		fmsr	s15, r0
+ 112 0086 67EE887A 		fmuls	s15, s15, s16
+ 113 008a 17EE900A 		fmrs	r0, s15
+ 114 008e FFF7FEFF 		bl	__aeabi_f2d
+ 115              	.LVL17:
+ 116 0092 FFF7FEFF 		bl	rint
+ 117              	.LVL18:
+ 118 0096 FFF7FEFF 		bl	__aeabi_d2iz
+ 119              	.LVL19:
+  45:math/pprz_geodetic_int.c ****   int32_t sin_lon = rint(BFP_OF_REAL(sinf(RAD_OF_EM7DEG((float)lla->lon)), HIGH_RES_TRIG_FRAC));
+ 120              		.loc 1 45 0
+ 121 009a D8ED017A 		flds	s15, [r8, #4]	@ int
+ 122 009e F8EEE77A 		fsitos	s15, s15
+  44:math/pprz_geodetic_int.c ****   int32_t cos_lat = rint(BFP_OF_REAL(cosf(RAD_OF_EM7DEG((float)lla->lat)), HIGH_RES_TRIG_FRAC));
+ 123              		.loc 1 44 0
+ 124 00a2 0546     		mov	r5, r0
+ 125              	.LVL20:
+ 126              		.loc 1 45 0
+ 127 00a4 17EE900A 		fmrs	r0, s15
+ 128              	.LVL21:
+ 129 00a8 FFF7FEFF 		bl	__aeabi_f2d
+ 130              	.LVL22:
+ 131 00ac 3AA3     		adr	r3, .L2
+ 132 00ae D3E90023 		ldrd	r2, [r3]
+ 133 00b2 FFF7FEFF 		bl	__aeabi_dmul
+ 134              	.LVL23:
+ 135 00b6 3AA3     		adr	r3, .L2+8
+ 136 00b8 D3E90023 		ldrd	r2, [r3]
+ 137 00bc FFF7FEFF 		bl	__aeabi_ddiv
+ 138              	.LVL24:
+ 139 00c0 FFF7FEFF 		bl	__aeabi_d2f
+ 140              	.LVL25:
+ 141 00c4 FFF7FEFF 		bl	sinf
+ 142              	.LVL26:
+ 143 00c8 07EE900A 		fmsr	s15, r0
+ 144 00cc 67EE887A 		fmuls	s15, s15, s16
+ 145 00d0 17EE900A 		fmrs	r0, s15
+ 146 00d4 FFF7FEFF 		bl	__aeabi_f2d
+ 147              	.LVL27:
+ 148 00d8 FFF7FEFF 		bl	rint
+ 149              	.LVL28:
+ 150 00dc FFF7FEFF 		bl	__aeabi_d2iz
+ 151              	.LVL29:
+ 152 00e0 0646     		mov	r6, r0
+ 153              	.LVL30:
+  46:math/pprz_geodetic_int.c ****   int32_t cos_lon = rint(BFP_OF_REAL(cosf(RAD_OF_EM7DEG((float)lla->lon)), HIGH_RES_TRIG_FRAC));
+ 154              		.loc 1 46 0
+ 155 00e2 D8F80400 		ldr	r0, [r8, #4]
+ 156              	.LVL31:
+ 157 00e6 07EE900A 		fmsr	s15, r0	@ int
+ 158 00ea F8EEE77A 		fsitos	s15, s15
+ 159 00ee 17EE900A 		fmrs	r0, s15
+ 160 00f2 FFF7FEFF 		bl	__aeabi_f2d
+ 161              	.LVL32:
+ 162 00f6 28A3     		adr	r3, .L2
+ 163 00f8 D3E90023 		ldrd	r2, [r3]
+ 164 00fc FFF7FEFF 		bl	__aeabi_dmul
+ 165              	.LVL33:
+ 166 0100 27A3     		adr	r3, .L2+8
+ 167 0102 D3E90023 		ldrd	r2, [r3]
+ 168 0106 FFF7FEFF 		bl	__aeabi_ddiv
+ 169              	.LVL34:
+ 170 010a FFF7FEFF 		bl	__aeabi_d2f
+ 171              	.LVL35:
+ 172 010e FFF7FEFF 		bl	cosf
+ 173              	.LVL36:
+ 174 0112 07EE900A 		fmsr	s15, r0
+ 175 0116 67EE887A 		fmuls	s15, s15, s16
+ 176 011a 17EE900A 		fmrs	r0, s15
+ 177 011e FFF7FEFF 		bl	__aeabi_f2d
+ 178              	.LVL37:
+ 179 0122 FFF7FEFF 		bl	rint
+ 180              	.LVL38:
+ 181 0126 FFF7FEFF 		bl	__aeabi_d2iz
+ 182              	.LVL39:
+  47:math/pprz_geodetic_int.c **** #endif
+  48:math/pprz_geodetic_int.c **** 
+  49:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[0] = -sin_lon;
+ 183              		.loc 1 49 0
+ 184 012a 7342     		negs	r3, r6
+  50:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[1] =  cos_lon;
+  51:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[2] =  0; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_syst
+  52:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[3] = (int32_t)((-(int64_t)sin_lat * (int64_t)cos_lon) >> HIGH_RES_TRIG_FRAC);
+ 185              		.loc 1 52 0
+ 186 012c 7A42     		negs	r2, r7
+  49:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[1] =  cos_lon;
+ 187              		.loc 1 49 0
+ 188 012e 2360     		str	r3, [r4]
+  51:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[3] = (int32_t)((-(int64_t)sin_lat * (int64_t)cos_lon) >> HIGH_RES_TRIG_FRAC);
+ 189              		.loc 1 51 0
+ 190 0130 0023     		movs	r3, #0
+ 191              		.loc 1 52 0
+ 192 0132 4FEAE079 		asr	r9, r0, #31
+  51:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[3] = (int32_t)((-(int64_t)sin_lat * (int64_t)cos_lon) >> HIGH_RES_TRIG_FRAC);
+ 193              		.loc 1 51 0
+ 194 0136 A360     		str	r3, [r4, #8]
+ 195              		.loc 1 52 0
+ 196 0138 22EA0703 		bic	r3, r2, r7
+ 197 013c DB17     		asrs	r3, r3, #31
+ 198 013e 02FB09F1 		mul	r1, r2, r9
+ 199 0142 00FB0311 		mla	r1, r0, r3, r1
+ 200 0146 A2FB0089 		umull	r8, r9, r2, r0
+ 201              	.LVL40:
+ 202 014a 8944     		add	r9, r9, r1
+ 203 014c 4FEA1851 		lsr	r1, r8, #20
+ 204 0150 41EA0931 		orr	r1, r1, r9, lsl #12
+  53:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[4] = (int32_t)((-(int64_t)sin_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+ 205              		.loc 1 53 0
+ 206 0154 4FEAE679 		asr	r9, r6, #31
+  52:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[4] = (int32_t)((-(int64_t)sin_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+ 207              		.loc 1 52 0
+ 208 0158 E160     		str	r1, [r4, #12]
+ 209              		.loc 1 53 0
+ 210 015a 02FB09F1 		mul	r1, r2, r9
+ 211 015e 06FB0311 		mla	r1, r6, r3, r1
+ 212 0162 A2FB0689 		umull	r8, r9, r2, r6
+ 213 0166 8944     		add	r9, r9, r1
+  50:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[2] =  0; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_syst
+ 214              		.loc 1 50 0
+ 215 0168 6060     		str	r0, [r4, #4]
+  54:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[5] =  cos_lat;
+  55:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[6] = (int32_t)(((int64_t)cos_lat * (int64_t)cos_lon) >> HIGH_RES_TRIG_FRAC);
+  56:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[7] = (int32_t)(((int64_t)cos_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+  57:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[8] =  sin_lat;
+  58:math/pprz_geodetic_int.c **** }
+ 216              		.loc 1 58 0
+ 217 016a BDEC028B 		fldmfdd	sp!, {d8}
+ 218              		.cfi_restore 80
+ 219              		.cfi_restore 81
+ 220              		.cfi_def_cfa_offset 32
+  55:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[7] = (int32_t)(((int64_t)cos_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+ 221              		.loc 1 55 0
+ 222 016e 85FB0001 		smull	r0, r1, r5, r0
+ 223              	.LVL41:
+ 224 0172 030D     		lsrs	r3, r0, #20
+  53:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[5] =  cos_lat;
+ 225              		.loc 1 53 0
+ 226 0174 4FEA1852 		lsr	r2, r8, #20
+ 227 0178 42EA0932 		orr	r2, r2, r9, lsl #12
+  55:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[7] = (int32_t)(((int64_t)cos_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+ 228              		.loc 1 55 0
+ 229 017c 43EA0133 		orr	r3, r3, r1, lsl #12
+  56:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[8] =  sin_lat;
+ 230              		.loc 1 56 0
+ 231 0180 85FB0601 		smull	r0, r1, r5, r6
+  53:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[5] =  cos_lat;
+ 232              		.loc 1 53 0
+ 233 0184 2261     		str	r2, [r4, #16]
+  56:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[8] =  sin_lat;
+ 234              		.loc 1 56 0
+ 235 0186 020D     		lsrs	r2, r0, #20
+ 236 0188 42EA0132 		orr	r2, r2, r1, lsl #12
+  54:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[6] = (int32_t)(((int64_t)cos_lat * (int64_t)cos_lon) >> HIGH_RES_TRIG_FRAC);
+ 237              		.loc 1 54 0
+ 238 018c 6561     		str	r5, [r4, #20]
+  55:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[7] = (int32_t)(((int64_t)cos_lat * (int64_t)sin_lon) >> HIGH_RES_TRIG_FRAC);
+ 239              		.loc 1 55 0
+ 240 018e A361     		str	r3, [r4, #24]
+  56:math/pprz_geodetic_int.c ****   ltp_of_ecef->m[8] =  sin_lat;
+ 241              		.loc 1 56 0
+ 242 0190 E261     		str	r2, [r4, #28]
+  57:math/pprz_geodetic_int.c **** }
+ 243              		.loc 1 57 0
+ 244 0192 2762     		str	r7, [r4, #32]
+ 245              		.loc 1 58 0
+ 246 0194 BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 247              	.LVL42:
+ 248              	.L3:
+ 249              		.align	3
+ 250              	.L2:
+ 251 0198 399D52A2 		.word	-1571644103
+ 252 019c 46DF913F 		.word	1066524486
+ 253 01a0 00000000 		.word	0
+ 254 01a4 D0126341 		.word	1097011920
+ 255 01a8 00008049 		.word	1233125376
+ 256              		.cfi_endproc
+ 257              	.LFE9:
+ 259              		.section	.text.enu_of_ecef_point_i,"ax",%progbits
+ 260              		.align	1
+ 261              		.global	enu_of_ecef_point_i
+ 262              		.thumb
+ 263              		.thumb_func
+ 265              	enu_of_ecef_point_i:
+ 266              	.LFB12:
+  59:math/pprz_geodetic_int.c **** 
+  60:math/pprz_geodetic_int.c **** void ltp_def_from_ecef_i(struct LtpDef_i *def, struct EcefCoor_i *ecef)
+  61:math/pprz_geodetic_int.c **** {
+  62:math/pprz_geodetic_int.c **** 
+  63:math/pprz_geodetic_int.c ****   /* store the origin of the tangeant plane */
+  64:math/pprz_geodetic_int.c ****   VECT3_COPY(def->ecef, *ecef);
+  65:math/pprz_geodetic_int.c ****   /* compute the lla representation of the origin */
+  66:math/pprz_geodetic_int.c ****   lla_of_ecef_i(&def->lla, &def->ecef);
+  67:math/pprz_geodetic_int.c ****   /* store the rotation matrix                    */
+  68:math/pprz_geodetic_int.c ****   ltp_of_ecef_rmat_from_lla_i(&def->ltp_of_ecef, &def->lla);
+  69:math/pprz_geodetic_int.c **** 
+  70:math/pprz_geodetic_int.c **** }
+  71:math/pprz_geodetic_int.c **** 
+  72:math/pprz_geodetic_int.c **** void ltp_def_from_lla_i(struct LtpDef_i *def, struct LlaCoor_i *lla)
+  73:math/pprz_geodetic_int.c **** {
+  74:math/pprz_geodetic_int.c **** 
+  75:math/pprz_geodetic_int.c ****   /* store the origin of the tangeant plane */
+  76:math/pprz_geodetic_int.c ****   LLA_COPY(def->lla, *lla);
+  77:math/pprz_geodetic_int.c ****   /* compute the ecef representation of the origin */
+  78:math/pprz_geodetic_int.c ****   ecef_of_lla_i(&def->ecef, &def->lla);
+  79:math/pprz_geodetic_int.c ****   /* store the rotation matrix                    */
+  80:math/pprz_geodetic_int.c ****   ltp_of_ecef_rmat_from_lla_i(&def->ltp_of_ecef, &def->lla);
+  81:math/pprz_geodetic_int.c **** 
+  82:math/pprz_geodetic_int.c **** }
+  83:math/pprz_geodetic_int.c **** 
+  84:math/pprz_geodetic_int.c **** 
+  85:math/pprz_geodetic_int.c **** /** Convert a point from ECEF to local ENU.
+  86:math/pprz_geodetic_int.c ****  * @param[out] enu  ENU point in cm
+  87:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+  88:math/pprz_geodetic_int.c ****  * @param[in]  ecef ECEF point in cm
+  89:math/pprz_geodetic_int.c ****  */
+  90:math/pprz_geodetic_int.c **** void enu_of_ecef_point_i(struct EnuCoor_i *enu, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+  91:math/pprz_geodetic_int.c **** {
+ 267              		.loc 1 91 0
+ 268              		.cfi_startproc
+ 269              		@ args = 0, pretend = 0, frame = 0
+ 270              		@ frame_needed = 0, uses_anonymous_args = 0
+ 271              	.LVL43:
+  92:math/pprz_geodetic_int.c **** 
+  93:math/pprz_geodetic_int.c ****   struct EcefCoor_i delta;
+  94:math/pprz_geodetic_int.c ****   VECT3_DIFF(delta, *ecef, def->ecef);
+ 272              		.loc 1 94 0
+ 273 0000 0B68     		ldr	r3, [r1]
+  91:math/pprz_geodetic_int.c **** 
+ 274              		.loc 1 91 0
+ 275 0002 F0B5     		push	{r4, r5, r6, r7, lr}
+ 276              		.cfi_def_cfa_offset 20
+ 277              		.cfi_offset 4, -20
+ 278              		.cfi_offset 5, -16
+ 279              		.cfi_offset 6, -12
+ 280              		.cfi_offset 7, -8
+ 281              		.cfi_offset 14, -4
+ 282              		.loc 1 94 0
+ 283 0004 1768     		ldr	r7, [r2]
+ 284 0006 5468     		ldr	r4, [r2, #4]
+ 285 0008 9668     		ldr	r6, [r2, #8]
+  95:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * delta.x +
+  96:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[1] * delta.y +
+ 286              		.loc 1 96 0
+ 287 000a CA69     		ldr	r2, [r1, #28]
+ 288              	.LVL44:
+  94:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * delta.x +
+ 289              		.loc 1 94 0
+ 290 000c FF1A     		subs	r7, r7, r3
+ 291              	.LVL45:
+ 292 000e 4B68     		ldr	r3, [r1, #4]
+ 293 0010 C3EB040E 		rsb	lr, r3, r4
+ 294              	.LVL46:
+ 295 0014 8B68     		ldr	r3, [r1, #8]
+  95:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * delta.x +
+ 296              		.loc 1 95 0
+ 297 0016 8C69     		ldr	r4, [r1, #24]
+  94:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * delta.x +
+ 298              		.loc 1 94 0
+ 299 0018 F61A     		subs	r6, r6, r3
+ 300              	.LVL47:
+ 301              		.loc 1 96 0
+ 302 001a 82FB0E23 		smull	r2, r3, r2, lr
+ 303              	.LVL48:
+  95:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * delta.x +
+ 304              		.loc 1 95 0
+ 305 001e C7FB0423 		smlal	r2, r3, r7, r4
+ 306              	.LVL49:
+  97:math/pprz_geodetic_int.c ****                        0; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_syst
+  98:math/pprz_geodetic_int.c ****   enu->x = (int32_t)(tmpx >> HIGH_RES_TRIG_FRAC);
+ 307              		.loc 1 98 0
+ 308 0022 120D     		lsrs	r2, r2, #20
+ 309              	.LVL50:
+  99:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * delta.x +
+ 100:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * delta.y +
+ 310              		.loc 1 100 0
+ 311 0024 8C6A     		ldr	r4, [r1, #40]
+ 312              	.LVL51:
+  98:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * delta.x +
+ 313              		.loc 1 98 0
+ 314 0026 42EA0332 		orr	r2, r2, r3, lsl #12
+ 315 002a 0260     		str	r2, [r0]
+  99:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * delta.x +
+ 316              		.loc 1 99 0
+ 317 002c 4A6A     		ldr	r2, [r1, #36]
+ 101:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[5] * delta.z;
+ 318              		.loc 1 101 0
+ 319 002e CB6A     		ldr	r3, [r1, #44]
+ 320              	.LVL52:
+ 100:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[5] * delta.z;
+ 321              		.loc 1 100 0
+ 322 0030 84FB0E45 		smull	r4, r5, r4, lr
+ 323              	.LVL53:
+  99:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * delta.y +
+ 324              		.loc 1 99 0
+ 325 0034 C7FB0245 		smlal	r4, r5, r7, r2
+ 326 0038 C6FB0345 		smlal	r4, r5, r6, r3
+ 327              	.LVL54:
+ 102:math/pprz_geodetic_int.c ****   enu->y = (int32_t)(tmpy >> HIGH_RES_TRIG_FRAC);
+ 328              		.loc 1 102 0
+ 329 003c 230D     		lsrs	r3, r4, #20
+ 330 003e 43EA0533 		orr	r3, r3, r5, lsl #12
+ 331 0042 4360     		str	r3, [r0, #4]
+ 103:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * delta.x +
+ 104:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[7] * delta.y +
+ 332              		.loc 1 104 0
+ 333 0044 4B6B     		ldr	r3, [r1, #52]
+ 103:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * delta.x +
+ 334              		.loc 1 103 0
+ 335 0046 0C6B     		ldr	r4, [r1, #48]
+ 336              	.LVL55:
+ 105:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * delta.z;
+ 337              		.loc 1 105 0
+ 338 0048 896B     		ldr	r1, [r1, #56]
+ 339              	.LVL56:
+ 104:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * delta.z;
+ 340              		.loc 1 104 0
+ 341 004a 83FB0E23 		smull	r2, r3, r3, lr
+ 342              	.LVL57:
+ 103:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * delta.x +
+ 343              		.loc 1 103 0
+ 344 004e C7FB0423 		smlal	r2, r3, r7, r4
+ 345 0052 C6FB0123 		smlal	r2, r3, r6, r1
+ 346              	.LVL58:
+ 106:math/pprz_geodetic_int.c ****   enu->z = (int32_t)(tmpz >> HIGH_RES_TRIG_FRAC);
+ 347              		.loc 1 106 0
+ 348 0056 120D     		lsrs	r2, r2, #20
+ 349              	.LVL59:
+ 350 0058 42EA0332 		orr	r2, r2, r3, lsl #12
+ 351 005c 8260     		str	r2, [r0, #8]
+ 352 005e F0BD     		pop	{r4, r5, r6, r7, pc}
+ 353              		.cfi_endproc
+ 354              	.LFE12:
+ 356              		.section	.text.ned_of_ecef_point_i,"ax",%progbits
+ 357              		.align	1
+ 358              		.global	ned_of_ecef_point_i
+ 359              		.thumb
+ 360              		.thumb_func
+ 362              	ned_of_ecef_point_i:
+ 363              	.LFB13:
+ 107:math/pprz_geodetic_int.c **** 
+ 108:math/pprz_geodetic_int.c **** }
+ 109:math/pprz_geodetic_int.c **** 
+ 110:math/pprz_geodetic_int.c **** 
+ 111:math/pprz_geodetic_int.c **** /** Convert a point from ECEF to local NED.
+ 112:math/pprz_geodetic_int.c ****  * @param[out] ned  NED point in cm
+ 113:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 114:math/pprz_geodetic_int.c ****  * @param[in]  ecef ECEF point in cm
+ 115:math/pprz_geodetic_int.c ****  */
+ 116:math/pprz_geodetic_int.c **** void ned_of_ecef_point_i(struct NedCoor_i *ned, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+ 117:math/pprz_geodetic_int.c **** {
+ 364              		.loc 1 117 0
+ 365              		.cfi_startproc
+ 366              		@ args = 0, pretend = 0, frame = 16
+ 367              		@ frame_needed = 0, uses_anonymous_args = 0
+ 368              	.LVL60:
+ 369 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 370              		.cfi_def_cfa_offset 24
+ 371              		.cfi_offset 4, -8
+ 372              		.cfi_offset 14, -4
+ 373              		.loc 1 117 0
+ 374 0002 0446     		mov	r4, r0
+ 118:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 119:math/pprz_geodetic_int.c ****   enu_of_ecef_point_i(&enu, def, ecef);
+ 375              		.loc 1 119 0
+ 376 0004 01A8     		add	r0, sp, #4
+ 377              	.LVL61:
+ 378 0006 FFF7FEFF 		bl	enu_of_ecef_point_i
+ 379              	.LVL62:
+ 120:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(*ned, enu);
+ 380              		.loc 1 120 0
+ 381 000a 029B     		ldr	r3, [sp, #8]
+ 382 000c 2360     		str	r3, [r4]
+ 383 000e 019B     		ldr	r3, [sp, #4]
+ 384 0010 6360     		str	r3, [r4, #4]
+ 385 0012 039B     		ldr	r3, [sp, #12]
+ 386 0014 5B42     		negs	r3, r3
+ 387 0016 A360     		str	r3, [r4, #8]
+ 121:math/pprz_geodetic_int.c **** }
+ 388              		.loc 1 121 0
+ 389 0018 04B0     		add	sp, sp, #16
+ 390              		.cfi_def_cfa_offset 8
+ 391              		@ sp needed
+ 392 001a 10BD     		pop	{r4, pc}
+ 393              		.cfi_endproc
+ 394              	.LFE13:
+ 396              		.section	.text.enu_of_ecef_pos_i,"ax",%progbits
+ 397              		.align	1
+ 398              		.global	enu_of_ecef_pos_i
+ 399              		.thumb
+ 400              		.thumb_func
+ 402              	enu_of_ecef_pos_i:
+ 403              	.LFB14:
+ 122:math/pprz_geodetic_int.c **** 
+ 123:math/pprz_geodetic_int.c **** 
+ 124:math/pprz_geodetic_int.c **** /** Convert a ECEF position to local ENU.
+ 125:math/pprz_geodetic_int.c ****  * @param[out] enu  ENU position in meter << #INT32_POS_FRAC
+ 126:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 127:math/pprz_geodetic_int.c ****  * @param[in]  ecef ECEF position in cm
+ 128:math/pprz_geodetic_int.c ****  */
+ 129:math/pprz_geodetic_int.c **** void enu_of_ecef_pos_i(struct EnuCoor_i *enu, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+ 130:math/pprz_geodetic_int.c **** {
+ 404              		.loc 1 130 0
+ 405              		.cfi_startproc
+ 406              		@ args = 0, pretend = 0, frame = 16
+ 407              		@ frame_needed = 0, uses_anonymous_args = 0
+ 408              	.LVL63:
+ 409 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 410              		.cfi_def_cfa_offset 24
+ 411              		.cfi_offset 4, -8
+ 412              		.cfi_offset 14, -4
+ 413              		.loc 1 130 0
+ 414 0002 0446     		mov	r4, r0
+ 131:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu_cm;
+ 132:math/pprz_geodetic_int.c ****   enu_of_ecef_point_i(&enu_cm, def, ecef);
+ 415              		.loc 1 132 0
+ 416 0004 01A8     		add	r0, sp, #4
+ 417              	.LVL64:
+ 418 0006 FFF7FEFF 		bl	enu_of_ecef_point_i
+ 419              	.LVL65:
+ 133:math/pprz_geodetic_int.c **** 
+ 134:math/pprz_geodetic_int.c ****   /* enu = (enu_cm / 100) << INT32_POS_FRAC
+ 135:math/pprz_geodetic_int.c ****    * to loose less range:
+ 136:math/pprz_geodetic_int.c ****    * enu_cm = enu << (INT32_POS_FRAC-2) / 25
+ 137:math/pprz_geodetic_int.c ****    * which puts max enu output Q23.8 range to 8388km / 25 = 335km
+ 138:math/pprz_geodetic_int.c ****    */
+ 139:math/pprz_geodetic_int.c ****   INT32_VECT3_LSHIFT(*enu, enu_cm, INT32_POS_FRAC - 2);
+ 420              		.loc 1 139 0
+ 421 000a 029B     		ldr	r3, [sp, #8]
+ 422 000c 0199     		ldr	r1, [sp, #4]
+ 423 000e 9A01     		lsls	r2, r3, #6
+ 424 0010 039B     		ldr	r3, [sp, #12]
+ 140:math/pprz_geodetic_int.c ****   VECT3_SDIV(*enu, *enu, 25);
+ 425              		.loc 1 140 0
+ 426 0012 1920     		movs	r0, #25
+ 139:math/pprz_geodetic_int.c ****   VECT3_SDIV(*enu, *enu, 25);
+ 427              		.loc 1 139 0
+ 428 0014 9B01     		lsls	r3, r3, #6
+ 429              		.loc 1 140 0
+ 430 0016 92FBF0F2 		sdiv	r2, r2, r0
+ 431 001a 93FBF0F3 		sdiv	r3, r3, r0
+ 139:math/pprz_geodetic_int.c ****   VECT3_SDIV(*enu, *enu, 25);
+ 432              		.loc 1 139 0
+ 433 001e 8901     		lsls	r1, r1, #6
+ 434              		.loc 1 140 0
+ 435 0020 6260     		str	r2, [r4, #4]
+ 436 0022 91FBF0F1 		sdiv	r1, r1, r0
+ 437 0026 A360     		str	r3, [r4, #8]
+ 438 0028 2160     		str	r1, [r4]
+ 141:math/pprz_geodetic_int.c **** }
+ 439              		.loc 1 141 0
+ 440 002a 04B0     		add	sp, sp, #16
+ 441              		.cfi_def_cfa_offset 8
+ 442              		@ sp needed
+ 443 002c 10BD     		pop	{r4, pc}
+ 444              		.cfi_endproc
+ 445              	.LFE14:
+ 447              		.section	.text.ned_of_ecef_pos_i,"ax",%progbits
+ 448              		.align	1
+ 449              		.global	ned_of_ecef_pos_i
+ 450              		.thumb
+ 451              		.thumb_func
+ 453              	ned_of_ecef_pos_i:
+ 454              	.LFB15:
+ 142:math/pprz_geodetic_int.c **** 
+ 143:math/pprz_geodetic_int.c **** 
+ 144:math/pprz_geodetic_int.c **** /** Convert a ECEF position to local NED.
+ 145:math/pprz_geodetic_int.c ****  * @param[out] ned  NED position in meter << #INT32_POS_FRAC
+ 146:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 147:math/pprz_geodetic_int.c ****  * @param[in]  ecef ECEF position in cm
+ 148:math/pprz_geodetic_int.c ****  */
+ 149:math/pprz_geodetic_int.c **** void ned_of_ecef_pos_i(struct NedCoor_i *ned, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+ 150:math/pprz_geodetic_int.c **** {
+ 455              		.loc 1 150 0
+ 456              		.cfi_startproc
+ 457              		@ args = 0, pretend = 0, frame = 16
+ 458              		@ frame_needed = 0, uses_anonymous_args = 0
+ 459              	.LVL66:
+ 460 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 461              		.cfi_def_cfa_offset 24
+ 462              		.cfi_offset 4, -8
+ 463              		.cfi_offset 14, -4
+ 464              		.loc 1 150 0
+ 465 0002 0446     		mov	r4, r0
+ 151:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 152:math/pprz_geodetic_int.c ****   enu_of_ecef_pos_i(&enu, def, ecef);
+ 466              		.loc 1 152 0
+ 467 0004 01A8     		add	r0, sp, #4
+ 468              	.LVL67:
+ 469 0006 FFF7FEFF 		bl	enu_of_ecef_pos_i
+ 470              	.LVL68:
+ 153:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(*ned, enu);
+ 471              		.loc 1 153 0
+ 472 000a 029B     		ldr	r3, [sp, #8]
+ 473 000c 2360     		str	r3, [r4]
+ 474 000e 019B     		ldr	r3, [sp, #4]
+ 475 0010 6360     		str	r3, [r4, #4]
+ 476 0012 039B     		ldr	r3, [sp, #12]
+ 477 0014 5B42     		negs	r3, r3
+ 478 0016 A360     		str	r3, [r4, #8]
+ 154:math/pprz_geodetic_int.c **** }
+ 479              		.loc 1 154 0
+ 480 0018 04B0     		add	sp, sp, #16
+ 481              		.cfi_def_cfa_offset 8
+ 482              		@ sp needed
+ 483 001a 10BD     		pop	{r4, pc}
+ 484              		.cfi_endproc
+ 485              	.LFE15:
+ 487              		.section	.text.enu_of_ecef_vect_i,"ax",%progbits
+ 488              		.align	1
+ 489              		.global	enu_of_ecef_vect_i
+ 490              		.thumb
+ 491              		.thumb_func
+ 493              	enu_of_ecef_vect_i:
+ 494              	.LFB16:
+ 155:math/pprz_geodetic_int.c **** 
+ 156:math/pprz_geodetic_int.c **** 
+ 157:math/pprz_geodetic_int.c **** /** Rotate a vector from ECEF to ENU.
+ 158:math/pprz_geodetic_int.c ****  * @param[out] enu  vector in ENU coordinate system
+ 159:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 160:math/pprz_geodetic_int.c ****  * @param[in]  ecef vector in ECEF coordinate system
+ 161:math/pprz_geodetic_int.c ****  */
+ 162:math/pprz_geodetic_int.c **** void enu_of_ecef_vect_i(struct EnuCoor_i *enu, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+ 163:math/pprz_geodetic_int.c **** {
+ 495              		.loc 1 163 0
+ 496              		.cfi_startproc
+ 497              		@ args = 0, pretend = 0, frame = 0
+ 498              		@ frame_needed = 0, uses_anonymous_args = 0
+ 499              	.LVL69:
+ 500 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 501              		.cfi_def_cfa_offset 20
+ 502              		.cfi_offset 4, -20
+ 503              		.cfi_offset 5, -16
+ 504              		.cfi_offset 6, -12
+ 505              		.cfi_offset 7, -8
+ 506              		.cfi_offset 14, -4
+ 164:math/pprz_geodetic_int.c **** 
+ 165:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * ecef->x +
+ 166:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[1] * ecef->y +
+ 507              		.loc 1 166 0
+ 508 0002 D2F804E0 		ldr	lr, [r2, #4]
+ 509 0006 CC69     		ldr	r4, [r1, #28]
+ 165:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[1] * ecef->y +
+ 510              		.loc 1 165 0
+ 511 0008 1768     		ldr	r7, [r2]
+ 512 000a 8B69     		ldr	r3, [r1, #24]
+ 513              	.LVL70:
+ 167:math/pprz_geodetic_int.c ****                        0; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_syst
+ 168:math/pprz_geodetic_int.c ****   enu->x = (int32_t)(tmpx >> HIGH_RES_TRIG_FRAC);
+ 169:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * ecef->x +
+ 170:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * ecef->y +
+ 171:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[5] * ecef->z;
+ 514              		.loc 1 171 0
+ 515 000c 9668     		ldr	r6, [r2, #8]
+ 169:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * ecef->y +
+ 516              		.loc 1 169 0
+ 517 000e 4A6A     		ldr	r2, [r1, #36]
+ 518              	.LVL71:
+ 166:math/pprz_geodetic_int.c ****                        0; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_syst
+ 519              		.loc 1 166 0
+ 520 0010 84FB0E45 		smull	r4, r5, r4, lr
+ 521              	.LVL72:
+ 165:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[1] * ecef->y +
+ 522              		.loc 1 165 0
+ 523 0014 C7FB0345 		smlal	r4, r5, r7, r3
+ 524              	.LVL73:
+ 168:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * ecef->x +
+ 525              		.loc 1 168 0
+ 526 0018 230D     		lsrs	r3, r4, #20
+ 170:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[5] * ecef->z;
+ 527              		.loc 1 170 0
+ 528 001a 8C6A     		ldr	r4, [r1, #40]
+ 529              	.LVL74:
+ 168:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[3] * ecef->x +
+ 530              		.loc 1 168 0
+ 531 001c 43EA0533 		orr	r3, r3, r5, lsl #12
+ 532 0020 0360     		str	r3, [r0]
+ 170:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[5] * ecef->z;
+ 533              		.loc 1 170 0
+ 534 0022 84FB0E45 		smull	r4, r5, r4, lr
+ 535              		.loc 1 171 0
+ 536 0026 CB6A     		ldr	r3, [r1, #44]
+ 169:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * ecef->y +
+ 537              		.loc 1 169 0
+ 538 0028 C7FB0245 		smlal	r4, r5, r7, r2
+ 539 002c C6FB0345 		smlal	r4, r5, r6, r3
+ 172:math/pprz_geodetic_int.c ****   enu->y = (int32_t)(tmpy >> HIGH_RES_TRIG_FRAC);
+ 540              		.loc 1 172 0
+ 541 0030 230D     		lsrs	r3, r4, #20
+ 542 0032 43EA0533 		orr	r3, r3, r5, lsl #12
+ 543 0036 4360     		str	r3, [r0, #4]
+ 173:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * ecef->x +
+ 174:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[7] * ecef->y +
+ 544              		.loc 1 174 0
+ 545 0038 4B6B     		ldr	r3, [r1, #52]
+ 173:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * ecef->x +
+ 546              		.loc 1 173 0
+ 547 003a 0C6B     		ldr	r4, [r1, #48]
+ 175:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * ecef->z;
+ 548              		.loc 1 175 0
+ 549 003c 896B     		ldr	r1, [r1, #56]
+ 550              	.LVL75:
+ 174:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * ecef->z;
+ 551              		.loc 1 174 0
+ 552 003e 83FB0E23 		smull	r2, r3, r3, lr
+ 173:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[6] * ecef->x +
+ 553              		.loc 1 173 0
+ 554 0042 C7FB0423 		smlal	r2, r3, r7, r4
+ 555 0046 C6FB0123 		smlal	r2, r3, r6, r1
+ 556              	.LVL76:
+ 176:math/pprz_geodetic_int.c ****   enu->z = (int32_t)(tmpz >> HIGH_RES_TRIG_FRAC);
+ 557              		.loc 1 176 0
+ 558 004a 120D     		lsrs	r2, r2, #20
+ 559              	.LVL77:
+ 560 004c 42EA0332 		orr	r2, r2, r3, lsl #12
+ 561 0050 8260     		str	r2, [r0, #8]
+ 562 0052 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 563              		.cfi_endproc
+ 564              	.LFE16:
+ 566              		.section	.text.ned_of_ecef_vect_i,"ax",%progbits
+ 567              		.align	1
+ 568              		.global	ned_of_ecef_vect_i
+ 569              		.thumb
+ 570              		.thumb_func
+ 572              	ned_of_ecef_vect_i:
+ 573              	.LFB17:
+ 177:math/pprz_geodetic_int.c **** 
+ 178:math/pprz_geodetic_int.c **** }
+ 179:math/pprz_geodetic_int.c **** 
+ 180:math/pprz_geodetic_int.c **** 
+ 181:math/pprz_geodetic_int.c **** /** Rotate a vector from ECEF to NED.
+ 182:math/pprz_geodetic_int.c ****  * @param[out] ned  vector in NED coordinate system
+ 183:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 184:math/pprz_geodetic_int.c ****  * @param[in]  ecef vector in ECEF coordinate system
+ 185:math/pprz_geodetic_int.c ****  */
+ 186:math/pprz_geodetic_int.c **** void ned_of_ecef_vect_i(struct NedCoor_i *ned, struct LtpDef_i *def, struct EcefCoor_i *ecef)
+ 187:math/pprz_geodetic_int.c **** {
+ 574              		.loc 1 187 0
+ 575              		.cfi_startproc
+ 576              		@ args = 0, pretend = 0, frame = 16
+ 577              		@ frame_needed = 0, uses_anonymous_args = 0
+ 578              	.LVL78:
+ 579 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 580              		.cfi_def_cfa_offset 24
+ 581              		.cfi_offset 4, -8
+ 582              		.cfi_offset 14, -4
+ 583              		.loc 1 187 0
+ 584 0002 0446     		mov	r4, r0
+ 188:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 189:math/pprz_geodetic_int.c ****   enu_of_ecef_vect_i(&enu, def, ecef);
+ 585              		.loc 1 189 0
+ 586 0004 01A8     		add	r0, sp, #4
+ 587              	.LVL79:
+ 588 0006 FFF7FEFF 		bl	enu_of_ecef_vect_i
+ 589              	.LVL80:
+ 190:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(*ned, enu);
+ 590              		.loc 1 190 0
+ 591 000a 029B     		ldr	r3, [sp, #8]
+ 592 000c 2360     		str	r3, [r4]
+ 593 000e 019B     		ldr	r3, [sp, #4]
+ 594 0010 6360     		str	r3, [r4, #4]
+ 595 0012 039B     		ldr	r3, [sp, #12]
+ 596 0014 5B42     		negs	r3, r3
+ 597 0016 A360     		str	r3, [r4, #8]
+ 191:math/pprz_geodetic_int.c **** }
+ 598              		.loc 1 191 0
+ 599 0018 04B0     		add	sp, sp, #16
+ 600              		.cfi_def_cfa_offset 8
+ 601              		@ sp needed
+ 602 001a 10BD     		pop	{r4, pc}
+ 603              		.cfi_endproc
+ 604              	.LFE17:
+ 606              		.section	.text.ecef_of_enu_vect_i,"ax",%progbits
+ 607              		.align	1
+ 608              		.global	ecef_of_enu_vect_i
+ 609              		.thumb
+ 610              		.thumb_func
+ 612              	ecef_of_enu_vect_i:
+ 613              	.LFB18:
+ 192:math/pprz_geodetic_int.c **** 
+ 193:math/pprz_geodetic_int.c **** 
+ 194:math/pprz_geodetic_int.c **** /** Rotate a vector from ENU to ECEF.
+ 195:math/pprz_geodetic_int.c ****  * @param[out] ecef vector in ECEF coordinate system
+ 196:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 197:math/pprz_geodetic_int.c ****  * @param[in]  enu  vector in ENU coordinate system
+ 198:math/pprz_geodetic_int.c ****  */
+ 199:math/pprz_geodetic_int.c **** void ecef_of_enu_vect_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct EnuCoor_i *enu)
+ 200:math/pprz_geodetic_int.c **** {
+ 614              		.loc 1 200 0
+ 615              		.cfi_startproc
+ 616              		@ args = 0, pretend = 0, frame = 8
+ 617              		@ frame_needed = 0, uses_anonymous_args = 0
+ 618              	.LVL81:
+ 619 0000 F7B5     		push	{r0, r1, r2, r4, r5, r6, r7, lr}
+ 620              		.cfi_def_cfa_offset 32
+ 621              		.cfi_offset 4, -20
+ 622              		.cfi_offset 5, -16
+ 623              		.cfi_offset 6, -12
+ 624              		.cfi_offset 7, -8
+ 625              		.cfi_offset 14, -4
+ 201:math/pprz_geodetic_int.c **** 
+ 202:math/pprz_geodetic_int.c ****   const int64_t tmpx = (int64_t)def->ltp_of_ecef.m[0] * enu->x +
+ 203:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[3] * enu->y +
+ 204:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[6] * enu->z;
+ 626              		.loc 1 204 0
+ 627 0002 0B6B     		ldr	r3, [r1, #48]
+ 203:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[6] * enu->z;
+ 628              		.loc 1 203 0
+ 629 0004 5668     		ldr	r6, [r2, #4]
+ 630 0006 4C6A     		ldr	r4, [r1, #36]
+ 202:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[3] * enu->y +
+ 631              		.loc 1 202 0
+ 632 0008 1768     		ldr	r7, [r2]
+ 633              		.loc 1 204 0
+ 634 000a 0193     		str	r3, [sp, #4]
+ 202:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[3] * enu->y +
+ 635              		.loc 1 202 0
+ 636 000c 8B69     		ldr	r3, [r1, #24]
+ 637              		.loc 1 204 0
+ 638 000e 9268     		ldr	r2, [r2, #8]
+ 639              	.LVL82:
+ 203:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[6] * enu->z;
+ 640              		.loc 1 203 0
+ 641 0010 84FB0645 		smull	r4, r5, r4, r6
+ 642              	.LVL83:
+ 202:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[3] * enu->y +
+ 643              		.loc 1 202 0
+ 644 0014 C7FB0345 		smlal	r4, r5, r7, r3
+ 645 0018 019B     		ldr	r3, [sp, #4]
+ 646              	.LVL84:
+ 647 001a C2FB0345 		smlal	r4, r5, r2, r3
+ 648              	.LVL85:
+ 205:math/pprz_geodetic_int.c ****   ecef->x = (int32_t)(tmpx >> HIGH_RES_TRIG_FRAC);
+ 649              		.loc 1 205 0
+ 650 001e 230D     		lsrs	r3, r4, #20
+ 651 0020 43EA0533 		orr	r3, r3, r5, lsl #12
+ 206:math/pprz_geodetic_int.c **** 
+ 207:math/pprz_geodetic_int.c ****   const int64_t tmpy = (int64_t)def->ltp_of_ecef.m[1] * enu->x +
+ 208:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * enu->y +
+ 652              		.loc 1 208 0
+ 653 0024 8C6A     		ldr	r4, [r1, #40]
+ 654              	.LVL86:
+ 205:math/pprz_geodetic_int.c ****   ecef->x = (int32_t)(tmpx >> HIGH_RES_TRIG_FRAC);
+ 655              		.loc 1 205 0
+ 656 0026 0360     		str	r3, [r0]
+ 209:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[7] * enu->z;
+ 657              		.loc 1 209 0
+ 658 0028 4B6B     		ldr	r3, [r1, #52]
+ 659 002a 0193     		str	r3, [sp, #4]
+ 660              	.LVL87:
+ 207:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * enu->y +
+ 661              		.loc 1 207 0
+ 662 002c CB69     		ldr	r3, [r1, #28]
+ 663              	.LVL88:
+ 208:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[7] * enu->z;
+ 664              		.loc 1 208 0
+ 665 002e 84FB0645 		smull	r4, r5, r4, r6
+ 666              	.LVL89:
+ 207:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[4] * enu->y +
+ 667              		.loc 1 207 0
+ 668 0032 C7FB0345 		smlal	r4, r5, r7, r3
+ 669 0036 019B     		ldr	r3, [sp, #4]
+ 670 0038 C2FB0345 		smlal	r4, r5, r2, r3
+ 671              	.LVL90:
+ 210:math/pprz_geodetic_int.c ****   ecef->y = (int32_t)(tmpy >> HIGH_RES_TRIG_FRAC);
+ 672              		.loc 1 210 0
+ 673 003c 230D     		lsrs	r3, r4, #20
+ 674 003e 43EA0533 		orr	r3, r3, r5, lsl #12
+ 675 0042 4360     		str	r3, [r0, #4]
+ 211:math/pprz_geodetic_int.c **** 
+ 212:math/pprz_geodetic_int.c ****   /* first element is always zero http://en.wikipedia.org/wiki/Geodetic_system#From_ENU_to_ECEF */
+ 213:math/pprz_geodetic_int.c ****   const int64_t tmpz = (int64_t)def->ltp_of_ecef.m[5] * enu->y +
+ 214:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * enu->z;
+ 676              		.loc 1 214 0
+ 677 0044 8B6B     		ldr	r3, [r1, #56]
+ 213:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * enu->z;
+ 678              		.loc 1 213 0
+ 679 0046 CC6A     		ldr	r4, [r1, #44]
+ 680              	.LVL91:
+ 681              		.loc 1 214 0
+ 682 0048 83FB0223 		smull	r2, r3, r3, r2
+ 683              	.LVL92:
+ 213:math/pprz_geodetic_int.c ****                        (int64_t)def->ltp_of_ecef.m[8] * enu->z;
+ 684              		.loc 1 213 0
+ 685 004c C6FB0423 		smlal	r2, r3, r6, r4
+ 686              	.LVL93:
+ 215:math/pprz_geodetic_int.c ****   ecef->z = (int32_t)(tmpz >> HIGH_RES_TRIG_FRAC);
+ 687              		.loc 1 215 0
+ 688 0050 120D     		lsrs	r2, r2, #20
+ 689              	.LVL94:
+ 690 0052 42EA0332 		orr	r2, r2, r3, lsl #12
+ 691 0056 8260     		str	r2, [r0, #8]
+ 216:math/pprz_geodetic_int.c **** 
+ 217:math/pprz_geodetic_int.c **** }
+ 692              		.loc 1 217 0
+ 693 0058 03B0     		add	sp, sp, #12
+ 694              		.cfi_def_cfa_offset 20
+ 695              		@ sp needed
+ 696 005a F0BD     		pop	{r4, r5, r6, r7, pc}
+ 697              		.cfi_endproc
+ 698              	.LFE18:
+ 700              		.section	.text.ecef_of_ned_vect_i,"ax",%progbits
+ 701              		.align	1
+ 702              		.global	ecef_of_ned_vect_i
+ 703              		.thumb
+ 704              		.thumb_func
+ 706              	ecef_of_ned_vect_i:
+ 707              	.LFB19:
+ 218:math/pprz_geodetic_int.c **** 
+ 219:math/pprz_geodetic_int.c **** 
+ 220:math/pprz_geodetic_int.c **** /** Rotate a vector from NED to ECEF.
+ 221:math/pprz_geodetic_int.c ****  * @param[out] ecef vector in ECEF coordinate system
+ 222:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 223:math/pprz_geodetic_int.c ****  * @param[in]  ned  vector in NED coordinate system
+ 224:math/pprz_geodetic_int.c ****  */
+ 225:math/pprz_geodetic_int.c **** void ecef_of_ned_vect_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct NedCoor_i *ned)
+ 226:math/pprz_geodetic_int.c **** {
+ 708              		.loc 1 226 0
+ 709              		.cfi_startproc
+ 710              		@ args = 0, pretend = 0, frame = 16
+ 711              		@ frame_needed = 0, uses_anonymous_args = 0
+ 712              	.LVL95:
+ 713 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 714              		.cfi_def_cfa_offset 24
+ 715              		.cfi_offset 14, -4
+ 227:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 228:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(enu, *ned);
+ 716              		.loc 1 228 0
+ 717 0002 5368     		ldr	r3, [r2, #4]
+ 718 0004 0193     		str	r3, [sp, #4]
+ 719 0006 1368     		ldr	r3, [r2]
+ 720 0008 0293     		str	r3, [sp, #8]
+ 721 000a 9368     		ldr	r3, [r2, #8]
+ 229:math/pprz_geodetic_int.c ****   ecef_of_enu_vect_i(ecef, def, &enu);
+ 722              		.loc 1 229 0
+ 723 000c 01AA     		add	r2, sp, #4
+ 724              	.LVL96:
+ 228:math/pprz_geodetic_int.c ****   ecef_of_enu_vect_i(ecef, def, &enu);
+ 725              		.loc 1 228 0
+ 726 000e 5B42     		negs	r3, r3
+ 727 0010 0393     		str	r3, [sp, #12]
+ 728              		.loc 1 229 0
+ 729 0012 FFF7FEFF 		bl	ecef_of_enu_vect_i
+ 730              	.LVL97:
+ 230:math/pprz_geodetic_int.c **** }
+ 731              		.loc 1 230 0
+ 732 0016 05B0     		add	sp, sp, #20
+ 733              		.cfi_def_cfa_offset 4
+ 734              		@ sp needed
+ 735 0018 5DF804FB 		ldr	pc, [sp], #4
+ 736              		.cfi_endproc
+ 737              	.LFE19:
+ 739              		.section	.text.ecef_of_enu_point_i,"ax",%progbits
+ 740              		.align	1
+ 741              		.global	ecef_of_enu_point_i
+ 742              		.thumb
+ 743              		.thumb_func
+ 745              	ecef_of_enu_point_i:
+ 746              	.LFB20:
+ 231:math/pprz_geodetic_int.c **** 
+ 232:math/pprz_geodetic_int.c **** 
+ 233:math/pprz_geodetic_int.c **** /** Convert a point in local ENU to ECEF.
+ 234:math/pprz_geodetic_int.c ****  * @param[out] ecef ECEF point in cm
+ 235:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 236:math/pprz_geodetic_int.c ****  * @param[in]  enu  ENU point in cm
+ 237:math/pprz_geodetic_int.c ****  */
+ 238:math/pprz_geodetic_int.c **** void ecef_of_enu_point_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct EnuCoor_i *enu)
+ 239:math/pprz_geodetic_int.c **** {
+ 747              		.loc 1 239 0
+ 748              		.cfi_startproc
+ 749              		@ args = 0, pretend = 0, frame = 0
+ 750              		@ frame_needed = 0, uses_anonymous_args = 0
+ 751              	.LVL98:
+ 752 0000 38B5     		push	{r3, r4, r5, lr}
+ 753              		.cfi_def_cfa_offset 16
+ 754              		.cfi_offset 3, -16
+ 755              		.cfi_offset 4, -12
+ 756              		.cfi_offset 5, -8
+ 757              		.cfi_offset 14, -4
+ 758              		.loc 1 239 0
+ 759 0002 0446     		mov	r4, r0
+ 760 0004 0D46     		mov	r5, r1
+ 240:math/pprz_geodetic_int.c ****   ecef_of_enu_vect_i(ecef, def, enu);
+ 761              		.loc 1 240 0
+ 762 0006 FFF7FEFF 		bl	ecef_of_enu_vect_i
+ 763              	.LVL99:
+ 241:math/pprz_geodetic_int.c ****   VECT3_ADD(*ecef, def->ecef);
+ 764              		.loc 1 241 0
+ 765 000a 2B68     		ldr	r3, [r5]
+ 766 000c 2268     		ldr	r2, [r4]
+ 767 000e 1344     		add	r3, r3, r2
+ 768 0010 2360     		str	r3, [r4]
+ 769 0012 6268     		ldr	r2, [r4, #4]
+ 770 0014 6B68     		ldr	r3, [r5, #4]
+ 771 0016 1344     		add	r3, r3, r2
+ 772 0018 6360     		str	r3, [r4, #4]
+ 773 001a A268     		ldr	r2, [r4, #8]
+ 774 001c AB68     		ldr	r3, [r5, #8]
+ 775 001e 1344     		add	r3, r3, r2
+ 776 0020 A360     		str	r3, [r4, #8]
+ 777 0022 38BD     		pop	{r3, r4, r5, pc}
+ 778              		.cfi_endproc
+ 779              	.LFE20:
+ 781              		.section	.text.ecef_of_ned_point_i,"ax",%progbits
+ 782              		.align	1
+ 783              		.global	ecef_of_ned_point_i
+ 784              		.thumb
+ 785              		.thumb_func
+ 787              	ecef_of_ned_point_i:
+ 788              	.LFB21:
+ 242:math/pprz_geodetic_int.c **** }
+ 243:math/pprz_geodetic_int.c **** 
+ 244:math/pprz_geodetic_int.c **** 
+ 245:math/pprz_geodetic_int.c **** /** Convert a point in local NED to ECEF.
+ 246:math/pprz_geodetic_int.c ****  * @param[out] ecef ECEF point in cm
+ 247:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 248:math/pprz_geodetic_int.c ****  * @param[in]  ned  NED point in cm
+ 249:math/pprz_geodetic_int.c ****  */
+ 250:math/pprz_geodetic_int.c **** void ecef_of_ned_point_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct NedCoor_i *ned)
+ 251:math/pprz_geodetic_int.c **** {
+ 789              		.loc 1 251 0
+ 790              		.cfi_startproc
+ 791              		@ args = 0, pretend = 0, frame = 16
+ 792              		@ frame_needed = 0, uses_anonymous_args = 0
+ 793              	.LVL100:
+ 794 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 795              		.cfi_def_cfa_offset 24
+ 796              		.cfi_offset 14, -4
+ 252:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 253:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(enu, *ned);
+ 797              		.loc 1 253 0
+ 798 0002 5368     		ldr	r3, [r2, #4]
+ 799 0004 0193     		str	r3, [sp, #4]
+ 800 0006 1368     		ldr	r3, [r2]
+ 801 0008 0293     		str	r3, [sp, #8]
+ 802 000a 9368     		ldr	r3, [r2, #8]
+ 254:math/pprz_geodetic_int.c ****   ecef_of_enu_point_i(ecef, def, &enu);
+ 803              		.loc 1 254 0
+ 804 000c 01AA     		add	r2, sp, #4
+ 805              	.LVL101:
+ 253:math/pprz_geodetic_int.c ****   ecef_of_enu_point_i(ecef, def, &enu);
+ 806              		.loc 1 253 0
+ 807 000e 5B42     		negs	r3, r3
+ 808 0010 0393     		str	r3, [sp, #12]
+ 809              		.loc 1 254 0
+ 810 0012 FFF7FEFF 		bl	ecef_of_enu_point_i
+ 811              	.LVL102:
+ 255:math/pprz_geodetic_int.c **** }
+ 812              		.loc 1 255 0
+ 813 0016 05B0     		add	sp, sp, #20
+ 814              		.cfi_def_cfa_offset 4
+ 815              		@ sp needed
+ 816 0018 5DF804FB 		ldr	pc, [sp], #4
+ 817              		.cfi_endproc
+ 818              	.LFE21:
+ 820              		.section	.text.ecef_of_enu_pos_i,"ax",%progbits
+ 821              		.align	1
+ 822              		.global	ecef_of_enu_pos_i
+ 823              		.thumb
+ 824              		.thumb_func
+ 826              	ecef_of_enu_pos_i:
+ 827              	.LFB22:
+ 256:math/pprz_geodetic_int.c **** 
+ 257:math/pprz_geodetic_int.c **** 
+ 258:math/pprz_geodetic_int.c **** /** Convert a local ENU position to ECEF.
+ 259:math/pprz_geodetic_int.c ****  * @param[out] ecef ECEF position in cm
+ 260:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 261:math/pprz_geodetic_int.c ****  * @param[in]  enu  ENU position in meter << #INT32_POS_FRAC
+ 262:math/pprz_geodetic_int.c ****  */
+ 263:math/pprz_geodetic_int.c **** void ecef_of_enu_pos_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct EnuCoor_i *enu)
+ 264:math/pprz_geodetic_int.c **** {
+ 828              		.loc 1 264 0
+ 829              		.cfi_startproc
+ 830              		@ args = 0, pretend = 0, frame = 16
+ 831              		@ frame_needed = 0, uses_anonymous_args = 0
+ 832              	.LVL103:
+ 833 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 834              		.cfi_def_cfa_offset 20
+ 835              		.cfi_offset 4, -20
+ 836              		.cfi_offset 5, -16
+ 837              		.cfi_offset 6, -12
+ 838              		.cfi_offset 7, -8
+ 839              		.cfi_offset 14, -4
+ 265:math/pprz_geodetic_int.c ****   /* enu_cm = (enu * 100) >> INT32_POS_FRAC
+ 266:math/pprz_geodetic_int.c ****    * to loose less range:
+ 267:math/pprz_geodetic_int.c ****    * enu_cm = (enu * 25) >> (INT32_POS_FRAC-2)
+ 268:math/pprz_geodetic_int.c ****    * which puts max enu input Q23.8 range to 8388km / 25 = 335km
+ 269:math/pprz_geodetic_int.c ****    */
+ 270:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu_cm;
+ 271:math/pprz_geodetic_int.c ****   VECT3_SMUL(enu_cm, *enu, 25);
+ 840              		.loc 1 271 0
+ 841 0002 5568     		ldr	r5, [r2, #4]
+ 842 0004 1923     		movs	r3, #25
+ 843 0006 03FB05F7 		mul	r7, r3, r5
+ 844 000a 9568     		ldr	r5, [r2, #8]
+ 845 000c 1268     		ldr	r2, [r2]
+ 846              	.LVL104:
+ 264:math/pprz_geodetic_int.c ****   /* enu_cm = (enu * 100) >> INT32_POS_FRAC
+ 847              		.loc 1 264 0
+ 848 000e 85B0     		sub	sp, sp, #20
+ 849              		.cfi_def_cfa_offset 40
+ 850              		.loc 1 271 0
+ 851 0010 5D43     		muls	r5, r3, r5
+ 852 0012 5343     		muls	r3, r2, r3
+ 264:math/pprz_geodetic_int.c ****   /* enu_cm = (enu * 100) >> INT32_POS_FRAC
+ 853              		.loc 1 264 0
+ 854 0014 0446     		mov	r4, r0
+ 855 0016 0E46     		mov	r6, r1
+ 272:math/pprz_geodetic_int.c ****   INT32_VECT3_RSHIFT(enu_cm, enu_cm, INT32_POS_FRAC - 2);
+ 856              		.loc 1 272 0
+ 857 0018 9B11     		asrs	r3, r3, #6
+ 858 001a 0193     		str	r3, [sp, #4]
+ 273:math/pprz_geodetic_int.c ****   ecef_of_enu_vect_i(ecef, def, &enu_cm);
+ 859              		.loc 1 273 0
+ 860 001c 01AA     		add	r2, sp, #4
+ 272:math/pprz_geodetic_int.c ****   INT32_VECT3_RSHIFT(enu_cm, enu_cm, INT32_POS_FRAC - 2);
+ 861              		.loc 1 272 0
+ 862 001e BB11     		asrs	r3, r7, #6
+ 863 0020 AD11     		asrs	r5, r5, #6
+ 864 0022 0293     		str	r3, [sp, #8]
+ 865 0024 0395     		str	r5, [sp, #12]
+ 866              		.loc 1 273 0
+ 867 0026 FFF7FEFF 		bl	ecef_of_enu_vect_i
+ 868              	.LVL105:
+ 274:math/pprz_geodetic_int.c ****   VECT3_ADD(*ecef, def->ecef);
+ 869              		.loc 1 274 0
+ 870 002a 3368     		ldr	r3, [r6]
+ 871 002c 2268     		ldr	r2, [r4]
+ 872 002e 1344     		add	r3, r3, r2
+ 873 0030 2360     		str	r3, [r4]
+ 874 0032 6268     		ldr	r2, [r4, #4]
+ 875 0034 7368     		ldr	r3, [r6, #4]
+ 876 0036 1344     		add	r3, r3, r2
+ 877 0038 6360     		str	r3, [r4, #4]
+ 878 003a A268     		ldr	r2, [r4, #8]
+ 879 003c B368     		ldr	r3, [r6, #8]
+ 880 003e 1344     		add	r3, r3, r2
+ 881 0040 A360     		str	r3, [r4, #8]
+ 275:math/pprz_geodetic_int.c **** }
+ 882              		.loc 1 275 0
+ 883 0042 05B0     		add	sp, sp, #20
+ 884              		.cfi_def_cfa_offset 20
+ 885              		@ sp needed
+ 886 0044 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 887              		.cfi_endproc
+ 888              	.LFE22:
+ 890              		.section	.text.ecef_of_ned_pos_i,"ax",%progbits
+ 891              		.align	1
+ 892              		.global	ecef_of_ned_pos_i
+ 893              		.thumb
+ 894              		.thumb_func
+ 896              	ecef_of_ned_pos_i:
+ 897              	.LFB23:
+ 276:math/pprz_geodetic_int.c **** 
+ 277:math/pprz_geodetic_int.c **** 
+ 278:math/pprz_geodetic_int.c **** /** Convert a local NED position to ECEF.
+ 279:math/pprz_geodetic_int.c ****  * @param[out] ecef ECEF position in cm
+ 280:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 281:math/pprz_geodetic_int.c ****  * @param[in]  ned  NED position in meter << #INT32_POS_FRAC
+ 282:math/pprz_geodetic_int.c ****  */
+ 283:math/pprz_geodetic_int.c **** void ecef_of_ned_pos_i(struct EcefCoor_i *ecef, struct LtpDef_i *def, struct NedCoor_i *ned)
+ 284:math/pprz_geodetic_int.c **** {
+ 898              		.loc 1 284 0
+ 899              		.cfi_startproc
+ 900              		@ args = 0, pretend = 0, frame = 16
+ 901              		@ frame_needed = 0, uses_anonymous_args = 0
+ 902              	.LVL106:
+ 903 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 904              		.cfi_def_cfa_offset 24
+ 905              		.cfi_offset 14, -4
+ 285:math/pprz_geodetic_int.c ****   struct EnuCoor_i enu;
+ 286:math/pprz_geodetic_int.c ****   ENU_OF_TO_NED(enu, *ned);
+ 906              		.loc 1 286 0
+ 907 0002 5368     		ldr	r3, [r2, #4]
+ 908 0004 0193     		str	r3, [sp, #4]
+ 909 0006 1368     		ldr	r3, [r2]
+ 910 0008 0293     		str	r3, [sp, #8]
+ 911 000a 9368     		ldr	r3, [r2, #8]
+ 287:math/pprz_geodetic_int.c ****   ecef_of_enu_pos_i(ecef, def, &enu);
+ 912              		.loc 1 287 0
+ 913 000c 01AA     		add	r2, sp, #4
+ 914              	.LVL107:
+ 286:math/pprz_geodetic_int.c ****   ecef_of_enu_pos_i(ecef, def, &enu);
+ 915              		.loc 1 286 0
+ 916 000e 5B42     		negs	r3, r3
+ 917 0010 0393     		str	r3, [sp, #12]
+ 918              		.loc 1 287 0
+ 919 0012 FFF7FEFF 		bl	ecef_of_enu_pos_i
+ 920              	.LVL108:
+ 288:math/pprz_geodetic_int.c **** }
+ 921              		.loc 1 288 0
+ 922 0016 05B0     		add	sp, sp, #20
+ 923              		.cfi_def_cfa_offset 4
+ 924              		@ sp needed
+ 925 0018 5DF804FB 		ldr	pc, [sp], #4
+ 926              		.cfi_endproc
+ 927              	.LFE23:
+ 929              		.global	__aeabi_i2d
+ 930              		.section	.text.lla_of_ecef_i,"ax",%progbits
+ 931              		.align	1
+ 932              		.global	lla_of_ecef_i
+ 933              		.thumb
+ 934              		.thumb_func
+ 936              	lla_of_ecef_i:
+ 937              	.LFB67:
+ 289:math/pprz_geodetic_int.c **** 
+ 290:math/pprz_geodetic_int.c **** /** Convert a point from LLA to local ENU.
+ 291:math/pprz_geodetic_int.c ****  * @param[out] enu  ENU point in cm
+ 292:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 293:math/pprz_geodetic_int.c ****  * @param[in]  lla  LLA point in 1e7deg and mm
+ 294:math/pprz_geodetic_int.c ****  */
+ 295:math/pprz_geodetic_int.c **** void enu_of_lla_point_i(struct EnuCoor_i *enu, struct LtpDef_i *def, struct LlaCoor_i *lla)
+ 296:math/pprz_geodetic_int.c **** {
+ 297:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 298:math/pprz_geodetic_int.c ****   ecef_of_lla_i(&ecef, lla);
+ 299:math/pprz_geodetic_int.c ****   enu_of_ecef_point_i(enu, def, &ecef);
+ 300:math/pprz_geodetic_int.c **** }
+ 301:math/pprz_geodetic_int.c **** 
+ 302:math/pprz_geodetic_int.c **** /** Convert a point from LLA to local NED.
+ 303:math/pprz_geodetic_int.c ****  * @param[out] ned  NED point in cm
+ 304:math/pprz_geodetic_int.c ****  * @param[in]  def  local coordinate system definition
+ 305:math/pprz_geodetic_int.c ****  * @param[in]  lla  LLA point in 1e7deg and mm
+ 306:math/pprz_geodetic_int.c ****  */
+ 307:math/pprz_geodetic_int.c **** void ned_of_lla_point_i(struct NedCoor_i *ned, struct LtpDef_i *def, struct LlaCoor_i *lla)
+ 308:math/pprz_geodetic_int.c **** {
+ 309:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 310:math/pprz_geodetic_int.c ****   ecef_of_lla_i(&ecef, lla);
+ 311:math/pprz_geodetic_int.c ****   ned_of_ecef_point_i(ned, def, &ecef);
+ 312:math/pprz_geodetic_int.c **** }
+ 313:math/pprz_geodetic_int.c **** 
+ 314:math/pprz_geodetic_int.c **** void enu_of_lla_vect_i(struct EnuCoor_i *enu, struct LtpDef_i *def, struct LlaCoor_i *lla)
+ 315:math/pprz_geodetic_int.c **** {
+ 316:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 317:math/pprz_geodetic_int.c ****   ecef_of_lla_i(&ecef, lla);
+ 318:math/pprz_geodetic_int.c ****   enu_of_ecef_vect_i(enu, def, &ecef);
+ 319:math/pprz_geodetic_int.c **** }
+ 320:math/pprz_geodetic_int.c **** 
+ 321:math/pprz_geodetic_int.c **** void ned_of_lla_vect_i(struct NedCoor_i *ned, struct LtpDef_i *def, struct LlaCoor_i *lla)
+ 322:math/pprz_geodetic_int.c **** {
+ 323:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 324:math/pprz_geodetic_int.c ****   ecef_of_lla_i(&ecef, lla);
+ 325:math/pprz_geodetic_int.c ****   ned_of_ecef_vect_i(ned, def, &ecef);
+ 326:math/pprz_geodetic_int.c **** }
+ 327:math/pprz_geodetic_int.c **** 
+ 328:math/pprz_geodetic_int.c **** /*
+ 329:math/pprz_geodetic_int.c ****    For now we cheat and call the floating point version
+ 330:math/pprz_geodetic_int.c ****    Anyone up for writing it in fixed point ?
+ 331:math/pprz_geodetic_int.c **** */
+ 332:math/pprz_geodetic_int.c **** #include "pprz_geodetic_float.h"
+ 333:math/pprz_geodetic_int.c **** #include "pprz_geodetic_double.h"
+ 334:math/pprz_geodetic_int.c **** 
+ 335:math/pprz_geodetic_int.c **** void lla_of_ecef_i(struct LlaCoor_i *out, struct EcefCoor_i *in)
+ 336:math/pprz_geodetic_int.c **** {
+ 938              		.loc 1 336 0
+ 939              		.cfi_startproc
+ 940              		@ args = 0, pretend = 0, frame = 48
+ 941              		@ frame_needed = 0, uses_anonymous_args = 0
+ 942              	.LVL109:
+ 943 0000 30B5     		push	{r4, r5, lr}
+ 944              		.cfi_def_cfa_offset 12
+ 945              		.cfi_offset 4, -12
+ 946              		.cfi_offset 5, -8
+ 947              		.cfi_offset 14, -4
+ 948 0002 0446     		mov	r4, r0
+ 949 0004 8DB0     		sub	sp, sp, #52
+ 950              		.cfi_def_cfa_offset 64
+ 337:math/pprz_geodetic_int.c **** 
+ 338:math/pprz_geodetic_int.c **** #if USE_SINGLE_PRECISION_LLA_ECEF
+ 339:math/pprz_geodetic_int.c ****   /* convert our input to floating point */
+ 340:math/pprz_geodetic_int.c ****   struct EcefCoor_f in_f;
+ 341:math/pprz_geodetic_int.c ****   in_f.x = M_OF_CM((float)in->x);
+ 342:math/pprz_geodetic_int.c ****   in_f.y = M_OF_CM((float)in->y);
+ 343:math/pprz_geodetic_int.c ****   in_f.z = M_OF_CM((float)in->z);
+ 344:math/pprz_geodetic_int.c ****   /* calls the floating point transformation */
+ 345:math/pprz_geodetic_int.c ****   struct LlaCoor_f out_f;
+ 346:math/pprz_geodetic_int.c ****   lla_of_ecef_f(&out_f, &in_f);
+ 347:math/pprz_geodetic_int.c ****   /* convert the output to fixed point       */
+ 348:math/pprz_geodetic_int.c ****   out->lon = (int32_t)rint(EM7DEG_OF_RAD(out_f.lon));
+ 349:math/pprz_geodetic_int.c ****   out->lat = (int32_t)rint(EM7DEG_OF_RAD(out_f.lat));
+ 350:math/pprz_geodetic_int.c ****   out->alt = (int32_t)MM_OF_M(out_f.alt);
+ 351:math/pprz_geodetic_int.c **** #else // use double precision by default
+ 352:math/pprz_geodetic_int.c ****   /* convert our input to floating point */
+ 353:math/pprz_geodetic_int.c ****   struct EcefCoor_d in_d;
+ 354:math/pprz_geodetic_int.c ****   in_d.x = M_OF_CM((double)in->x);
+ 951              		.loc 1 354 0
+ 952 0006 0868     		ldr	r0, [r1]
+ 953              	.LVL110:
+ 336:math/pprz_geodetic_int.c **** 
+ 954              		.loc 1 336 0
+ 955 0008 0D46     		mov	r5, r1
+ 956              		.loc 1 354 0
+ 957 000a FFF7FEFF 		bl	__aeabi_i2d
+ 958              	.LVL111:
+ 959 000e 0022     		movs	r2, #0
+ 960 0010 274B     		ldr	r3, .L17+16
+ 961 0012 FFF7FEFF 		bl	__aeabi_ddiv
+ 962              	.LVL112:
+ 963 0016 CDE90001 		strd	r0, [sp]
+ 355:math/pprz_geodetic_int.c ****   in_d.y = M_OF_CM((double)in->y);
+ 964              		.loc 1 355 0
+ 965 001a 6868     		ldr	r0, [r5, #4]
+ 966 001c FFF7FEFF 		bl	__aeabi_i2d
+ 967              	.LVL113:
+ 968 0020 0022     		movs	r2, #0
+ 969 0022 234B     		ldr	r3, .L17+16
+ 970 0024 FFF7FEFF 		bl	__aeabi_ddiv
+ 971              	.LVL114:
+ 972 0028 CDE90201 		strd	r0, [sp, #8]
+ 356:math/pprz_geodetic_int.c ****   in_d.z = M_OF_CM((double)in->z);
+ 973              		.loc 1 356 0
+ 974 002c A868     		ldr	r0, [r5, #8]
+ 975 002e FFF7FEFF 		bl	__aeabi_i2d
+ 976              	.LVL115:
+ 977 0032 0022     		movs	r2, #0
+ 978 0034 1E4B     		ldr	r3, .L17+16
+ 979 0036 FFF7FEFF 		bl	__aeabi_ddiv
+ 980              	.LVL116:
+ 981 003a CDE90401 		strd	r0, [sp, #16]
+ 357:math/pprz_geodetic_int.c ****   /* calls the floating point transformation */
+ 358:math/pprz_geodetic_int.c ****   struct LlaCoor_d out_d;
+ 359:math/pprz_geodetic_int.c ****   lla_of_ecef_d(&out_d, &in_d);
+ 982              		.loc 1 359 0
+ 983 003e 06A8     		add	r0, sp, #24
+ 984 0040 6946     		mov	r1, sp
+ 985 0042 FFF7FEFF 		bl	lla_of_ecef_d
+ 986              	.LVL117:
+ 360:math/pprz_geodetic_int.c ****   /* convert the output to fixed point       */
+ 361:math/pprz_geodetic_int.c ****   out->lon = (int32_t)rint(EM7DEG_OF_RAD(out_d.lon));
+ 987              		.loc 1 361 0
+ 988 0046 DDE90801 		ldrd	r0, [sp, #32]
+ 989 004a 15A3     		adr	r3, .L17
+ 990 004c D3E90023 		ldrd	r2, [r3]
+ 991 0050 FFF7FEFF 		bl	__aeabi_dmul
+ 992              	.LVL118:
+ 993 0054 14A3     		adr	r3, .L17+8
+ 994 0056 D3E90023 		ldrd	r2, [r3]
+ 995 005a FFF7FEFF 		bl	__aeabi_dmul
+ 996              	.LVL119:
+ 997 005e FFF7FEFF 		bl	rint
+ 998              	.LVL120:
+ 999 0062 FFF7FEFF 		bl	__aeabi_d2iz
+ 1000              	.LVL121:
+ 362:math/pprz_geodetic_int.c ****   out->lat = (int32_t)rint(EM7DEG_OF_RAD(out_d.lat));
+ 1001              		.loc 1 362 0
+ 1002 0066 0EA3     		adr	r3, .L17
+ 1003 0068 D3E90023 		ldrd	r2, [r3]
+ 361:math/pprz_geodetic_int.c ****   out->lat = (int32_t)rint(EM7DEG_OF_RAD(out_d.lat));
+ 1004              		.loc 1 361 0
+ 1005 006c 6060     		str	r0, [r4, #4]
+ 1006              		.loc 1 362 0
+ 1007 006e DDE90601 		ldrd	r0, [sp, #24]
+ 1008 0072 FFF7FEFF 		bl	__aeabi_dmul
+ 1009              	.LVL122:
+ 1010 0076 0CA3     		adr	r3, .L17+8
+ 1011 0078 D3E90023 		ldrd	r2, [r3]
+ 1012 007c FFF7FEFF 		bl	__aeabi_dmul
+ 1013              	.LVL123:
+ 1014 0080 FFF7FEFF 		bl	rint
+ 1015              	.LVL124:
+ 1016 0084 FFF7FEFF 		bl	__aeabi_d2iz
+ 1017              	.LVL125:
+ 363:math/pprz_geodetic_int.c ****   out->alt = (int32_t)MM_OF_M(out_d.alt);
+ 1018              		.loc 1 363 0
+ 1019 0088 0022     		movs	r2, #0
+ 362:math/pprz_geodetic_int.c ****   out->lat = (int32_t)rint(EM7DEG_OF_RAD(out_d.lat));
+ 1020              		.loc 1 362 0
+ 1021 008a 2060     		str	r0, [r4]
+ 1022              		.loc 1 363 0
+ 1023 008c 094B     		ldr	r3, .L17+20
+ 1024 008e DDE90A01 		ldrd	r0, [sp, #40]
+ 1025 0092 FFF7FEFF 		bl	__aeabi_dmul
+ 1026              	.LVL126:
+ 1027 0096 FFF7FEFF 		bl	__aeabi_d2iz
+ 1028              	.LVL127:
+ 1029 009a A060     		str	r0, [r4, #8]
+ 364:math/pprz_geodetic_int.c **** #endif
+ 365:math/pprz_geodetic_int.c **** 
+ 366:math/pprz_geodetic_int.c **** }
+ 1030              		.loc 1 366 0
+ 1031 009c 0DB0     		add	sp, sp, #52
+ 1032              		.cfi_def_cfa_offset 12
+ 1033              		@ sp needed
+ 1034 009e 30BD     		pop	{r4, r5, pc}
+ 1035              	.LVL128:
+ 1036              	.L18:
+ 1037              		.align	3
+ 1038              	.L17:
+ 1039 00a0 F8C1631A 		.word	442745336
+ 1040 00a4 DCA54C40 		.word	1078765020
+ 1041 00a8 00000000 		.word	0
+ 1042 00ac D0126341 		.word	1097011920
+ 1043 00b0 00005940 		.word	1079574528
+ 1044 00b4 00408F40 		.word	1083129856
+ 1045              		.cfi_endproc
+ 1046              	.LFE67:
+ 1048              		.section	.text.ltp_def_from_ecef_i,"ax",%progbits
+ 1049              		.align	1
+ 1050              		.global	ltp_def_from_ecef_i
+ 1051              		.thumb
+ 1052              		.thumb_func
+ 1054              	ltp_def_from_ecef_i:
+ 1055              	.LFB10:
+  61:math/pprz_geodetic_int.c **** 
+ 1056              		.loc 1 61 0
+ 1057              		.cfi_startproc
+ 1058              		@ args = 0, pretend = 0, frame = 0
+ 1059              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1060              	.LVL129:
+ 1061 0000 38B5     		push	{r3, r4, r5, lr}
+ 1062              		.cfi_def_cfa_offset 16
+ 1063              		.cfi_offset 3, -16
+ 1064              		.cfi_offset 4, -12
+ 1065              		.cfi_offset 5, -8
+ 1066              		.cfi_offset 14, -4
+  64:math/pprz_geodetic_int.c ****   /* compute the lla representation of the origin */
+ 1067              		.loc 1 64 0
+ 1068 0002 0B68     		ldr	r3, [r1]
+ 1069 0004 0360     		str	r3, [r0]
+ 1070 0006 4B68     		ldr	r3, [r1, #4]
+ 1071 0008 4360     		str	r3, [r0, #4]
+  61:math/pprz_geodetic_int.c **** 
+ 1072              		.loc 1 61 0
+ 1073 000a 0446     		mov	r4, r0
+  64:math/pprz_geodetic_int.c ****   /* compute the lla representation of the origin */
+ 1074              		.loc 1 64 0
+ 1075 000c 8B68     		ldr	r3, [r1, #8]
+ 1076 000e 8360     		str	r3, [r0, #8]
+  66:math/pprz_geodetic_int.c ****   /* store the rotation matrix                    */
+ 1077              		.loc 1 66 0
+ 1078 0010 00F10C05 		add	r5, r0, #12
+ 1079 0014 2846     		mov	r0, r5
+ 1080              	.LVL130:
+ 1081 0016 2146     		mov	r1, r4
+ 1082              	.LVL131:
+ 1083 0018 FFF7FEFF 		bl	lla_of_ecef_i
+ 1084              	.LVL132:
+  68:math/pprz_geodetic_int.c **** 
+ 1085              		.loc 1 68 0
+ 1086 001c 04F11800 		add	r0, r4, #24
+ 1087 0020 2946     		mov	r1, r5
+  70:math/pprz_geodetic_int.c **** 
+ 1088              		.loc 1 70 0
+ 1089 0022 BDE83840 		pop	{r3, r4, r5, lr}
+ 1090              		.cfi_restore 14
+ 1091              		.cfi_restore 5
+ 1092              		.cfi_restore 4
+ 1093              		.cfi_restore 3
+ 1094              		.cfi_def_cfa_offset 0
+ 1095              	.LVL133:
+  68:math/pprz_geodetic_int.c **** 
+ 1096              		.loc 1 68 0
+ 1097 0026 FFF7FEBF 		b	ltp_of_ecef_rmat_from_lla_i
+ 1098              	.LVL134:
+ 1099              		.cfi_endproc
+ 1100              	.LFE10:
+ 1102              		.section	.text.ecef_of_lla_i,"ax",%progbits
+ 1103              		.align	1
+ 1104              		.global	ecef_of_lla_i
+ 1105              		.thumb
+ 1106              		.thumb_func
+ 1108              	ecef_of_lla_i:
+ 1109              	.LFB68:
+ 367:math/pprz_geodetic_int.c **** 
+ 368:math/pprz_geodetic_int.c **** void ecef_of_lla_i(struct EcefCoor_i *out, struct LlaCoor_i *in)
+ 369:math/pprz_geodetic_int.c **** {
+ 1110              		.loc 1 369 0
+ 1111              		.cfi_startproc
+ 1112              		@ args = 0, pretend = 0, frame = 48
+ 1113              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1114              	.LVL135:
+ 1115 0000 30B5     		push	{r4, r5, lr}
+ 1116              		.cfi_def_cfa_offset 12
+ 1117              		.cfi_offset 4, -12
+ 1118              		.cfi_offset 5, -8
+ 1119              		.cfi_offset 14, -4
+ 1120 0002 0446     		mov	r4, r0
+ 1121 0004 8DB0     		sub	sp, sp, #52
+ 1122              		.cfi_def_cfa_offset 64
+ 370:math/pprz_geodetic_int.c **** 
+ 371:math/pprz_geodetic_int.c **** #if USE_SINGLE_PRECISION_LLA_ECEF
+ 372:math/pprz_geodetic_int.c ****   /* convert our input to floating point */
+ 373:math/pprz_geodetic_int.c ****   struct LlaCoor_f in_f;
+ 374:math/pprz_geodetic_int.c ****   in_f.lon = RAD_OF_EM7DEG((float)in->lon);
+ 375:math/pprz_geodetic_int.c ****   in_f.lat = RAD_OF_EM7DEG((float)in->lat);
+ 376:math/pprz_geodetic_int.c ****   in_f.alt = M_OF_MM((float)in->alt);
+ 377:math/pprz_geodetic_int.c ****   /* calls the floating point transformation */
+ 378:math/pprz_geodetic_int.c ****   struct EcefCoor_f out_f;
+ 379:math/pprz_geodetic_int.c ****   ecef_of_lla_f(&out_f, &in_f);
+ 380:math/pprz_geodetic_int.c ****   /* convert the output to fixed point       */
+ 381:math/pprz_geodetic_int.c ****   out->x = (int32_t)CM_OF_M(out_f.x);
+ 382:math/pprz_geodetic_int.c ****   out->y = (int32_t)CM_OF_M(out_f.y);
+ 383:math/pprz_geodetic_int.c ****   out->z = (int32_t)CM_OF_M(out_f.z);
+ 384:math/pprz_geodetic_int.c **** #else // use double precision by default
+ 385:math/pprz_geodetic_int.c ****   /* convert our input to floating point */
+ 386:math/pprz_geodetic_int.c ****   struct LlaCoor_d in_d;
+ 387:math/pprz_geodetic_int.c ****   in_d.lon = RAD_OF_EM7DEG((double)in->lon);
+ 1123              		.loc 1 387 0
+ 1124 0006 4868     		ldr	r0, [r1, #4]
+ 1125              	.LVL136:
+ 369:math/pprz_geodetic_int.c **** 
+ 1126              		.loc 1 369 0
+ 1127 0008 0D46     		mov	r5, r1
+ 1128              		.loc 1 387 0
+ 1129 000a FFF7FEFF 		bl	__aeabi_i2d
+ 1130              	.LVL137:
+ 1131 000e 24A3     		adr	r3, .L21+8
+ 1132 0010 D3E90023 		ldrd	r2, [r3]
+ 1133 0014 FFF7FEFF 		bl	__aeabi_dmul
+ 1134              	.LVL138:
+ 1135 0018 23A3     		adr	r3, .L21+16
+ 1136 001a D3E90023 		ldrd	r2, [r3]
+ 1137 001e FFF7FEFF 		bl	__aeabi_ddiv
+ 1138              	.LVL139:
+ 1139 0022 CDE90201 		strd	r0, [sp, #8]
+ 388:math/pprz_geodetic_int.c ****   in_d.lat = RAD_OF_EM7DEG((double)in->lat);
+ 1140              		.loc 1 388 0
+ 1141 0026 2868     		ldr	r0, [r5]
+ 1142 0028 FFF7FEFF 		bl	__aeabi_i2d
+ 1143              	.LVL140:
+ 1144 002c 1CA3     		adr	r3, .L21+8
+ 1145 002e D3E90023 		ldrd	r2, [r3]
+ 1146 0032 FFF7FEFF 		bl	__aeabi_dmul
+ 1147              	.LVL141:
+ 1148 0036 1CA3     		adr	r3, .L21+16
+ 1149 0038 D3E90023 		ldrd	r2, [r3]
+ 1150 003c FFF7FEFF 		bl	__aeabi_ddiv
+ 1151              	.LVL142:
+ 1152 0040 CDE90001 		strd	r0, [sp]
+ 389:math/pprz_geodetic_int.c ****   in_d.alt = M_OF_MM((double)in->alt);
+ 1153              		.loc 1 389 0
+ 1154 0044 A868     		ldr	r0, [r5, #8]
+ 1155 0046 FFF7FEFF 		bl	__aeabi_i2d
+ 1156              	.LVL143:
+ 1157 004a 0022     		movs	r2, #0
+ 1158 004c 124B     		ldr	r3, .L21
+ 1159 004e FFF7FEFF 		bl	__aeabi_ddiv
+ 1160              	.LVL144:
+ 1161 0052 CDE90401 		strd	r0, [sp, #16]
+ 390:math/pprz_geodetic_int.c ****   /* calls the floating point transformation */
+ 391:math/pprz_geodetic_int.c ****   struct EcefCoor_d out_d;
+ 392:math/pprz_geodetic_int.c ****   ecef_of_lla_d(&out_d, &in_d);
+ 1162              		.loc 1 392 0
+ 1163 0056 06A8     		add	r0, sp, #24
+ 1164 0058 6946     		mov	r1, sp
+ 1165 005a FFF7FEFF 		bl	ecef_of_lla_d
+ 1166              	.LVL145:
+ 393:math/pprz_geodetic_int.c ****   /* convert the output to fixed point       */
+ 394:math/pprz_geodetic_int.c ****   out->x = (int32_t)CM_OF_M(out_d.x);
+ 1167              		.loc 1 394 0
+ 1168 005e 0022     		movs	r2, #0
+ 1169 0060 0E4B     		ldr	r3, .L21+4
+ 1170 0062 DDE90601 		ldrd	r0, [sp, #24]
+ 1171 0066 FFF7FEFF 		bl	__aeabi_dmul
+ 1172              	.LVL146:
+ 1173 006a FFF7FEFF 		bl	__aeabi_d2iz
+ 1174              	.LVL147:
+ 395:math/pprz_geodetic_int.c ****   out->y = (int32_t)CM_OF_M(out_d.y);
+ 1175              		.loc 1 395 0
+ 1176 006e 0022     		movs	r2, #0
+ 394:math/pprz_geodetic_int.c ****   out->y = (int32_t)CM_OF_M(out_d.y);
+ 1177              		.loc 1 394 0
+ 1178 0070 2060     		str	r0, [r4]
+ 1179              		.loc 1 395 0
+ 1180 0072 0A4B     		ldr	r3, .L21+4
+ 1181 0074 DDE90801 		ldrd	r0, [sp, #32]
+ 1182 0078 FFF7FEFF 		bl	__aeabi_dmul
+ 1183              	.LVL148:
+ 1184 007c FFF7FEFF 		bl	__aeabi_d2iz
+ 1185              	.LVL149:
+ 396:math/pprz_geodetic_int.c ****   out->z = (int32_t)CM_OF_M(out_d.z);
+ 1186              		.loc 1 396 0
+ 1187 0080 0022     		movs	r2, #0
+ 395:math/pprz_geodetic_int.c ****   out->y = (int32_t)CM_OF_M(out_d.y);
+ 1188              		.loc 1 395 0
+ 1189 0082 6060     		str	r0, [r4, #4]
+ 1190              		.loc 1 396 0
+ 1191 0084 054B     		ldr	r3, .L21+4
+ 1192 0086 DDE90A01 		ldrd	r0, [sp, #40]
+ 1193 008a FFF7FEFF 		bl	__aeabi_dmul
+ 1194              	.LVL150:
+ 1195 008e FFF7FEFF 		bl	__aeabi_d2iz
+ 1196              	.LVL151:
+ 1197 0092 A060     		str	r0, [r4, #8]
+ 397:math/pprz_geodetic_int.c **** #endif
+ 398:math/pprz_geodetic_int.c **** 
+ 399:math/pprz_geodetic_int.c **** }
+ 1198              		.loc 1 399 0
+ 1199 0094 0DB0     		add	sp, sp, #52
+ 1200              		.cfi_def_cfa_offset 12
+ 1201              		@ sp needed
+ 1202 0096 30BD     		pop	{r4, r5, pc}
+ 1203              	.LVL152:
+ 1204              	.L22:
+ 1205              		.align	3
+ 1206              	.L21:
+ 1207 0098 00408F40 		.word	1083129856
+ 1208 009c 00005940 		.word	1079574528
+ 1209 00a0 399D52A2 		.word	-1571644103
+ 1210 00a4 46DF913F 		.word	1066524486
+ 1211 00a8 00000000 		.word	0
+ 1212 00ac D0126341 		.word	1097011920
+ 1213              		.cfi_endproc
+ 1214              	.LFE68:
+ 1216              		.section	.text.ltp_def_from_lla_i,"ax",%progbits
+ 1217              		.align	1
+ 1218              		.global	ltp_def_from_lla_i
+ 1219              		.thumb
+ 1220              		.thumb_func
+ 1222              	ltp_def_from_lla_i:
+ 1223              	.LFB11:
+  73:math/pprz_geodetic_int.c **** 
+ 1224              		.loc 1 73 0
+ 1225              		.cfi_startproc
+ 1226              		@ args = 0, pretend = 0, frame = 0
+ 1227              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1228              	.LVL153:
+ 1229 0000 38B5     		push	{r3, r4, r5, lr}
+ 1230              		.cfi_def_cfa_offset 16
+ 1231              		.cfi_offset 3, -16
+ 1232              		.cfi_offset 4, -12
+ 1233              		.cfi_offset 5, -8
+ 1234              		.cfi_offset 14, -4
+  76:math/pprz_geodetic_int.c ****   /* compute the ecef representation of the origin */
+ 1235              		.loc 1 76 0
+ 1236 0002 0B68     		ldr	r3, [r1]
+ 1237 0004 C360     		str	r3, [r0, #12]
+ 1238 0006 4B68     		ldr	r3, [r1, #4]
+ 1239 0008 0361     		str	r3, [r0, #16]
+  78:math/pprz_geodetic_int.c ****   /* store the rotation matrix                    */
+ 1240              		.loc 1 78 0
+ 1241 000a 00F10C05 		add	r5, r0, #12
+  76:math/pprz_geodetic_int.c ****   /* compute the ecef representation of the origin */
+ 1242              		.loc 1 76 0
+ 1243 000e 8B68     		ldr	r3, [r1, #8]
+ 1244 0010 4361     		str	r3, [r0, #20]
+  73:math/pprz_geodetic_int.c **** 
+ 1245              		.loc 1 73 0
+ 1246 0012 0446     		mov	r4, r0
+  78:math/pprz_geodetic_int.c ****   /* store the rotation matrix                    */
+ 1247              		.loc 1 78 0
+ 1248 0014 2946     		mov	r1, r5
+ 1249              	.LVL154:
+ 1250 0016 FFF7FEFF 		bl	ecef_of_lla_i
+ 1251              	.LVL155:
+  80:math/pprz_geodetic_int.c **** 
+ 1252              		.loc 1 80 0
+ 1253 001a 04F11800 		add	r0, r4, #24
+ 1254 001e 2946     		mov	r1, r5
+  82:math/pprz_geodetic_int.c **** 
+ 1255              		.loc 1 82 0
+ 1256 0020 BDE83840 		pop	{r3, r4, r5, lr}
+ 1257              		.cfi_restore 14
+ 1258              		.cfi_restore 5
+ 1259              		.cfi_restore 4
+ 1260              		.cfi_restore 3
+ 1261              		.cfi_def_cfa_offset 0
+ 1262              	.LVL156:
+  80:math/pprz_geodetic_int.c **** 
+ 1263              		.loc 1 80 0
+ 1264 0024 FFF7FEBF 		b	ltp_of_ecef_rmat_from_lla_i
+ 1265              	.LVL157:
+ 1266              		.cfi_endproc
+ 1267              	.LFE11:
+ 1269              		.section	.text.enu_of_lla_point_i,"ax",%progbits
+ 1270              		.align	1
+ 1271              		.global	enu_of_lla_point_i
+ 1272              		.thumb
+ 1273              		.thumb_func
+ 1275              	enu_of_lla_point_i:
+ 1276              	.LFB24:
+ 296:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1277              		.loc 1 296 0
+ 1278              		.cfi_startproc
+ 1279              		@ args = 0, pretend = 0, frame = 16
+ 1280              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1281              	.LVL158:
+ 1282 0000 30B5     		push	{r4, r5, lr}
+ 1283              		.cfi_def_cfa_offset 12
+ 1284              		.cfi_offset 4, -12
+ 1285              		.cfi_offset 5, -8
+ 1286              		.cfi_offset 14, -4
+ 1287 0002 85B0     		sub	sp, sp, #20
+ 1288              		.cfi_def_cfa_offset 32
+ 296:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1289              		.loc 1 296 0
+ 1290 0004 0546     		mov	r5, r0
+ 1291 0006 0C46     		mov	r4, r1
+ 298:math/pprz_geodetic_int.c ****   enu_of_ecef_point_i(enu, def, &ecef);
+ 1292              		.loc 1 298 0
+ 1293 0008 01A8     		add	r0, sp, #4
+ 1294              	.LVL159:
+ 1295 000a 1146     		mov	r1, r2
+ 1296              	.LVL160:
+ 1297 000c FFF7FEFF 		bl	ecef_of_lla_i
+ 1298              	.LVL161:
+ 299:math/pprz_geodetic_int.c **** }
+ 1299              		.loc 1 299 0
+ 1300 0010 2846     		mov	r0, r5
+ 1301 0012 2146     		mov	r1, r4
+ 1302 0014 01AA     		add	r2, sp, #4
+ 1303 0016 FFF7FEFF 		bl	enu_of_ecef_point_i
+ 1304              	.LVL162:
+ 300:math/pprz_geodetic_int.c **** 
+ 1305              		.loc 1 300 0
+ 1306 001a 05B0     		add	sp, sp, #20
+ 1307              		.cfi_def_cfa_offset 12
+ 1308              		@ sp needed
+ 1309 001c 30BD     		pop	{r4, r5, pc}
+ 1310              		.cfi_endproc
+ 1311              	.LFE24:
+ 1313              		.section	.text.ned_of_lla_point_i,"ax",%progbits
+ 1314              		.align	1
+ 1315              		.global	ned_of_lla_point_i
+ 1316              		.thumb
+ 1317              		.thumb_func
+ 1319              	ned_of_lla_point_i:
+ 1320              	.LFB25:
+ 308:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1321              		.loc 1 308 0
+ 1322              		.cfi_startproc
+ 1323              		@ args = 0, pretend = 0, frame = 16
+ 1324              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1325              	.LVL163:
+ 1326 0000 30B5     		push	{r4, r5, lr}
+ 1327              		.cfi_def_cfa_offset 12
+ 1328              		.cfi_offset 4, -12
+ 1329              		.cfi_offset 5, -8
+ 1330              		.cfi_offset 14, -4
+ 1331 0002 85B0     		sub	sp, sp, #20
+ 1332              		.cfi_def_cfa_offset 32
+ 308:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1333              		.loc 1 308 0
+ 1334 0004 0546     		mov	r5, r0
+ 1335 0006 0C46     		mov	r4, r1
+ 310:math/pprz_geodetic_int.c ****   ned_of_ecef_point_i(ned, def, &ecef);
+ 1336              		.loc 1 310 0
+ 1337 0008 01A8     		add	r0, sp, #4
+ 1338              	.LVL164:
+ 1339 000a 1146     		mov	r1, r2
+ 1340              	.LVL165:
+ 1341 000c FFF7FEFF 		bl	ecef_of_lla_i
+ 1342              	.LVL166:
+ 311:math/pprz_geodetic_int.c **** }
+ 1343              		.loc 1 311 0
+ 1344 0010 2846     		mov	r0, r5
+ 1345 0012 2146     		mov	r1, r4
+ 1346 0014 01AA     		add	r2, sp, #4
+ 1347 0016 FFF7FEFF 		bl	ned_of_ecef_point_i
+ 1348              	.LVL167:
+ 312:math/pprz_geodetic_int.c **** 
+ 1349              		.loc 1 312 0
+ 1350 001a 05B0     		add	sp, sp, #20
+ 1351              		.cfi_def_cfa_offset 12
+ 1352              		@ sp needed
+ 1353 001c 30BD     		pop	{r4, r5, pc}
+ 1354              		.cfi_endproc
+ 1355              	.LFE25:
+ 1357              		.section	.text.enu_of_lla_vect_i,"ax",%progbits
+ 1358              		.align	1
+ 1359              		.global	enu_of_lla_vect_i
+ 1360              		.thumb
+ 1361              		.thumb_func
+ 1363              	enu_of_lla_vect_i:
+ 1364              	.LFB26:
+ 315:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1365              		.loc 1 315 0
+ 1366              		.cfi_startproc
+ 1367              		@ args = 0, pretend = 0, frame = 16
+ 1368              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1369              	.LVL168:
+ 1370 0000 30B5     		push	{r4, r5, lr}
+ 1371              		.cfi_def_cfa_offset 12
+ 1372              		.cfi_offset 4, -12
+ 1373              		.cfi_offset 5, -8
+ 1374              		.cfi_offset 14, -4
+ 1375 0002 85B0     		sub	sp, sp, #20
+ 1376              		.cfi_def_cfa_offset 32
+ 315:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1377              		.loc 1 315 0
+ 1378 0004 0546     		mov	r5, r0
+ 1379 0006 0C46     		mov	r4, r1
+ 317:math/pprz_geodetic_int.c ****   enu_of_ecef_vect_i(enu, def, &ecef);
+ 1380              		.loc 1 317 0
+ 1381 0008 01A8     		add	r0, sp, #4
+ 1382              	.LVL169:
+ 1383 000a 1146     		mov	r1, r2
+ 1384              	.LVL170:
+ 1385 000c FFF7FEFF 		bl	ecef_of_lla_i
+ 1386              	.LVL171:
+ 318:math/pprz_geodetic_int.c **** }
+ 1387              		.loc 1 318 0
+ 1388 0010 2846     		mov	r0, r5
+ 1389 0012 2146     		mov	r1, r4
+ 1390 0014 01AA     		add	r2, sp, #4
+ 1391 0016 FFF7FEFF 		bl	enu_of_ecef_vect_i
+ 1392              	.LVL172:
+ 319:math/pprz_geodetic_int.c **** 
+ 1393              		.loc 1 319 0
+ 1394 001a 05B0     		add	sp, sp, #20
+ 1395              		.cfi_def_cfa_offset 12
+ 1396              		@ sp needed
+ 1397 001c 30BD     		pop	{r4, r5, pc}
+ 1398              		.cfi_endproc
+ 1399              	.LFE26:
+ 1401              		.section	.text.ned_of_lla_vect_i,"ax",%progbits
+ 1402              		.align	1
+ 1403              		.global	ned_of_lla_vect_i
+ 1404              		.thumb
+ 1405              		.thumb_func
+ 1407              	ned_of_lla_vect_i:
+ 1408              	.LFB27:
+ 322:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1409              		.loc 1 322 0
+ 1410              		.cfi_startproc
+ 1411              		@ args = 0, pretend = 0, frame = 16
+ 1412              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1413              	.LVL173:
+ 1414 0000 30B5     		push	{r4, r5, lr}
+ 1415              		.cfi_def_cfa_offset 12
+ 1416              		.cfi_offset 4, -12
+ 1417              		.cfi_offset 5, -8
+ 1418              		.cfi_offset 14, -4
+ 1419 0002 85B0     		sub	sp, sp, #20
+ 1420              		.cfi_def_cfa_offset 32
+ 322:math/pprz_geodetic_int.c ****   struct EcefCoor_i ecef;
+ 1421              		.loc 1 322 0
+ 1422 0004 0546     		mov	r5, r0
+ 1423 0006 0C46     		mov	r4, r1
+ 324:math/pprz_geodetic_int.c ****   ned_of_ecef_vect_i(ned, def, &ecef);
+ 1424              		.loc 1 324 0
+ 1425 0008 01A8     		add	r0, sp, #4
+ 1426              	.LVL174:
+ 1427 000a 1146     		mov	r1, r2
+ 1428              	.LVL175:
+ 1429 000c FFF7FEFF 		bl	ecef_of_lla_i
+ 1430              	.LVL176:
+ 325:math/pprz_geodetic_int.c **** }
+ 1431              		.loc 1 325 0
+ 1432 0010 2846     		mov	r0, r5
+ 1433 0012 2146     		mov	r1, r4
+ 1434 0014 01AA     		add	r2, sp, #4
+ 1435 0016 FFF7FEFF 		bl	ned_of_ecef_vect_i
+ 1436              	.LVL177:
+ 326:math/pprz_geodetic_int.c **** 
+ 1437              		.loc 1 326 0
+ 1438 001a 05B0     		add	sp, sp, #20
+ 1439              		.cfi_def_cfa_offset 12
+ 1440              		@ sp needed
+ 1441 001c 30BD     		pop	{r4, r5, pc}
+ 1442              		.cfi_endproc
+ 1443              	.LFE27:
+ 1445              		.text
+ 1446              	.Letext0:
+ 1447              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1448              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1449              		.file 4 "math/pprz_algebra_int.h"
+ 1450              		.file 5 "math/pprz_geodetic_int.h"
+ 1451              		.file 6 "math/pprz_geodetic_double.h"
+ 1452              		.file 7 "/usr/arm-none-eabi/include/math.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 pprz_geodetic_int.c
+     /tmp/cckO49Xz.s:25     .text.ltp_of_ecef_rmat_from_lla_i:00000000 $t
+     /tmp/cckO49Xz.s:30     .text.ltp_of_ecef_rmat_from_lla_i:00000000 ltp_of_ecef_rmat_from_lla_i
+     /tmp/cckO49Xz.s:251    .text.ltp_of_ecef_rmat_from_lla_i:00000198 $d
+     /tmp/cckO49Xz.s:260    .text.enu_of_ecef_point_i:00000000 $t
+     /tmp/cckO49Xz.s:265    .text.enu_of_ecef_point_i:00000000 enu_of_ecef_point_i
+     /tmp/cckO49Xz.s:357    .text.ned_of_ecef_point_i:00000000 $t
+     /tmp/cckO49Xz.s:362    .text.ned_of_ecef_point_i:00000000 ned_of_ecef_point_i
+     /tmp/cckO49Xz.s:397    .text.enu_of_ecef_pos_i:00000000 $t
+     /tmp/cckO49Xz.s:402    .text.enu_of_ecef_pos_i:00000000 enu_of_ecef_pos_i
+     /tmp/cckO49Xz.s:448    .text.ned_of_ecef_pos_i:00000000 $t
+     /tmp/cckO49Xz.s:453    .text.ned_of_ecef_pos_i:00000000 ned_of_ecef_pos_i
+     /tmp/cckO49Xz.s:488    .text.enu_of_ecef_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:493    .text.enu_of_ecef_vect_i:00000000 enu_of_ecef_vect_i
+     /tmp/cckO49Xz.s:567    .text.ned_of_ecef_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:572    .text.ned_of_ecef_vect_i:00000000 ned_of_ecef_vect_i
+     /tmp/cckO49Xz.s:607    .text.ecef_of_enu_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:612    .text.ecef_of_enu_vect_i:00000000 ecef_of_enu_vect_i
+     /tmp/cckO49Xz.s:701    .text.ecef_of_ned_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:706    .text.ecef_of_ned_vect_i:00000000 ecef_of_ned_vect_i
+     /tmp/cckO49Xz.s:740    .text.ecef_of_enu_point_i:00000000 $t
+     /tmp/cckO49Xz.s:745    .text.ecef_of_enu_point_i:00000000 ecef_of_enu_point_i
+     /tmp/cckO49Xz.s:782    .text.ecef_of_ned_point_i:00000000 $t
+     /tmp/cckO49Xz.s:787    .text.ecef_of_ned_point_i:00000000 ecef_of_ned_point_i
+     /tmp/cckO49Xz.s:821    .text.ecef_of_enu_pos_i:00000000 $t
+     /tmp/cckO49Xz.s:826    .text.ecef_of_enu_pos_i:00000000 ecef_of_enu_pos_i
+     /tmp/cckO49Xz.s:891    .text.ecef_of_ned_pos_i:00000000 $t
+     /tmp/cckO49Xz.s:896    .text.ecef_of_ned_pos_i:00000000 ecef_of_ned_pos_i
+     /tmp/cckO49Xz.s:931    .text.lla_of_ecef_i:00000000 $t
+     /tmp/cckO49Xz.s:936    .text.lla_of_ecef_i:00000000 lla_of_ecef_i
+     /tmp/cckO49Xz.s:1039   .text.lla_of_ecef_i:000000a0 $d
+     /tmp/cckO49Xz.s:1049   .text.ltp_def_from_ecef_i:00000000 $t
+     /tmp/cckO49Xz.s:1054   .text.ltp_def_from_ecef_i:00000000 ltp_def_from_ecef_i
+     /tmp/cckO49Xz.s:1103   .text.ecef_of_lla_i:00000000 $t
+     /tmp/cckO49Xz.s:1108   .text.ecef_of_lla_i:00000000 ecef_of_lla_i
+     /tmp/cckO49Xz.s:1207   .text.ecef_of_lla_i:00000098 $d
+     /tmp/cckO49Xz.s:1217   .text.ltp_def_from_lla_i:00000000 $t
+     /tmp/cckO49Xz.s:1222   .text.ltp_def_from_lla_i:00000000 ltp_def_from_lla_i
+     /tmp/cckO49Xz.s:1270   .text.enu_of_lla_point_i:00000000 $t
+     /tmp/cckO49Xz.s:1275   .text.enu_of_lla_point_i:00000000 enu_of_lla_point_i
+     /tmp/cckO49Xz.s:1314   .text.ned_of_lla_point_i:00000000 $t
+     /tmp/cckO49Xz.s:1319   .text.ned_of_lla_point_i:00000000 ned_of_lla_point_i
+     /tmp/cckO49Xz.s:1358   .text.enu_of_lla_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:1363   .text.enu_of_lla_vect_i:00000000 enu_of_lla_vect_i
+     /tmp/cckO49Xz.s:1402   .text.ned_of_lla_vect_i:00000000 $t
+     /tmp/cckO49Xz.s:1407   .text.ned_of_lla_vect_i:00000000 ned_of_lla_vect_i
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_algebra_double.h.32.ffddb69f4b2468d251e675e232b5bba1
+
+UNDEFINED SYMBOLS
+__aeabi_f2d
+__aeabi_dmul
+__aeabi_ddiv
+__aeabi_d2f
+__aeabi_d2iz
+sinf
+rint
+cosf
+__aeabi_i2d
+lla_of_ecef_d
+ecef_of_lla_d

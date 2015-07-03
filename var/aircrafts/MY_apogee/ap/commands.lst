@@ -1,0 +1,69 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"commands.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	commands_failsafe
+  20              		.global	commands
+  21              		.section	.bss.commands,"aw",%nobits
+  22              		.align	1
+  25              	commands:
+  26 0000 00000000 		.space	8
+  26      00000000 
+  27              		.section	.rodata.commands_failsafe,"a",%progbits
+  28              		.align	1
+  31              	commands_failsafe:
+  32 0000 00000000 		.space	8
+  32      00000000 
+  33              		.text
+  34              	.Letext0:
+  35              		.file 1 "/usr/arm-none-eabi/include/machine/_default_types.h"
+  36              		.file 2 "/usr/arm-none-eabi/include/sys/_stdint.h"
+  37              		.file 3 "./paparazzi.h"
+  38              		.file 4 "subsystems/commands.c"
+DEFINED SYMBOLS
+                            *ABS*:00000000 commands.c
+     /tmp/cc3a6K6p.s:31     .rodata.commands_failsafe:00000000 commands_failsafe
+     /tmp/cc3a6K6p.s:25     .bss.commands:00000000 commands
+     /tmp/cc3a6K6p.s:22     .bss.commands:00000000 $d
+     /tmp/cc3a6K6p.s:28     .rodata.commands_failsafe:00000000 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.paparazzi.h.8.8267e0eefd0d2c1710c9d4ec89bd5dfd
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.actuators_pwm_arch.h.34.947e403155c6b98639745356c5a88c13
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+
+NO UNDEFINED SYMBOLS

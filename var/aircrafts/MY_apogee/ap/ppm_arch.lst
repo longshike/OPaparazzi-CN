@@ -1,0 +1,579 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"ppm_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.ppm_arch_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	ppm_arch_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	ppm_arch_init:
+  26              	.LFB6:
+  27              		.file 1 "arch/stm32/subsystems/radio_control/ppm_arch.c"
+   1:arch/stm32/subsystems/radio_control/ppm_arch.c **** /*
+   2:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * Copyright (C) 2010-2014 The Paparazzi Team
+   3:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+   4:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * This file is part of paparazzi.
+   5:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+   6:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * any later version.
+  10:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+  11:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+  16:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * <http://www.gnu.org/licenses/>.
+  19:arch/stm32/subsystems/radio_control/ppm_arch.c ****  */
+  20:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  21:arch/stm32/subsystems/radio_control/ppm_arch.c **** /**
+  22:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * @file arch/stm32/subsystems/radio_control/ppm_arch.c
+  23:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * @ingroup stm32_arch
+  24:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+  25:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * STM32 ppm decoder.
+  26:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+  27:arch/stm32/subsystems/radio_control/ppm_arch.c ****  * Input signal either on:
+  28:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *  - PA1 TIM2/CH2 (uart1 trig on Lisa/L)  (Servo 6 on Lisa/M)
+  29:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *  - PA10 TIM1/CH3 (uart1 trig on Lisa/L) (uart1 rx on Lisa/M)
+  30:arch/stm32/subsystems/radio_control/ppm_arch.c ****  *
+  31:arch/stm32/subsystems/radio_control/ppm_arch.c ****  */
+  32:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  33:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include "subsystems/radio_control.h"
+  34:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include "subsystems/radio_control/ppm.h"
+  35:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  36:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include BOARD_CONFIG
+  37:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  38:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include <libopencm3/stm32/rcc.h>
+  39:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include <libopencm3/stm32/gpio.h>
+  40:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include <libopencm3/stm32/timer.h>
+  41:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include <libopencm3/cm3/nvic.h>
+  42:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  43:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include "mcu_periph/gpio.h"
+  44:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  45:arch/stm32/subsystems/radio_control/ppm_arch.c **** // for timer_get_frequency
+  46:arch/stm32/subsystems/radio_control/ppm_arch.c **** #include "mcu_arch.h"
+  47:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  48:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define ONE_MHZ_CLK 1000000
+  49:arch/stm32/subsystems/radio_control/ppm_arch.c **** #ifdef NVIC_TIM_IRQ_PRIO
+  50:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_IRQ_PRIO  NVIC_TIM_IRQ_PRIO
+  51:arch/stm32/subsystems/radio_control/ppm_arch.c **** #else
+  52:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_IRQ_PRIO 2
+  53:arch/stm32/subsystems/radio_control/ppm_arch.c **** #endif
+  54:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  55:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  56:arch/stm32/subsystems/radio_control/ppm_arch.c **** static uint32_t timer_rollover_cnt;
+  57:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  58:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  59:arch/stm32/subsystems/radio_control/ppm_arch.c **** #if USE_PPM_TIM2
+  60:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  61:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM2 for PPM input.")
+  62:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM2
+  63:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM2
+  64:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  65:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM3
+  66:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  67:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM3 for PPM input.")
+  68:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM3
+  69:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM3
+  70:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  71:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM4
+  72:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  73:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM4 for PPM input.")
+  74:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM4
+  75:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM4
+  76:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  77:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM5
+  78:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  79:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM5 for PPM input.")
+  80:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM5
+  81:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM5
+  82:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  83:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM1
+  84:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  85:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM1 for PPM input.")
+  86:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM1
+  87:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM1
+  88:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  89:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM8
+  90:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  91:arch/stm32/subsystems/radio_control/ppm_arch.c **** PRINT_CONFIG_MSG("Using TIM8 for PPM input.")
+  92:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define PPM_TIMER           TIM8
+  93:arch/stm32/subsystems/radio_control/ppm_arch.c **** #define RCC_TIM_PPM         RCC_TIM8
+  94:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  95:arch/stm32/subsystems/radio_control/ppm_arch.c **** #else
+  96:arch/stm32/subsystems/radio_control/ppm_arch.c **** #error Unknown PPM input timer configuration.
+  97:arch/stm32/subsystems/radio_control/ppm_arch.c **** #endif
+  98:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  99:arch/stm32/subsystems/radio_control/ppm_arch.c **** void ppm_arch_init(void)
+ 100:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+  28              		.loc 1 100 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 10B5     		push	{r4, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 4, -8
+  35              		.cfi_offset 14, -4
+ 101:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* timer clock enable */
+ 102:arch/stm32/subsystems/radio_control/ppm_arch.c ****   rcc_periph_clock_enable(RCC_TIM_PPM);
+  36              		.loc 1 102 0
+  37 0002 4FF40860 		mov	r0, #2176
+ 103:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 104:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* GPIO configuration as input capture for timer */
+ 105:arch/stm32/subsystems/radio_control/ppm_arch.c ****   gpio_setup_pin_af(PPM_GPIO_PORT, PPM_GPIO_PIN, PPM_GPIO_AF, FALSE);
+ 106:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 107:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* Time Base configuration */
+ 108:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_reset(PPM_TIMER);
+  38              		.loc 1 108 0
+  39 0006 294C     		ldr	r4, .L2
+ 102:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  40              		.loc 1 102 0
+  41 0008 FFF7FEFF 		bl	rcc_periph_clock_enable
+  42              	.LVL0:
+ 105:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+  43              		.loc 1 105 0
+  44 000c 4FF48071 		mov	r1, #256
+  45 0010 0122     		movs	r2, #1
+  46 0012 0023     		movs	r3, #0
+  47 0014 2648     		ldr	r0, .L2+4
+  48 0016 FFF7FEFF 		bl	gpio_setup_pin_af
+  49              	.LVL1:
+  50              		.loc 1 108 0
+  51 001a 2046     		mov	r0, r4
+  52 001c FFF7FEFF 		bl	timer_reset
+  53              	.LVL2:
+ 109:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_set_mode(PPM_TIMER, TIM_CR1_CKD_CK_INT,
+  54              		.loc 1 109 0
+  55 0020 0021     		movs	r1, #0
+  56 0022 0B46     		mov	r3, r1
+  57 0024 0A46     		mov	r2, r1
+  58 0026 2046     		mov	r0, r4
+  59 0028 FFF7FEFF 		bl	timer_set_mode
+  60              	.LVL3:
+ 110:arch/stm32/subsystems/radio_control/ppm_arch.c ****                  TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+ 111:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_set_period(PPM_TIMER, 0xFFFF);
+  61              		.loc 1 111 0
+  62 002c 4FF6FF71 		movw	r1, #65535
+  63 0030 2046     		mov	r0, r4
+  64 0032 FFF7FEFF 		bl	timer_set_period
+  65              	.LVL4:
+ 112:arch/stm32/subsystems/radio_control/ppm_arch.c ****   uint32_t timer_clk = timer_get_frequency(PPM_TIMER);
+  66              		.loc 1 112 0
+  67 0036 2046     		mov	r0, r4
+  68 0038 FFF7FEFF 		bl	timer_get_frequency
+  69              	.LVL5:
+ 113:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_set_prescaler(PPM_TIMER, (timer_clk / (RC_PPM_TICKS_PER_USEC * ONE_MHZ_CLK)) - 1);
+  70              		.loc 1 113 0
+  71 003c 1D49     		ldr	r1, .L2+8
+  72 003e B0FBF1F1 		udiv	r1, r0, r1
+  73 0042 2046     		mov	r0, r4
+  74              	.LVL6:
+  75 0044 0139     		subs	r1, r1, #1
+  76 0046 FFF7FEFF 		bl	timer_set_prescaler
+  77              	.LVL7:
+ 114:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 115:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* TIM configuration: Input Capture mode ---------------------
+ 116:arch/stm32/subsystems/radio_control/ppm_arch.c ****       The Rising edge is used as active edge
+ 117:arch/stm32/subsystems/radio_control/ppm_arch.c ****    ------------------------------------------------------------ */
+ 118:arch/stm32/subsystems/radio_control/ppm_arch.c **** #if defined PPM_PULSE_TYPE && PPM_PULSE_TYPE == PPM_PULSE_TYPE_POSITIVE
+ 119:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_set_polarity(PPM_TIMER, PPM_CHANNEL, TIM_IC_RISING);
+  78              		.loc 1 119 0
+  79 004a 0021     		movs	r1, #0
+  80 004c 0A46     		mov	r2, r1
+  81 004e 2046     		mov	r0, r4
+  82 0050 FFF7FEFF 		bl	timer_ic_set_polarity
+  83              	.LVL8:
+ 120:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif defined PPM_PULSE_TYPE && PPM_PULSE_TYPE == PPM_PULSE_TYPE_NEGATIVE
+ 121:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_set_polarity(PPM_TIMER, PPM_CHANNEL, TIM_IC_FALLING);
+ 122:arch/stm32/subsystems/radio_control/ppm_arch.c **** #else
+ 123:arch/stm32/subsystems/radio_control/ppm_arch.c **** #error "Unknown PPM_PULSE_TYPE"
+ 124:arch/stm32/subsystems/radio_control/ppm_arch.c **** #endif
+ 125:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_set_input(PPM_TIMER, PPM_CHANNEL, PPM_TIMER_INPUT);
+  84              		.loc 1 125 0
+  85 0054 2046     		mov	r0, r4
+  86 0056 0021     		movs	r1, #0
+  87 0058 0122     		movs	r2, #1
+  88 005a FFF7FEFF 		bl	timer_ic_set_input
+  89              	.LVL9:
+ 126:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_set_prescaler(PPM_TIMER, PPM_CHANNEL, TIM_IC_PSC_OFF);
+  90              		.loc 1 126 0
+  91 005e 0021     		movs	r1, #0
+  92 0060 0A46     		mov	r2, r1
+  93 0062 2046     		mov	r0, r4
+  94 0064 FFF7FEFF 		bl	timer_ic_set_prescaler
+  95              	.LVL10:
+ 127:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_set_filter(PPM_TIMER, PPM_CHANNEL, TIM_IC_OFF);
+  96              		.loc 1 127 0
+  97 0068 0021     		movs	r1, #0
+  98 006a 0A46     		mov	r2, r1
+  99 006c 2046     		mov	r0, r4
+ 100 006e FFF7FEFF 		bl	timer_ic_set_filter
+ 101              	.LVL11:
+ 128:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 129:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* Enable timer Interrupt(s). */
+ 130:arch/stm32/subsystems/radio_control/ppm_arch.c ****   nvic_set_priority(PPM_IRQ, PPM_IRQ_PRIO);
+ 102              		.loc 1 130 0
+ 103 0072 0321     		movs	r1, #3
+ 104 0074 1B20     		movs	r0, #27
+ 105 0076 FFF7FEFF 		bl	nvic_set_priority
+ 106              	.LVL12:
+ 131:arch/stm32/subsystems/radio_control/ppm_arch.c ****   nvic_enable_irq(PPM_IRQ);
+ 107              		.loc 1 131 0
+ 108 007a 1B20     		movs	r0, #27
+ 109 007c FFF7FEFF 		bl	nvic_enable_irq
+ 110              	.LVL13:
+ 132:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 133:arch/stm32/subsystems/radio_control/ppm_arch.c **** #ifdef PPM_IRQ2
+ 134:arch/stm32/subsystems/radio_control/ppm_arch.c ****   nvic_set_priority(PPM_IRQ2, PPM_IRQ_PRIO);
+ 111              		.loc 1 134 0
+ 112 0080 0321     		movs	r1, #3
+ 113 0082 1920     		movs	r0, #25
+ 114 0084 FFF7FEFF 		bl	nvic_set_priority
+ 115              	.LVL14:
+ 135:arch/stm32/subsystems/radio_control/ppm_arch.c ****   nvic_enable_irq(PPM_IRQ2);
+ 116              		.loc 1 135 0
+ 117 0088 1920     		movs	r0, #25
+ 118 008a FFF7FEFF 		bl	nvic_enable_irq
+ 119              	.LVL15:
+ 136:arch/stm32/subsystems/radio_control/ppm_arch.c **** #endif
+ 137:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 138:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* Enable the Capture/Compare and Update interrupt requests. */
+ 139:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_enable_irq(PPM_TIMER, (PPM_CC_IE | TIM_DIER_UIE));
+ 120              		.loc 1 139 0
+ 121 008e 2046     		mov	r0, r4
+ 122 0090 0321     		movs	r1, #3
+ 123 0092 FFF7FEFF 		bl	timer_enable_irq
+ 124              	.LVL16:
+ 140:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 141:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* Enable capture channel. */
+ 142:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_ic_enable(PPM_TIMER, PPM_CHANNEL);
+ 125              		.loc 1 142 0
+ 126 0096 2046     		mov	r0, r4
+ 127 0098 0021     		movs	r1, #0
+ 128 009a FFF7FEFF 		bl	timer_ic_enable
+ 129              	.LVL17:
+ 143:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 144:arch/stm32/subsystems/radio_control/ppm_arch.c ****   /* TIM enable counter */
+ 145:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_enable_counter(PPM_TIMER);
+ 130              		.loc 1 145 0
+ 131 009e 2046     		mov	r0, r4
+ 132 00a0 FFF7FEFF 		bl	timer_enable_counter
+ 133              	.LVL18:
+ 146:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 147:arch/stm32/subsystems/radio_control/ppm_arch.c ****   timer_rollover_cnt = 0;
+ 134              		.loc 1 147 0
+ 135 00a4 044B     		ldr	r3, .L2+12
+ 136 00a6 0022     		movs	r2, #0
+ 137 00a8 1A60     		str	r2, [r3]
+ 138 00aa 10BD     		pop	{r4, pc}
+ 139              	.L3:
+ 140              		.align	2
+ 141              	.L2:
+ 142 00ac 00000140 		.word	1073807360
+ 143 00b0 00000240 		.word	1073872896
+ 144 00b4 808D5B00 		.word	6000000
+ 145 00b8 00000000 		.word	.LANCHOR0
+ 146              		.cfi_endproc
+ 147              	.LFE6:
+ 149              		.section	.text.tim1_up_tim10_isr,"ax",%progbits
+ 150              		.align	1
+ 151              		.weak	tim1_up_tim10_isr
+ 152              		.thumb
+ 153              		.thumb_func
+ 155              	tim1_up_tim10_isr:
+ 156              	.LFB7:
+ 148:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 149:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 150:arch/stm32/subsystems/radio_control/ppm_arch.c **** #if USE_PPM_TIM2
+ 151:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 152:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim2_isr(void)
+ 153:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+ 154:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM2_SR & PPM_CC_IF) != 0) {
+ 155:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM2, PPM_CC_IF);
+ 156:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 157:arch/stm32/subsystems/radio_control/ppm_arch.c ****     uint32_t now = timer_get_counter(TIM2) + timer_rollover_cnt;
+ 158:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 159:arch/stm32/subsystems/radio_control/ppm_arch.c ****   } else if ((TIM2_SR & TIM_SR_UIF) != 0) {
+ 160:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 161:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM2, TIM_SR_UIF);
+ 162:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 163:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 164:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 165:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 166:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM3
+ 167:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 168:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim3_isr(void)
+ 169:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+ 170:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM3_SR & PPM_CC_IF) != 0) {
+ 171:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM3, PPM_CC_IF);
+ 172:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 173:arch/stm32/subsystems/radio_control/ppm_arch.c ****     uint32_t now = timer_get_counter(TIM3) + timer_rollover_cnt;
+ 174:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 175:arch/stm32/subsystems/radio_control/ppm_arch.c ****   } else if ((TIM3_SR & TIM_SR_UIF) != 0) {
+ 176:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 177:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM3, TIM_SR_UIF);
+ 178:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 179:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 180:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 181:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM4
+ 182:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 183:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim4_isr(void)
+ 184:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+ 185:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM4_SR & PPM_CC_IF) != 0) {
+ 186:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM4, PPM_CC_IF);
+ 187:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 188:arch/stm32/subsystems/radio_control/ppm_arch.c ****     uint32_t now = timer_get_counter(TIM4) + timer_rollover_cnt;
+ 189:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 190:arch/stm32/subsystems/radio_control/ppm_arch.c ****   } else if ((TIM4_SR & TIM_SR_UIF) != 0) {
+ 191:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 192:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM4, TIM_SR_UIF);
+ 193:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 194:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 195:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 196:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM5
+ 197:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 198:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim5_isr(void)
+ 199:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+ 200:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM5_SR & PPM_CC_IF) != 0) {
+ 201:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM5, PPM_CC_IF);
+ 202:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 203:arch/stm32/subsystems/radio_control/ppm_arch.c ****     uint32_t now = timer_get_counter(TIM5) + timer_rollover_cnt;
+ 204:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 205:arch/stm32/subsystems/radio_control/ppm_arch.c ****   } else if ((TIM5_SR & TIM_SR_UIF) != 0) {
+ 206:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 207:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM5, TIM_SR_UIF);
+ 208:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 209:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 210:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 211:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 212:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif USE_PPM_TIM1
+ 213:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 214:arch/stm32/subsystems/radio_control/ppm_arch.c **** #if defined(STM32F1)
+ 215:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim1_up_isr(void)
+ 216:arch/stm32/subsystems/radio_control/ppm_arch.c **** {
+ 217:arch/stm32/subsystems/radio_control/ppm_arch.c **** #elif defined(STM32F4)
+ 218:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim1_up_tim10_isr(void) {
+ 157              		.loc 1 218 0
+ 158              		.cfi_startproc
+ 159              		@ args = 0, pretend = 0, frame = 0
+ 160              		@ frame_needed = 0, uses_anonymous_args = 0
+ 161              		@ link register save eliminated.
+ 219:arch/stm32/subsystems/radio_control/ppm_arch.c **** #endif
+ 220:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM1_SR & TIM_SR_UIF) != 0) {
+ 162              		.loc 1 220 0
+ 163 0000 064B     		ldr	r3, .L7
+ 164 0002 1B68     		ldr	r3, [r3]
+ 165 0004 DB07     		lsls	r3, r3, #31
+ 166 0006 08D5     		bpl	.L4
+ 221:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 167              		.loc 1 221 0
+ 168 0008 054A     		ldr	r2, .L7+4
+ 222:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM1, TIM_SR_UIF);
+ 169              		.loc 1 222 0
+ 170 000a 0648     		ldr	r0, .L7+8
+ 221:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 171              		.loc 1 221 0
+ 172 000c 1368     		ldr	r3, [r2]
+ 173              		.loc 1 222 0
+ 174 000e 0121     		movs	r1, #1
+ 221:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_rollover_cnt += (1 << 16);
+ 175              		.loc 1 221 0
+ 176 0010 03F58033 		add	r3, r3, #65536
+ 177 0014 1360     		str	r3, [r2]
+ 178              		.loc 1 222 0
+ 179 0016 FFF7FEBF 		b	timer_clear_flag
+ 180              	.LVL19:
+ 181              	.L4:
+ 182 001a 7047     		bx	lr
+ 183              	.L8:
+ 184              		.align	2
+ 185              	.L7:
+ 186 001c 10000140 		.word	1073807376
+ 187 0020 00000000 		.word	.LANCHOR0
+ 188 0024 00000140 		.word	1073807360
+ 189              		.cfi_endproc
+ 190              	.LFE7:
+ 192              		.section	.text.tim1_cc_isr,"ax",%progbits
+ 193              		.align	1
+ 194              		.weak	tim1_cc_isr
+ 195              		.thumb
+ 196              		.thumb_func
+ 198              	tim1_cc_isr:
+ 199              	.LFB8:
+ 223:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 224:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 225:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 226:arch/stm32/subsystems/radio_control/ppm_arch.c **** void tim1_cc_isr(void) {
+ 200              		.loc 1 226 0
+ 201              		.cfi_startproc
+ 202              		@ args = 0, pretend = 0, frame = 0
+ 203              		@ frame_needed = 0, uses_anonymous_args = 0
+ 204 0000 08B5     		push	{r3, lr}
+ 205              		.cfi_def_cfa_offset 8
+ 206              		.cfi_offset 3, -8
+ 207              		.cfi_offset 14, -4
+ 227:arch/stm32/subsystems/radio_control/ppm_arch.c ****   if ((TIM1_SR & PPM_CC_IF) != 0) {
+ 208              		.loc 1 227 0
+ 209 0002 094B     		ldr	r3, .L11
+ 210 0004 1B68     		ldr	r3, [r3]
+ 211 0006 9B07     		lsls	r3, r3, #30
+ 212 0008 0DD5     		bpl	.L9
+ 213              	.LBB2:
+ 228:arch/stm32/subsystems/radio_control/ppm_arch.c ****     timer_clear_flag(TIM1, PPM_CC_IF);
+ 214              		.loc 1 228 0
+ 215 000a 0848     		ldr	r0, .L11+4
+ 216 000c 0221     		movs	r1, #2
+ 217 000e FFF7FEFF 		bl	timer_clear_flag
+ 218              	.LVL20:
+ 229:arch/stm32/subsystems/radio_control/ppm_arch.c **** 
+ 230:arch/stm32/subsystems/radio_control/ppm_arch.c ****     uint32_t now = timer_get_counter(TIM1) + timer_rollover_cnt;
+ 219              		.loc 1 230 0
+ 220 0012 0648     		ldr	r0, .L11+4
+ 221 0014 FFF7FEFF 		bl	timer_get_counter
+ 222              	.LVL21:
+ 223 0018 054B     		ldr	r3, .L11+8
+ 224 001a 1B68     		ldr	r3, [r3]
+ 231:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 225              		.loc 1 231 0
+ 226 001c 1844     		add	r0, r0, r3
+ 227              	.LVL22:
+ 228              	.LBE2:
+ 232:arch/stm32/subsystems/radio_control/ppm_arch.c ****   }
+ 233:arch/stm32/subsystems/radio_control/ppm_arch.c **** }
+ 229              		.loc 1 233 0
+ 230 001e BDE80840 		pop	{r3, lr}
+ 231              		.cfi_remember_state
+ 232              		.cfi_restore 14
+ 233              		.cfi_restore 3
+ 234              		.cfi_def_cfa_offset 0
+ 235              	.LBB3:
+ 231:arch/stm32/subsystems/radio_control/ppm_arch.c ****     ppm_decode_frame(now);
+ 236              		.loc 1 231 0
+ 237 0022 FFF7FEBF 		b	ppm_decode_frame
+ 238              	.LVL23:
+ 239              	.L9:
+ 240              		.cfi_restore_state
+ 241 0026 08BD     		pop	{r3, pc}
+ 242              	.L12:
+ 243              		.align	2
+ 244              	.L11:
+ 245 0028 10000140 		.word	1073807376
+ 246 002c 00000140 		.word	1073807360
+ 247 0030 00000000 		.word	.LANCHOR0
+ 248              	.LBE3:
+ 249              		.cfi_endproc
+ 250              	.LFE8:
+ 252              		.section	.bss.timer_rollover_cnt,"aw",%nobits
+ 253              		.align	2
+ 254              		.set	.LANCHOR0,. + 0
+ 257              	timer_rollover_cnt:
+ 258 0000 00000000 		.space	4
+ 259              		.text
+ 260              	.Letext0:
+ 261              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 262              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 263              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 264              		.file 5 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 265              		.file 6 "../ext/libopencm3/include/libopencm3/stm32/common/timer_common_all.h"
+ 266              		.file 7 "../ext/libopencm3/include/libopencm3/stm32/common/timer_common_f24.h"
+ 267              		.file 8 "../ext/libopencm3/include/libopencm3/stm32/common/rcc_common_all.h"
+ 268              		.file 9 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/gpio_arch.h"
+ 269              		.file 10 "../ext/libopencm3/include/libopencm3/cm3/nvic.h"
+ 270              		.file 11 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_arch.h"
+ 271              		.file 12 "./subsystems/radio_control/ppm.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 ppm_arch.c
+     /tmp/ccWLKl4R.s:20     .text.ppm_arch_init:00000000 $t
+     /tmp/ccWLKl4R.s:25     .text.ppm_arch_init:00000000 ppm_arch_init
+     /tmp/ccWLKl4R.s:142    .text.ppm_arch_init:000000ac $d
+     /tmp/ccWLKl4R.s:150    .text.tim1_up_tim10_isr:00000000 $t
+     /tmp/ccWLKl4R.s:155    .text.tim1_up_tim10_isr:00000000 tim1_up_tim10_isr
+     /tmp/ccWLKl4R.s:186    .text.tim1_up_tim10_isr:0000001c $d
+     /tmp/ccWLKl4R.s:193    .text.tim1_cc_isr:00000000 $t
+     /tmp/ccWLKl4R.s:198    .text.tim1_cc_isr:00000000 tim1_cc_isr
+     /tmp/ccWLKl4R.s:245    .text.tim1_cc_isr:00000028 $d
+     /tmp/ccWLKl4R.s:253    .bss.timer_rollover_cnt:00000000 $d
+     /tmp/ccWLKl4R.s:257    .bss.timer_rollover_cnt:00000000 timer_rollover_cnt
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.led_hw.h.40.8014fb3594847a9d275099fc6ed94641
+                           .group:00000000 wm4.led.h.99.0116146560b22524df8538874a4f60bf
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.paparazzi.h.2.eeb1c9dc8e5acded3c1d3014b2b23af3
+                           .group:00000000 wm4.ppm_arch.h.30.0c8951ed5389d834f3146640146f52ff
+                           .group:00000000 wm4.radio.h.5.bef73564d5978192f7cd5fea2ca51500
+                           .group:00000000 wm4.ppm.h.47.0149fce522ef0e315e524566a6409a2a
+                           .group:00000000 wm4.radio_control.h.42.d43f9142844e08da852d6ed343ba2de3
+                           .group:00000000 wm4.timer_common_all.h.35.b42b09af17c21cc72e25b3b2ba1809d2
+                           .group:00000000 wm4.timer_common_f24.h.44.de6aabe29f6c3596e141b760d97b2482
+                           .group:00000000 wm4.nvic.h.38.b26077e701ba065ebce4922ce89b9357
+                           .group:00000000 wm4.nvic.h.16.68b2cd144a8737a35a31e344912a6e4f
+                           .group:00000000 wm4.mcu_arch.h.30.9e61c0408281ef19f3143a9b685c0b7d
+
+UNDEFINED SYMBOLS
+rcc_periph_clock_enable
+gpio_setup_pin_af
+timer_reset
+timer_set_mode
+timer_set_period
+timer_get_frequency
+timer_set_prescaler
+timer_ic_set_polarity
+timer_ic_set_input
+timer_ic_set_prescaler
+timer_ic_set_filter
+nvic_set_priority
+nvic_enable_irq
+timer_enable_irq
+timer_ic_enable
+timer_enable_counter
+timer_clear_flag
+timer_get_counter
+ppm_decode_frame

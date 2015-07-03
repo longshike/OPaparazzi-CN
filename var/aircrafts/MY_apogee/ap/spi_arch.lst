@@ -1,0 +1,3117 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"spi_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.spi_arch_int_disable,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	spi_arch_int_disable:
+  25              	.LFB19:
+  26              		.file 1 "arch/stm32/mcu_periph/spi_arch.c"
+   1:arch/stm32/mcu_periph/spi_arch.c **** /*
+   2:arch/stm32/mcu_periph/spi_arch.c ****  * Copyright (C) 2005-2013 The Paparazzi Team
+   3:arch/stm32/mcu_periph/spi_arch.c ****  *
+   4:arch/stm32/mcu_periph/spi_arch.c ****  * This file is part of paparazzi.
+   5:arch/stm32/mcu_periph/spi_arch.c ****  *
+   6:arch/stm32/mcu_periph/spi_arch.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/mcu_periph/spi_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/mcu_periph/spi_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/mcu_periph/spi_arch.c ****  * any later version.
+  10:arch/stm32/mcu_periph/spi_arch.c ****  *
+  11:arch/stm32/mcu_periph/spi_arch.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/mcu_periph/spi_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/mcu_periph/spi_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/mcu_periph/spi_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/mcu_periph/spi_arch.c ****  *
+  16:arch/stm32/mcu_periph/spi_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/mcu_periph/spi_arch.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:arch/stm32/mcu_periph/spi_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:arch/stm32/mcu_periph/spi_arch.c ****  * Boston, MA 02111-1307, USA.
+  20:arch/stm32/mcu_periph/spi_arch.c ****  *
+  21:arch/stm32/mcu_periph/spi_arch.c ****  */
+  22:arch/stm32/mcu_periph/spi_arch.c **** 
+  23:arch/stm32/mcu_periph/spi_arch.c **** /**
+  24:arch/stm32/mcu_periph/spi_arch.c ****  * @file arch/stm32/mcu_periph/spi_arch.c
+  25:arch/stm32/mcu_periph/spi_arch.c ****  * @ingroup stm32_arch
+  26:arch/stm32/mcu_periph/spi_arch.c ****  *
+  27:arch/stm32/mcu_periph/spi_arch.c ****  * Handling of SPI hardware for STM32.
+  28:arch/stm32/mcu_periph/spi_arch.c ****  * SPI Master code.
+  29:arch/stm32/mcu_periph/spi_arch.c ****  *
+  30:arch/stm32/mcu_periph/spi_arch.c ****  * When a transaction is submitted:
+  31:arch/stm32/mcu_periph/spi_arch.c ****  * - The transaction is added to the queue if there is space,
+  32:arch/stm32/mcu_periph/spi_arch.c ****  *   otherwise it returns false
+  33:arch/stm32/mcu_periph/spi_arch.c ****  * - The pending state is set
+  34:arch/stm32/mcu_periph/spi_arch.c ****  * - SPI Interrupts (in this case the DMA interrupts) are disabled
+  35:arch/stm32/mcu_periph/spi_arch.c ****  *   to prevent race conditions
+  36:arch/stm32/mcu_periph/spi_arch.c ****  * - The slave is selected if required, then the before_cb callback is run
+  37:arch/stm32/mcu_periph/spi_arch.c ****  * - The spi and dma registers are set up for the specific transaction
+  38:arch/stm32/mcu_periph/spi_arch.c ****  * - Spi, DMA and interrupts are enabled and the transaction starts
+  39:arch/stm32/mcu_periph/spi_arch.c ****  *
+  40:arch/stm32/mcu_periph/spi_arch.c ****  * Obviously output_length and input_length will never both be 0 at the same time.
+  41:arch/stm32/mcu_periph/spi_arch.c ****  * In this case, spi_submit will just return false.
+  42:arch/stm32/mcu_periph/spi_arch.c ****  *
+  43:arch/stm32/mcu_periph/spi_arch.c ****  * For the DMA and interrupts:
+  44:arch/stm32/mcu_periph/spi_arch.c ****  * - If the output_len != input_len, a dummy DMA transfer is triggered for
+  45:arch/stm32/mcu_periph/spi_arch.c ****  *   the remainder so the same amount of data is moved in and out.
+  46:arch/stm32/mcu_periph/spi_arch.c ****  *   This simplifies keeping the clock going if output_len is greater and allows
+  47:arch/stm32/mcu_periph/spi_arch.c ****  *   the rx dma interrupt to represent that the transaction has fully completed.
+  48:arch/stm32/mcu_periph/spi_arch.c ****  * - The dummy DMA transfer is initiated at the transaction setup if length is 0,
+  49:arch/stm32/mcu_periph/spi_arch.c ****  *   otherwise after the first dma interrupt completes in the ISR directly.
+  50:arch/stm32/mcu_periph/spi_arch.c ****  * - The rx DMA transfer completed interrupt marks the end of a complete transaction.
+  51:arch/stm32/mcu_periph/spi_arch.c ****  * - The after_cb callback happens BEFORE the slave is unselected as configured.
+  52:arch/stm32/mcu_periph/spi_arch.c ****  */
+  53:arch/stm32/mcu_periph/spi_arch.c **** 
+  54:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/cm3/nvic.h>
+  55:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/stm32/gpio.h>
+  56:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/stm32/rcc.h>
+  57:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/stm32/exti.h>
+  58:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/stm32/spi.h>
+  59:arch/stm32/mcu_periph/spi_arch.c **** #include <libopencm3/stm32/dma.h>
+  60:arch/stm32/mcu_periph/spi_arch.c **** 
+  61:arch/stm32/mcu_periph/spi_arch.c **** #include "mcu_periph/spi.h"
+  62:arch/stm32/mcu_periph/spi_arch.c **** #include "mcu_periph/gpio.h"
+  63:arch/stm32/mcu_periph/spi_arch.c **** 
+  64:arch/stm32/mcu_periph/spi_arch.c **** #include BOARD_CONFIG
+  65:arch/stm32/mcu_periph/spi_arch.c **** 
+  66:arch/stm32/mcu_periph/spi_arch.c **** #ifdef SPI_MASTER
+  67:arch/stm32/mcu_periph/spi_arch.c **** 
+  68:arch/stm32/mcu_periph/spi_arch.c **** #ifndef NVIC_SPI_IRQ_PRIO
+  69:arch/stm32/mcu_periph/spi_arch.c **** #define NVIC_SPI_IRQ_PRIO 0
+  70:arch/stm32/mcu_periph/spi_arch.c **** #endif
+  71:arch/stm32/mcu_periph/spi_arch.c **** 
+  72:arch/stm32/mcu_periph/spi_arch.c **** 
+  73:arch/stm32/mcu_periph/spi_arch.c **** /**
+  74:arch/stm32/mcu_periph/spi_arch.c ****  * Libopencm3 specifc communication parameters for a SPI peripheral in master mode.
+  75:arch/stm32/mcu_periph/spi_arch.c ****  */
+  76:arch/stm32/mcu_periph/spi_arch.c **** struct locm3_spi_comm {
+  77:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t br;       ///< baudrate (clock divider)
+  78:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t cpol;     ///< clock polarity
+  79:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t cpha;     ///< clock phase
+  80:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t dff;      ///< data frame format 8/16 bits
+  81:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t lsbfirst; ///< frame format lsb/msb first
+  82:arch/stm32/mcu_periph/spi_arch.c **** };
+  83:arch/stm32/mcu_periph/spi_arch.c **** 
+  84:arch/stm32/mcu_periph/spi_arch.c **** /**
+  85:arch/stm32/mcu_periph/spi_arch.c ****  * This structure keeps track of specific config for each SPI bus,
+  86:arch/stm32/mcu_periph/spi_arch.c ****  * which allows for more code reuse.
+  87:arch/stm32/mcu_periph/spi_arch.c ****  */
+  88:arch/stm32/mcu_periph/spi_arch.c **** struct spi_periph_dma {
+  89:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t spi;                    ///< SPI peripheral identifier
+  90:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t spidr;                  ///< SPI DataRegister address for DMA
+  91:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t dma;                    ///< DMA controller base address (DMA1 or DMA2)
+  92:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t rcc_dma;                ///< RCC DMA enable clock pin (RCC_DMA1 or RCC_DMA2)
+  93:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t  rx_chan;                ///< receive DMA channel (or stream on F4) number
+  94:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t  tx_chan;                ///< transmit DMA channel (or stream on F4) number
+  95:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t rx_chan_sel;            ///< F4 only: actual receive DMA channel number
+  96:arch/stm32/mcu_periph/spi_arch.c ****   uint32_t tx_chan_sel;            ///< F4 only: actual transmit DMA channel number
+  97:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t  rx_nvic_irq;            ///< receive interrupt
+  98:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t  tx_nvic_irq;            ///< transmit interrupt
+  99:arch/stm32/mcu_periph/spi_arch.c ****   uint16_t tx_dummy_buf;           ///< dummy tx buffer for receive only cases
+ 100:arch/stm32/mcu_periph/spi_arch.c ****   bool_t tx_extra_dummy_dma;       ///< extra tx dummy dma flag for tx_len < rx_len
+ 101:arch/stm32/mcu_periph/spi_arch.c ****   uint16_t rx_dummy_buf;           ///< dummy rx buffer for receive only cases
+ 102:arch/stm32/mcu_periph/spi_arch.c ****   bool_t rx_extra_dummy_dma;       ///< extra rx dummy dma flag for tx_len > rx_len
+ 103:arch/stm32/mcu_periph/spi_arch.c ****   struct locm3_spi_comm comm;      ///< current communication paramters
+ 104:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t  comm_sig;               ///< comm config signature used to check for changes
+ 105:arch/stm32/mcu_periph/spi_arch.c **** };
+ 106:arch/stm32/mcu_periph/spi_arch.c **** 
+ 107:arch/stm32/mcu_periph/spi_arch.c **** 
+ 108:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI0
+ 109:arch/stm32/mcu_periph/spi_arch.c **** #error "The STM32 doesn't have SPI0"
+ 110:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 111:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI1
+ 112:arch/stm32/mcu_periph/spi_arch.c **** static struct spi_periph_dma spi1_dma;
+ 113:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 114:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI2
+ 115:arch/stm32/mcu_periph/spi_arch.c **** static struct spi_periph_dma spi2_dma;
+ 116:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 117:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI3
+ 118:arch/stm32/mcu_periph/spi_arch.c **** static struct spi_periph_dma spi3_dma;
+ 119:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 120:arch/stm32/mcu_periph/spi_arch.c **** 
+ 121:arch/stm32/mcu_periph/spi_arch.c **** static void spi_start_dma_transaction(struct spi_periph *periph, struct spi_transaction *_trans);
+ 122:arch/stm32/mcu_periph/spi_arch.c **** static void spi_next_transaction(struct spi_periph *periph);
+ 123:arch/stm32/mcu_periph/spi_arch.c **** static void spi_configure_dma(uint32_t dma, uint32_t rcc_dma, uint8_t chan, uint32_t periph_addr, u
+ 124:arch/stm32/mcu_periph/spi_arch.c ****                               uint16_t len, enum SPIDataSizeSelect dss, bool_t increment);
+ 125:arch/stm32/mcu_periph/spi_arch.c **** static void process_rx_dma_interrupt(struct spi_periph *periph);
+ 126:arch/stm32/mcu_periph/spi_arch.c **** static void process_tx_dma_interrupt(struct spi_periph *periph);
+ 127:arch/stm32/mcu_periph/spi_arch.c **** static void spi_arch_int_enable(struct spi_periph *spi);
+ 128:arch/stm32/mcu_periph/spi_arch.c **** static void spi_arch_int_disable(struct spi_periph *spi);
+ 129:arch/stm32/mcu_periph/spi_arch.c **** 
+ 130:arch/stm32/mcu_periph/spi_arch.c **** 
+ 131:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 132:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 133:arch/stm32/mcu_periph/spi_arch.c ****  * Handling of Slave Select outputs
+ 134:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 135:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 136:arch/stm32/mcu_periph/spi_arch.c **** 
+ 137:arch/stm32/mcu_periph/spi_arch.c **** static inline void SpiSlaveUnselect(uint8_t slave)
+ 138:arch/stm32/mcu_periph/spi_arch.c **** {
+ 139:arch/stm32/mcu_periph/spi_arch.c ****   switch (slave) {
+ 140:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 141:arch/stm32/mcu_periph/spi_arch.c ****     case 0:
+ 142:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE0_PORT, SPI_SELECT_SLAVE0_PIN);
+ 143:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 144:arch/stm32/mcu_periph/spi_arch.c **** #endif // USE_SPI_SLAVE0
+ 145:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE1
+ 146:arch/stm32/mcu_periph/spi_arch.c ****     case 1:
+ 147:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE1_PORT, SPI_SELECT_SLAVE1_PIN);
+ 148:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 149:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE1
+ 150:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE2
+ 151:arch/stm32/mcu_periph/spi_arch.c ****     case 2:
+ 152:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE2_PORT, SPI_SELECT_SLAVE2_PIN);
+ 153:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 154:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE2
+ 155:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE3
+ 156:arch/stm32/mcu_periph/spi_arch.c ****     case 3:
+ 157:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE3_PORT, SPI_SELECT_SLAVE3_PIN);
+ 158:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 159:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE3
+ 160:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE4
+ 161:arch/stm32/mcu_periph/spi_arch.c ****     case 4:
+ 162:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE4_PORT, SPI_SELECT_SLAVE4_PIN);
+ 163:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 164:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE4
+ 165:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE5
+ 166:arch/stm32/mcu_periph/spi_arch.c ****     case 5:
+ 167:arch/stm32/mcu_periph/spi_arch.c ****       gpio_set(SPI_SELECT_SLAVE5_PORT, SPI_SELECT_SLAVE5_PIN);
+ 168:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 169:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE5
+ 170:arch/stm32/mcu_periph/spi_arch.c ****     default:
+ 171:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 172:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 173:arch/stm32/mcu_periph/spi_arch.c **** }
+ 174:arch/stm32/mcu_periph/spi_arch.c **** 
+ 175:arch/stm32/mcu_periph/spi_arch.c **** static inline void SpiSlaveSelect(uint8_t slave)
+ 176:arch/stm32/mcu_periph/spi_arch.c **** {
+ 177:arch/stm32/mcu_periph/spi_arch.c ****   switch (slave) {
+ 178:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 179:arch/stm32/mcu_periph/spi_arch.c ****     case 0:
+ 180:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE0_PORT, SPI_SELECT_SLAVE0_PIN);
+ 181:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 182:arch/stm32/mcu_periph/spi_arch.c **** #endif // USE_SPI_SLAVE0
+ 183:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE1
+ 184:arch/stm32/mcu_periph/spi_arch.c ****     case 1:
+ 185:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE1_PORT, SPI_SELECT_SLAVE1_PIN);
+ 186:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 187:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE1
+ 188:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE2
+ 189:arch/stm32/mcu_periph/spi_arch.c ****     case 2:
+ 190:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE2_PORT, SPI_SELECT_SLAVE2_PIN);
+ 191:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 192:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE2
+ 193:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE3
+ 194:arch/stm32/mcu_periph/spi_arch.c ****     case 3:
+ 195:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE3_PORT, SPI_SELECT_SLAVE3_PIN);
+ 196:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 197:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE3
+ 198:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE4
+ 199:arch/stm32/mcu_periph/spi_arch.c ****     case 4:
+ 200:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE4_PORT, SPI_SELECT_SLAVE4_PIN);
+ 201:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 202:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE4
+ 203:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE5
+ 204:arch/stm32/mcu_periph/spi_arch.c ****     case 5:
+ 205:arch/stm32/mcu_periph/spi_arch.c ****       gpio_clear(SPI_SELECT_SLAVE5_PORT, SPI_SELECT_SLAVE5_PIN);
+ 206:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 207:arch/stm32/mcu_periph/spi_arch.c **** #endif //USE_SPI_SLAVE5
+ 208:arch/stm32/mcu_periph/spi_arch.c ****     default:
+ 209:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 210:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 211:arch/stm32/mcu_periph/spi_arch.c **** }
+ 212:arch/stm32/mcu_periph/spi_arch.c **** 
+ 213:arch/stm32/mcu_periph/spi_arch.c **** void spi_slave_select(uint8_t slave)
+ 214:arch/stm32/mcu_periph/spi_arch.c **** {
+ 215:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveSelect(slave);
+ 216:arch/stm32/mcu_periph/spi_arch.c **** }
+ 217:arch/stm32/mcu_periph/spi_arch.c **** 
+ 218:arch/stm32/mcu_periph/spi_arch.c **** void spi_slave_unselect(uint8_t slave)
+ 219:arch/stm32/mcu_periph/spi_arch.c **** {
+ 220:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(slave);
+ 221:arch/stm32/mcu_periph/spi_arch.c **** }
+ 222:arch/stm32/mcu_periph/spi_arch.c **** 
+ 223:arch/stm32/mcu_periph/spi_arch.c **** void spi_init_slaves(void)
+ 224:arch/stm32/mcu_periph/spi_arch.c **** {
+ 225:arch/stm32/mcu_periph/spi_arch.c **** 
+ 226:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 227:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE0_PORT, SPI_SELECT_SLAVE0_PIN);
+ 228:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(0);
+ 229:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 230:arch/stm32/mcu_periph/spi_arch.c **** 
+ 231:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE1
+ 232:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE1_PORT, SPI_SELECT_SLAVE1_PIN);
+ 233:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(1);
+ 234:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 235:arch/stm32/mcu_periph/spi_arch.c **** 
+ 236:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE2
+ 237:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE2_PORT, SPI_SELECT_SLAVE2_PIN);
+ 238:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(2);
+ 239:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 240:arch/stm32/mcu_periph/spi_arch.c **** 
+ 241:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE3
+ 242:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE3_PORT, SPI_SELECT_SLAVE3_PIN);
+ 243:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(3);
+ 244:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 245:arch/stm32/mcu_periph/spi_arch.c **** 
+ 246:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE4
+ 247:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE4_PORT, SPI_SELECT_SLAVE4_PIN);
+ 248:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(4);
+ 249:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 250:arch/stm32/mcu_periph/spi_arch.c **** 
+ 251:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE5
+ 252:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_output(SPI_SELECT_SLAVE5_PORT, SPI_SELECT_SLAVE5_PIN);
+ 253:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(5);
+ 254:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 255:arch/stm32/mcu_periph/spi_arch.c **** }
+ 256:arch/stm32/mcu_periph/spi_arch.c **** 
+ 257:arch/stm32/mcu_periph/spi_arch.c **** 
+ 258:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 259:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 260:arch/stm32/mcu_periph/spi_arch.c ****  * Implementation of the generic SPI functions
+ 261:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 262:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 263:arch/stm32/mcu_periph/spi_arch.c **** bool_t spi_submit(struct spi_periph *p, struct spi_transaction *t)
+ 264:arch/stm32/mcu_periph/spi_arch.c **** {
+ 265:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t idx;
+ 266:arch/stm32/mcu_periph/spi_arch.c ****   idx = p->trans_insert_idx + 1;
+ 267:arch/stm32/mcu_periph/spi_arch.c ****   if (idx >= SPI_TRANSACTION_QUEUE_LEN) { idx = 0; }
+ 268:arch/stm32/mcu_periph/spi_arch.c ****   if ((idx == p->trans_extract_idx) || ((t->input_length == 0) && (t->output_length == 0))) {
+ 269:arch/stm32/mcu_periph/spi_arch.c ****     t->status = SPITransFailed;
+ 270:arch/stm32/mcu_periph/spi_arch.c ****     return FALSE; /* queue full or input_length and output_length both 0 */
+ 271:arch/stm32/mcu_periph/spi_arch.c ****     // TODO can't tell why it failed here if it does
+ 272:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 273:arch/stm32/mcu_periph/spi_arch.c **** 
+ 274:arch/stm32/mcu_periph/spi_arch.c ****   t->status = SPITransPending;
+ 275:arch/stm32/mcu_periph/spi_arch.c **** 
+ 276:arch/stm32/mcu_periph/spi_arch.c ****   //Disable interrupts to avoid race conflict with end of DMA transfer interrupt
+ 277:arch/stm32/mcu_periph/spi_arch.c ****   //FIXME
+ 278:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 279:arch/stm32/mcu_periph/spi_arch.c **** 
+ 280:arch/stm32/mcu_periph/spi_arch.c ****   // GT: no copy?  There's a queue implying a copy here...
+ 281:arch/stm32/mcu_periph/spi_arch.c ****   p->trans[p->trans_insert_idx] = t;
+ 282:arch/stm32/mcu_periph/spi_arch.c ****   p->trans_insert_idx = idx;
+ 283:arch/stm32/mcu_periph/spi_arch.c **** 
+ 284:arch/stm32/mcu_periph/spi_arch.c ****   /* if peripheral is idle, start the transaction */
+ 285:arch/stm32/mcu_periph/spi_arch.c ****   if (p->status == SPIIdle && !p->suspend) {
+ 286:arch/stm32/mcu_periph/spi_arch.c ****     spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 287:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 288:arch/stm32/mcu_periph/spi_arch.c ****   //FIXME
+ 289:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(p);
+ 290:arch/stm32/mcu_periph/spi_arch.c ****   return TRUE;
+ 291:arch/stm32/mcu_periph/spi_arch.c **** }
+ 292:arch/stm32/mcu_periph/spi_arch.c **** 
+ 293:arch/stm32/mcu_periph/spi_arch.c **** bool_t spi_lock(struct spi_periph *p, uint8_t slave)
+ 294:arch/stm32/mcu_periph/spi_arch.c **** {
+ 295:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 296:arch/stm32/mcu_periph/spi_arch.c ****   if (slave < 254 && p->suspend == 0) {
+ 297:arch/stm32/mcu_periph/spi_arch.c ****     p->suspend = slave + 1; // 0 is reserved for unlock state
+ 298:arch/stm32/mcu_periph/spi_arch.c ****     spi_arch_int_enable(p);
+ 299:arch/stm32/mcu_periph/spi_arch.c ****     return TRUE;
+ 300:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 301:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(p);
+ 302:arch/stm32/mcu_periph/spi_arch.c ****   return FALSE;
+ 303:arch/stm32/mcu_periph/spi_arch.c **** }
+ 304:arch/stm32/mcu_periph/spi_arch.c **** 
+ 305:arch/stm32/mcu_periph/spi_arch.c **** bool_t spi_resume(struct spi_periph *p, uint8_t slave)
+ 306:arch/stm32/mcu_periph/spi_arch.c **** {
+ 307:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 308:arch/stm32/mcu_periph/spi_arch.c ****   if (p->suspend == slave + 1) {
+ 309:arch/stm32/mcu_periph/spi_arch.c ****     // restart fifo
+ 310:arch/stm32/mcu_periph/spi_arch.c ****     p->suspend = 0;
+ 311:arch/stm32/mcu_periph/spi_arch.c ****     if (p->trans_extract_idx != p->trans_insert_idx && p->status == SPIIdle) {
+ 312:arch/stm32/mcu_periph/spi_arch.c ****       spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 313:arch/stm32/mcu_periph/spi_arch.c ****     }
+ 314:arch/stm32/mcu_periph/spi_arch.c ****     spi_arch_int_enable(p);
+ 315:arch/stm32/mcu_periph/spi_arch.c ****     return TRUE;
+ 316:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 317:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(p);
+ 318:arch/stm32/mcu_periph/spi_arch.c ****   return FALSE;
+ 319:arch/stm32/mcu_periph/spi_arch.c **** }
+ 320:arch/stm32/mcu_periph/spi_arch.c **** 
+ 321:arch/stm32/mcu_periph/spi_arch.c **** 
+ 322:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 323:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 324:arch/stm32/mcu_periph/spi_arch.c ****  * Transaction configuration helper functions
+ 325:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 326:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 327:arch/stm32/mcu_periph/spi_arch.c **** static void set_default_comm_config(struct locm3_spi_comm *c)
+ 328:arch/stm32/mcu_periph/spi_arch.c **** {
+ 329:arch/stm32/mcu_periph/spi_arch.c ****   c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_64;
+ 330:arch/stm32/mcu_periph/spi_arch.c ****   c->cpol = SPI_CR1_CPOL_CLK_TO_1_WHEN_IDLE;
+ 331:arch/stm32/mcu_periph/spi_arch.c ****   c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_2;
+ 332:arch/stm32/mcu_periph/spi_arch.c ****   c->dff = SPI_CR1_DFF_8BIT;
+ 333:arch/stm32/mcu_periph/spi_arch.c ****   c->lsbfirst = SPI_CR1_MSBFIRST;
+ 334:arch/stm32/mcu_periph/spi_arch.c **** }
+ 335:arch/stm32/mcu_periph/spi_arch.c **** 
+ 336:arch/stm32/mcu_periph/spi_arch.c **** static inline uint8_t get_transaction_signature(struct spi_transaction *t)
+ 337:arch/stm32/mcu_periph/spi_arch.c **** {
+ 338:arch/stm32/mcu_periph/spi_arch.c ****   return ((t->dss << 6) | (t->cdiv << 3) | (t->bitorder << 2) |
+ 339:arch/stm32/mcu_periph/spi_arch.c ****           (t->cpha << 1) | (t->cpol));
+ 340:arch/stm32/mcu_periph/spi_arch.c **** }
+ 341:arch/stm32/mcu_periph/spi_arch.c **** 
+ 342:arch/stm32/mcu_periph/spi_arch.c **** static uint8_t get_comm_signature(struct locm3_spi_comm *c)
+ 343:arch/stm32/mcu_periph/spi_arch.c **** {
+ 344:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t sig = 0;
+ 345:arch/stm32/mcu_periph/spi_arch.c ****   if (c->cpol == SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE) {
+ 346:arch/stm32/mcu_periph/spi_arch.c ****     sig |= SPICpolIdleLow;
+ 347:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 348:arch/stm32/mcu_periph/spi_arch.c ****     sig |= SPICpolIdleHigh;
+ 349:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 350:arch/stm32/mcu_periph/spi_arch.c ****   if (c->cpha == SPI_CR1_CPHA_CLK_TRANSITION_1) {
+ 351:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPICphaEdge1 << 1);
+ 352:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 353:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPICphaEdge2 << 1);
+ 354:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 355:arch/stm32/mcu_periph/spi_arch.c ****   if (c->lsbfirst == SPI_CR1_MSBFIRST) {
+ 356:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPIMSBFirst << 2);
+ 357:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 358:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPILSBFirst << 2);
+ 359:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 360:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t cdiv = SPIDiv256;
+ 361:arch/stm32/mcu_periph/spi_arch.c ****   switch (c->br) {
+ 362:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_2:
+ 363:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv2;
+ 364:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 365:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_4:
+ 366:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv4;
+ 367:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 368:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_8:
+ 369:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv8;
+ 370:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 371:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_16:
+ 372:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv16;
+ 373:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 374:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_32:
+ 375:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv32;
+ 376:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 377:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_64:
+ 378:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv64;
+ 379:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 380:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_128:
+ 381:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv128;
+ 382:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 383:arch/stm32/mcu_periph/spi_arch.c ****     case SPI_CR1_BAUDRATE_FPCLK_DIV_256:
+ 384:arch/stm32/mcu_periph/spi_arch.c ****       cdiv = SPIDiv256;
+ 385:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 386:arch/stm32/mcu_periph/spi_arch.c ****     default:
+ 387:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 388:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 389:arch/stm32/mcu_periph/spi_arch.c ****   sig |= (cdiv << 3);
+ 390:arch/stm32/mcu_periph/spi_arch.c ****   if (c->dff == SPI_CR1_DFF_8BIT) {
+ 391:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPIDss8bit << 6);
+ 392:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 393:arch/stm32/mcu_periph/spi_arch.c ****     sig |= (SPIDss16bit << 6);
+ 394:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 395:arch/stm32/mcu_periph/spi_arch.c ****   return sig;
+ 396:arch/stm32/mcu_periph/spi_arch.c **** }
+ 397:arch/stm32/mcu_periph/spi_arch.c **** 
+ 398:arch/stm32/mcu_periph/spi_arch.c **** /** Update SPI communication conf from generic paparazzi SPI transaction */
+ 399:arch/stm32/mcu_periph/spi_arch.c **** static void set_comm_from_transaction(struct locm3_spi_comm *c, struct spi_transaction *t)
+ 400:arch/stm32/mcu_periph/spi_arch.c **** {
+ 401:arch/stm32/mcu_periph/spi_arch.c ****   if (t->dss == SPIDss8bit) {
+ 402:arch/stm32/mcu_periph/spi_arch.c ****     c->dff = SPI_CR1_DFF_8BIT;
+ 403:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 404:arch/stm32/mcu_periph/spi_arch.c ****     c->dff = SPI_CR1_DFF_16BIT;
+ 405:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 406:arch/stm32/mcu_periph/spi_arch.c ****   if (t->bitorder == SPIMSBFirst) {
+ 407:arch/stm32/mcu_periph/spi_arch.c ****     c->lsbfirst = SPI_CR1_MSBFIRST;
+ 408:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 409:arch/stm32/mcu_periph/spi_arch.c ****     c->lsbfirst = SPI_CR1_LSBFIRST;
+ 410:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 411:arch/stm32/mcu_periph/spi_arch.c ****   if (t->cpha == SPICphaEdge1) {
+ 412:arch/stm32/mcu_periph/spi_arch.c ****     c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_1;
+ 413:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 414:arch/stm32/mcu_periph/spi_arch.c ****     c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_2;
+ 415:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 416:arch/stm32/mcu_periph/spi_arch.c ****   if (t->cpol == SPICpolIdleLow) {
+ 417:arch/stm32/mcu_periph/spi_arch.c ****     c->cpol = SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE;
+ 418:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 419:arch/stm32/mcu_periph/spi_arch.c ****     c->cpol = SPI_CR1_CPOL_CLK_TO_1_WHEN_IDLE;
+ 420:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 421:arch/stm32/mcu_periph/spi_arch.c **** 
+ 422:arch/stm32/mcu_periph/spi_arch.c ****   switch (t->cdiv) {
+ 423:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv2:
+ 424:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_2;
+ 425:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 426:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv4:
+ 427:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_4;
+ 428:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 429:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv8:
+ 430:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_8;
+ 431:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 432:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv16:
+ 433:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_16;
+ 434:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 435:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv32:
+ 436:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_32;
+ 437:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 438:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv64:
+ 439:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_64;
+ 440:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 441:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv128:
+ 442:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_128;
+ 443:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 444:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv256:
+ 445:arch/stm32/mcu_periph/spi_arch.c ****       c->br = SPI_CR1_BAUDRATE_FPCLK_DIV_256;
+ 446:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 447:arch/stm32/mcu_periph/spi_arch.c ****     default:
+ 448:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 449:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 450:arch/stm32/mcu_periph/spi_arch.c **** }
+ 451:arch/stm32/mcu_periph/spi_arch.c **** 
+ 452:arch/stm32/mcu_periph/spi_arch.c **** 
+ 453:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 454:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 455:arch/stm32/mcu_periph/spi_arch.c ****  * Helpers for SPI transactions with DMA
+ 456:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 457:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 458:arch/stm32/mcu_periph/spi_arch.c **** static void spi_configure_dma(uint32_t dma, uint32_t rcc_dma, uint8_t chan, uint32_t periph_addr, u
+ 459:arch/stm32/mcu_periph/spi_arch.c ****                               uint16_t len, enum SPIDataSizeSelect dss, bool_t increment)
+ 460:arch/stm32/mcu_periph/spi_arch.c **** {
+ 461:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(rcc_dma);
+ 462:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 463:arch/stm32/mcu_periph/spi_arch.c ****   dma_channel_reset(dma, chan);
+ 464:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 465:arch/stm32/mcu_periph/spi_arch.c ****   dma_stream_reset(dma, chan);
+ 466:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 467:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_peripheral_address(dma, chan, periph_addr);
+ 468:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_memory_address(dma, chan, buf_addr);
+ 469:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_number_of_data(dma, chan, len);
+ 470:arch/stm32/mcu_periph/spi_arch.c **** 
+ 471:arch/stm32/mcu_periph/spi_arch.c ****   /* Set the dma transfer size based on SPI transaction DSS */
+ 472:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 473:arch/stm32/mcu_periph/spi_arch.c ****   if (dss == SPIDss8bit) {
+ 474:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_peripheral_size(dma, chan, DMA_CCR_PSIZE_8BIT);
+ 475:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_CCR_MSIZE_8BIT);
+ 476:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 477:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_peripheral_size(dma, chan, DMA_CCR_PSIZE_16BIT);
+ 478:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_CCR_MSIZE_16BIT);
+ 479:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 480:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 481:arch/stm32/mcu_periph/spi_arch.c ****   if (dss == SPIDss8bit) {
+ 482:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_peripheral_size(dma, chan, DMA_SxCR_PSIZE_8BIT);
+ 483:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_SxCR_MSIZE_8BIT);
+ 484:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 485:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_peripheral_size(dma, chan, DMA_SxCR_PSIZE_16BIT);
+ 486:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_SxCR_MSIZE_16BIT);
+ 487:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 488:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 489:arch/stm32/mcu_periph/spi_arch.c **** 
+ 490:arch/stm32/mcu_periph/spi_arch.c ****   if (increment) {
+ 491:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_memory_increment_mode(dma, chan);
+ 492:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 493:arch/stm32/mcu_periph/spi_arch.c ****     dma_disable_memory_increment_mode(dma, chan);
+ 494:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 495:arch/stm32/mcu_periph/spi_arch.c **** }
+ 496:arch/stm32/mcu_periph/spi_arch.c **** 
+ 497:arch/stm32/mcu_periph/spi_arch.c **** /// Enable DMA channel interrupts
+ 498:arch/stm32/mcu_periph/spi_arch.c **** static void spi_arch_int_enable(struct spi_periph *spi)
+ 499:arch/stm32/mcu_periph/spi_arch.c **** {
+ 500:arch/stm32/mcu_periph/spi_arch.c ****   /// @todo fix priority levels if necessary
+ 501:arch/stm32/mcu_periph/spi_arch.c ****   // enable receive interrupt
+ 502:arch/stm32/mcu_periph/spi_arch.c ****   nvic_set_priority(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq, NVIC_SPI_IRQ_PRIO);
+ 503:arch/stm32/mcu_periph/spi_arch.c ****   nvic_enable_irq(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq);
+ 504:arch/stm32/mcu_periph/spi_arch.c ****   // enable transmit interrupt
+ 505:arch/stm32/mcu_periph/spi_arch.c ****   nvic_set_priority(((struct spi_periph_dma *)spi->init_struct)->tx_nvic_irq, NVIC_SPI_IRQ_PRIO);
+ 506:arch/stm32/mcu_periph/spi_arch.c ****   nvic_enable_irq(((struct spi_periph_dma *)spi->init_struct)->tx_nvic_irq);
+ 507:arch/stm32/mcu_periph/spi_arch.c **** }
+ 508:arch/stm32/mcu_periph/spi_arch.c **** 
+ 509:arch/stm32/mcu_periph/spi_arch.c **** /// Disable DMA channel interrupts
+ 510:arch/stm32/mcu_periph/spi_arch.c **** static void spi_arch_int_disable(struct spi_periph *spi)
+ 511:arch/stm32/mcu_periph/spi_arch.c **** {
+  27              		.loc 1 511 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 10B5     		push	{r4, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 4, -8
+  35              		.cfi_offset 14, -4
+ 512:arch/stm32/mcu_periph/spi_arch.c ****   nvic_disable_irq(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq);
+  36              		.loc 1 512 0
+  37 0002 C36A     		ldr	r3, [r0, #44]
+ 511:arch/stm32/mcu_periph/spi_arch.c ****   nvic_disable_irq(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq);
+  38              		.loc 1 511 0
+  39 0004 0446     		mov	r4, r0
+  40              		.loc 1 512 0
+  41 0006 187F     		ldrb	r0, [r3, #28]	@ zero_extendqisi2
+  42              	.LVL1:
+  43 0008 FFF7FEFF 		bl	nvic_disable_irq
+  44              	.LVL2:
+ 513:arch/stm32/mcu_periph/spi_arch.c ****   nvic_disable_irq(((struct spi_periph_dma *)spi->init_struct)->tx_nvic_irq);
+  45              		.loc 1 513 0
+  46 000c E36A     		ldr	r3, [r4, #44]
+ 514:arch/stm32/mcu_periph/spi_arch.c **** }
+  47              		.loc 1 514 0
+  48 000e BDE81040 		pop	{r4, lr}
+  49              		.cfi_restore 14
+  50              		.cfi_restore 4
+  51              		.cfi_def_cfa_offset 0
+  52              	.LVL3:
+ 513:arch/stm32/mcu_periph/spi_arch.c ****   nvic_disable_irq(((struct spi_periph_dma *)spi->init_struct)->tx_nvic_irq);
+  53              		.loc 1 513 0
+  54 0012 587F     		ldrb	r0, [r3, #29]	@ zero_extendqisi2
+  55 0014 FFF7FEBF 		b	nvic_disable_irq
+  56              	.LVL4:
+  57              		.cfi_endproc
+  58              	.LFE19:
+  60              		.section	.text.spi_configure_dma,"ax",%progbits
+  61              		.align	1
+  62              		.thumb
+  63              		.thumb_func
+  65              	spi_configure_dma:
+  66              	.LFB17:
+ 460:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(rcc_dma);
+  67              		.loc 1 460 0
+  68              		.cfi_startproc
+  69              		@ args = 16, pretend = 0, frame = 0
+  70              		@ frame_needed = 0, uses_anonymous_args = 0
+  71              	.LVL5:
+  72 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+  73              		.cfi_def_cfa_offset 32
+  74              		.cfi_offset 4, -32
+  75              		.cfi_offset 5, -28
+  76              		.cfi_offset 6, -24
+  77              		.cfi_offset 7, -20
+  78              		.cfi_offset 8, -16
+  79              		.cfi_offset 9, -12
+  80              		.cfi_offset 10, -8
+  81              		.cfi_offset 14, -4
+ 460:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(rcc_dma);
+  82              		.loc 1 460 0
+  83 0004 1446     		mov	r4, r2
+  84 0006 0546     		mov	r5, r0
+ 461:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+  85              		.loc 1 461 0
+  86 0008 88B2     		uxth	r0, r1
+  87              	.LVL6:
+ 460:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(rcc_dma);
+  88              		.loc 1 460 0
+  89 000a 9A46     		mov	r10, r3
+  90 000c DDF82090 		ldr	r9, [sp, #32]
+  91 0010 BDF82480 		ldrh	r8, [sp, #36]
+  92 0014 9DF82860 		ldrb	r6, [sp, #40]	@ zero_extendqisi2
+  93 0018 9DF82C70 		ldrb	r7, [sp, #44]	@ zero_extendqisi2
+ 461:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+  94              		.loc 1 461 0
+  95 001c FFF7FEFF 		bl	rcc_periph_clock_enable
+  96              	.LVL7:
+ 465:arch/stm32/mcu_periph/spi_arch.c **** #endif
+  97              		.loc 1 465 0
+  98 0020 2846     		mov	r0, r5
+  99 0022 2146     		mov	r1, r4
+ 100 0024 FFF7FEFF 		bl	dma_stream_reset
+ 101              	.LVL8:
+ 467:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_memory_address(dma, chan, buf_addr);
+ 102              		.loc 1 467 0
+ 103 0028 2846     		mov	r0, r5
+ 104 002a 2146     		mov	r1, r4
+ 105 002c 5246     		mov	r2, r10
+ 106 002e FFF7FEFF 		bl	dma_set_peripheral_address
+ 107              	.LVL9:
+ 468:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_number_of_data(dma, chan, len);
+ 108              		.loc 1 468 0
+ 109 0032 2846     		mov	r0, r5
+ 110 0034 2146     		mov	r1, r4
+ 111 0036 4A46     		mov	r2, r9
+ 112 0038 FFF7FEFF 		bl	dma_set_memory_address
+ 113              	.LVL10:
+ 469:arch/stm32/mcu_periph/spi_arch.c **** 
+ 114              		.loc 1 469 0
+ 115 003c 2846     		mov	r0, r5
+ 116 003e 2146     		mov	r1, r4
+ 117 0040 4246     		mov	r2, r8
+ 118 0042 FFF7FEFF 		bl	dma_set_number_of_data
+ 119              	.LVL11:
+ 482:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_SxCR_MSIZE_8BIT);
+ 120              		.loc 1 482 0
+ 121 0046 2846     		mov	r0, r5
+ 122 0048 2146     		mov	r1, r4
+ 481:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_peripheral_size(dma, chan, DMA_SxCR_PSIZE_8BIT);
+ 123              		.loc 1 481 0
+ 124 004a 36B9     		cbnz	r6, .L3
+ 482:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_SxCR_MSIZE_8BIT);
+ 125              		.loc 1 482 0
+ 126 004c 3246     		mov	r2, r6
+ 127 004e FFF7FEFF 		bl	dma_set_peripheral_size
+ 128              	.LVL12:
+ 483:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 129              		.loc 1 483 0
+ 130 0052 2846     		mov	r0, r5
+ 131 0054 2146     		mov	r1, r4
+ 132 0056 3246     		mov	r2, r6
+ 133 0058 07E0     		b	.L6
+ 134              	.L3:
+ 485:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_memory_size(dma, chan, DMA_SxCR_MSIZE_16BIT);
+ 135              		.loc 1 485 0
+ 136 005a 4FF40062 		mov	r2, #2048
+ 137 005e FFF7FEFF 		bl	dma_set_peripheral_size
+ 138              	.LVL13:
+ 486:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 139              		.loc 1 486 0
+ 140 0062 2846     		mov	r0, r5
+ 141 0064 2146     		mov	r1, r4
+ 142 0066 4FF40052 		mov	r2, #8192
+ 143              	.LVL14:
+ 144              	.L6:
+ 145 006a FFF7FEFF 		bl	dma_set_memory_size
+ 146              	.LVL15:
+ 491:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 147              		.loc 1 491 0
+ 148 006e 2846     		mov	r0, r5
+ 149 0070 2146     		mov	r1, r4
+ 490:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_memory_increment_mode(dma, chan);
+ 150              		.loc 1 490 0
+ 151 0072 1FB1     		cbz	r7, .L5
+ 152              	.LVL16:
+ 495:arch/stm32/mcu_periph/spi_arch.c **** 
+ 153              		.loc 1 495 0
+ 154 0074 BDE8F047 		pop	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 155              		.cfi_remember_state
+ 156              		.cfi_restore 14
+ 157              		.cfi_restore 10
+ 158              		.cfi_restore 9
+ 159              		.cfi_restore 8
+ 160              		.cfi_restore 7
+ 161              		.cfi_restore 6
+ 162              		.cfi_restore 5
+ 163              		.cfi_restore 4
+ 164              		.cfi_def_cfa_offset 0
+ 165              	.LVL17:
+ 491:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 166              		.loc 1 491 0
+ 167 0078 FFF7FEBF 		b	dma_enable_memory_increment_mode
+ 168              	.LVL18:
+ 169              	.L5:
+ 170              		.cfi_restore_state
+ 495:arch/stm32/mcu_periph/spi_arch.c **** 
+ 171              		.loc 1 495 0
+ 172 007c BDE8F047 		pop	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 173              		.cfi_restore 14
+ 174              		.cfi_restore 10
+ 175              		.cfi_restore 9
+ 176              		.cfi_restore 8
+ 177              		.cfi_restore 7
+ 178              		.cfi_restore 6
+ 179              		.cfi_restore 5
+ 180              		.cfi_restore 4
+ 181              		.cfi_def_cfa_offset 0
+ 182              	.LVL19:
+ 493:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 183              		.loc 1 493 0
+ 184 0080 FFF7FEBF 		b	dma_disable_memory_increment_mode
+ 185              	.LVL20:
+ 186              		.cfi_endproc
+ 187              	.LFE17:
+ 189              		.section	.text.spi_arch_int_enable,"ax",%progbits
+ 190              		.align	1
+ 191              		.thumb
+ 192              		.thumb_func
+ 194              	spi_arch_int_enable:
+ 195              	.LFB18:
+ 499:arch/stm32/mcu_periph/spi_arch.c ****   /// @todo fix priority levels if necessary
+ 196              		.loc 1 499 0
+ 197              		.cfi_startproc
+ 198              		@ args = 0, pretend = 0, frame = 0
+ 199              		@ frame_needed = 0, uses_anonymous_args = 0
+ 200              	.LVL21:
+ 201 0000 10B5     		push	{r4, lr}
+ 202              		.cfi_def_cfa_offset 8
+ 203              		.cfi_offset 4, -8
+ 204              		.cfi_offset 14, -4
+ 502:arch/stm32/mcu_periph/spi_arch.c ****   nvic_enable_irq(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq);
+ 205              		.loc 1 502 0
+ 206 0002 C36A     		ldr	r3, [r0, #44]
+ 499:arch/stm32/mcu_periph/spi_arch.c ****   /// @todo fix priority levels if necessary
+ 207              		.loc 1 499 0
+ 208 0004 0446     		mov	r4, r0
+ 502:arch/stm32/mcu_periph/spi_arch.c ****   nvic_enable_irq(((struct spi_periph_dma *)spi->init_struct)->rx_nvic_irq);
+ 209              		.loc 1 502 0
+ 210 0006 0521     		movs	r1, #5
+ 211 0008 187F     		ldrb	r0, [r3, #28]	@ zero_extendqisi2
+ 212              	.LVL22:
+ 213 000a FFF7FEFF 		bl	nvic_set_priority
+ 214              	.LVL23:
+ 503:arch/stm32/mcu_periph/spi_arch.c ****   // enable transmit interrupt
+ 215              		.loc 1 503 0
+ 216 000e E36A     		ldr	r3, [r4, #44]
+ 217 0010 187F     		ldrb	r0, [r3, #28]	@ zero_extendqisi2
+ 218 0012 FFF7FEFF 		bl	nvic_enable_irq
+ 219              	.LVL24:
+ 505:arch/stm32/mcu_periph/spi_arch.c ****   nvic_enable_irq(((struct spi_periph_dma *)spi->init_struct)->tx_nvic_irq);
+ 220              		.loc 1 505 0
+ 221 0016 E36A     		ldr	r3, [r4, #44]
+ 222 0018 0521     		movs	r1, #5
+ 223 001a 587F     		ldrb	r0, [r3, #29]	@ zero_extendqisi2
+ 224 001c FFF7FEFF 		bl	nvic_set_priority
+ 225              	.LVL25:
+ 506:arch/stm32/mcu_periph/spi_arch.c **** }
+ 226              		.loc 1 506 0
+ 227 0020 E36A     		ldr	r3, [r4, #44]
+ 507:arch/stm32/mcu_periph/spi_arch.c **** 
+ 228              		.loc 1 507 0
+ 229 0022 BDE81040 		pop	{r4, lr}
+ 230              		.cfi_restore 14
+ 231              		.cfi_restore 4
+ 232              		.cfi_def_cfa_offset 0
+ 233              	.LVL26:
+ 506:arch/stm32/mcu_periph/spi_arch.c **** }
+ 234              		.loc 1 506 0
+ 235 0026 587F     		ldrb	r0, [r3, #29]	@ zero_extendqisi2
+ 236 0028 FFF7FEBF 		b	nvic_enable_irq
+ 237              	.LVL27:
+ 238              		.cfi_endproc
+ 239              	.LFE18:
+ 241              		.section	.text.spi_start_dma_transaction,"ax",%progbits
+ 242              		.align	1
+ 243              		.thumb
+ 244              		.thumb_func
+ 246              	spi_start_dma_transaction:
+ 247              	.LFB21:
+ 515:arch/stm32/mcu_periph/spi_arch.c **** 
+ 516:arch/stm32/mcu_periph/spi_arch.c **** /// start next transaction if there is one in the queue
+ 517:arch/stm32/mcu_periph/spi_arch.c **** static void spi_next_transaction(struct spi_periph *periph)
+ 518:arch/stm32/mcu_periph/spi_arch.c **** {
+ 519:arch/stm32/mcu_periph/spi_arch.c ****   /* Increment the transaction to handle */
+ 520:arch/stm32/mcu_periph/spi_arch.c ****   periph->trans_extract_idx++;
+ 521:arch/stm32/mcu_periph/spi_arch.c **** 
+ 522:arch/stm32/mcu_periph/spi_arch.c ****   /* wrap read index of circular buffer */
+ 523:arch/stm32/mcu_periph/spi_arch.c ****   if (periph->trans_extract_idx >= SPI_TRANSACTION_QUEUE_LEN) {
+ 524:arch/stm32/mcu_periph/spi_arch.c ****     periph->trans_extract_idx = 0;
+ 525:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 526:arch/stm32/mcu_periph/spi_arch.c **** 
+ 527:arch/stm32/mcu_periph/spi_arch.c ****   /* Check if there is another pending SPI transaction */
+ 528:arch/stm32/mcu_periph/spi_arch.c ****   if ((periph->trans_extract_idx == periph->trans_insert_idx) || periph->suspend) {
+ 529:arch/stm32/mcu_periph/spi_arch.c ****     periph->status = SPIIdle;
+ 530:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 531:arch/stm32/mcu_periph/spi_arch.c ****     spi_start_dma_transaction(periph, periph->trans[periph->trans_extract_idx]);
+ 532:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 533:arch/stm32/mcu_periph/spi_arch.c **** }
+ 534:arch/stm32/mcu_periph/spi_arch.c **** 
+ 535:arch/stm32/mcu_periph/spi_arch.c **** 
+ 536:arch/stm32/mcu_periph/spi_arch.c **** /**
+ 537:arch/stm32/mcu_periph/spi_arch.c ****  * Start a new transaction with DMA.
+ 538:arch/stm32/mcu_periph/spi_arch.c ****  */
+ 539:arch/stm32/mcu_periph/spi_arch.c **** static void spi_start_dma_transaction(struct spi_periph *periph, struct spi_transaction *trans)
+ 540:arch/stm32/mcu_periph/spi_arch.c **** {
+ 248              		.loc 1 540 0
+ 249              		.cfi_startproc
+ 250              		@ args = 0, pretend = 0, frame = 0
+ 251              		@ frame_needed = 0, uses_anonymous_args = 0
+ 252              	.LVL28:
+ 253              	.LBB12:
+ 254              	.LBB13:
+ 338:arch/stm32/mcu_periph/spi_arch.c ****           (t->cpha << 1) | (t->cpol));
+ 255              		.loc 1 338 0
+ 256 0000 8A7C     		ldrb	r2, [r1, #18]	@ zero_extendqisi2
+ 257              	.LBE13:
+ 258              	.LBE12:
+ 259              		.loc 1 540 0
+ 260 0002 F0B5     		push	{r4, r5, r6, r7, lr}
+ 261              		.cfi_def_cfa_offset 20
+ 262              		.cfi_offset 4, -20
+ 263              		.cfi_offset 5, -16
+ 264              		.cfi_offset 6, -12
+ 265              		.cfi_offset 7, -8
+ 266              		.cfi_offset 14, -4
+ 541:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_periph_dma *dma;
+ 542:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t sig = 0x00;
+ 543:arch/stm32/mcu_periph/spi_arch.c **** 
+ 544:arch/stm32/mcu_periph/spi_arch.c ****   /* Store local copy to notify of the results */
+ 545:arch/stm32/mcu_periph/spi_arch.c ****   trans->status = SPITransRunning;
+ 267              		.loc 1 545 0
+ 268 0004 0123     		movs	r3, #1
+ 269              	.LBB17:
+ 270              	.LBB14:
+ 338:arch/stm32/mcu_periph/spi_arch.c ****           (t->cpha << 1) | (t->cpol));
+ 271              		.loc 1 338 0
+ 272 0006 91F810E0 		ldrb	lr, [r1, #16]	@ zero_extendqisi2
+ 273              	.LBE14:
+ 274              	.LBE17:
+ 275              		.loc 1 545 0
+ 276 000a 0B77     		strb	r3, [r1, #28]
+ 546:arch/stm32/mcu_periph/spi_arch.c ****   periph->status = SPIRunning;
+ 547:arch/stm32/mcu_periph/spi_arch.c **** 
+ 548:arch/stm32/mcu_periph/spi_arch.c ****   dma = periph->init_struct;
+ 277              		.loc 1 548 0
+ 278 000c C46A     		ldr	r4, [r0, #44]
+ 279              	.LVL29:
+ 546:arch/stm32/mcu_periph/spi_arch.c ****   periph->status = SPIRunning;
+ 280              		.loc 1 546 0
+ 281 000e 80F82230 		strb	r3, [r0, #34]
+ 282              	.LBB18:
+ 283              	.LBB15:
+ 338:arch/stm32/mcu_periph/spi_arch.c ****           (t->cpha << 1) | (t->cpol));
+ 284              		.loc 1 338 0
+ 285 0012 4F7C     		ldrb	r7, [r1, #17]	@ zero_extendqisi2
+ 286              	.LBE15:
+ 287              	.LBE18:
+ 549:arch/stm32/mcu_periph/spi_arch.c **** 
+ 550:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 551:arch/stm32/mcu_periph/spi_arch.c ****    * Check if we need to reconfigure the spi peripheral for this transaction
+ 552:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 553:arch/stm32/mcu_periph/spi_arch.c ****   sig = get_transaction_signature(trans);
+ 554:arch/stm32/mcu_periph/spi_arch.c ****   if (sig != dma->comm_sig) {
+ 288              		.loc 1 554 0
+ 289 0014 94F83CC0 		ldrb	ip, [r4, #60]	@ zero_extendqisi2
+ 540:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_periph_dma *dma;
+ 290              		.loc 1 540 0
+ 291 0018 0646     		mov	r6, r0
+ 292 001a 0D46     		mov	r5, r1
+ 293              	.LBB19:
+ 294              	.LBB16:
+ 339:arch/stm32/mcu_periph/spi_arch.c **** }
+ 295              		.loc 1 339 0
+ 296 001c C87B     		ldrb	r0, [r1, #15]	@ zero_extendqisi2
+ 297              	.LVL30:
+ 298 001e 897B     		ldrb	r1, [r1, #14]	@ zero_extendqisi2
+ 299              	.LVL31:
+ 338:arch/stm32/mcu_periph/spi_arch.c ****           (t->cpha << 1) | (t->cpol));
+ 300              		.loc 1 338 0
+ 301 0020 D300     		lsls	r3, r2, #3
+ 302 0022 43EA8E13 		orr	r3, r3, lr, lsl #6
+ 303 0026 0B43     		orrs	r3, r3, r1
+ 304 0028 43EA8703 		orr	r3, r3, r7, lsl #2
+ 305 002c 43EA4003 		orr	r3, r3, r0, lsl #1
+ 306 0030 DBB2     		uxtb	r3, r3
+ 307              	.LVL32:
+ 308              	.LBE16:
+ 309              	.LBE19:
+ 310              		.loc 1 554 0
+ 311 0032 9C45     		cmp	ip, r3
+ 540:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_periph_dma *dma;
+ 312              		.loc 1 540 0
+ 313 0034 85B0     		sub	sp, sp, #20
+ 314              		.cfi_def_cfa_offset 40
+ 315              		.loc 1 554 0
+ 316 0036 3FD0     		beq	.L10
+ 317              	.LVL33:
+ 318              	.LBB20:
+ 319              	.LBB21:
+ 401:arch/stm32/mcu_periph/spi_arch.c ****     c->dff = SPI_CR1_DFF_8BIT;
+ 320              		.loc 1 401 0
+ 321 0038 BEF1000F 		cmp	lr, #0
+ 322 003c 01D0     		beq	.L39
+ 404:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 323              		.loc 1 404 0
+ 324 003e 4FF4006E 		mov	lr, #2048
+ 325              	.L39:
+ 326 0042 C4F834E0 		str	lr, [r4, #52]
+ 406:arch/stm32/mcu_periph/spi_arch.c ****     c->lsbfirst = SPI_CR1_MSBFIRST;
+ 327              		.loc 1 406 0
+ 328 0046 07B1     		cbz	r7, .L40
+ 409:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 329              		.loc 1 409 0
+ 330 0048 8027     		movs	r7, #128
+ 331              	.L40:
+ 332 004a A763     		str	r7, [r4, #56]
+ 411:arch/stm32/mcu_periph/spi_arch.c ****     c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_1;
+ 333              		.loc 1 411 0
+ 334 004c 00B1     		cbz	r0, .L41
+ 414:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 335              		.loc 1 414 0
+ 336 004e 0120     		movs	r0, #1
+ 337              	.L41:
+ 338 0050 2063     		str	r0, [r4, #48]
+ 416:arch/stm32/mcu_periph/spi_arch.c ****     c->cpol = SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE;
+ 339              		.loc 1 416 0
+ 340 0052 01B1     		cbz	r1, .L42
+ 419:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 341              		.loc 1 419 0
+ 342 0054 0221     		movs	r1, #2
+ 343              	.L42:
+ 344 0056 E162     		str	r1, [r4, #44]
+ 422:arch/stm32/mcu_periph/spi_arch.c ****     case SPIDiv2:
+ 345              		.loc 1 422 0
+ 346 0058 072A     		cmp	r2, #7
+ 347 005a 15D8     		bhi	.L19
+ 348 005c DFE802F0 		tbb	[pc, r2]
+ 349              	.L21:
+ 350 0060 04       		.byte	(.L20-.L21)/2
+ 351 0061 06       		.byte	(.L22-.L21)/2
+ 352 0062 08       		.byte	(.L23-.L21)/2
+ 353 0063 0A       		.byte	(.L24-.L21)/2
+ 354 0064 0C       		.byte	(.L25-.L21)/2
+ 355 0065 0E       		.byte	(.L26-.L21)/2
+ 356 0066 10       		.byte	(.L27-.L21)/2
+ 357 0067 12       		.byte	(.L28-.L21)/2
+ 358              		.p2align 1
+ 359              	.L20:
+ 424:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 360              		.loc 1 424 0
+ 361 0068 0022     		movs	r2, #0
+ 362 006a 0CE0     		b	.L43
+ 363              	.L22:
+ 427:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 364              		.loc 1 427 0
+ 365 006c 0822     		movs	r2, #8
+ 366 006e 0AE0     		b	.L43
+ 367              	.L23:
+ 430:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 368              		.loc 1 430 0
+ 369 0070 1022     		movs	r2, #16
+ 370 0072 08E0     		b	.L43
+ 371              	.L24:
+ 433:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 372              		.loc 1 433 0
+ 373 0074 1822     		movs	r2, #24
+ 374 0076 06E0     		b	.L43
+ 375              	.L25:
+ 436:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 376              		.loc 1 436 0
+ 377 0078 2022     		movs	r2, #32
+ 378 007a 04E0     		b	.L43
+ 379              	.L26:
+ 439:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 380              		.loc 1 439 0
+ 381 007c 2822     		movs	r2, #40
+ 382 007e 02E0     		b	.L43
+ 383              	.L27:
+ 442:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 384              		.loc 1 442 0
+ 385 0080 3022     		movs	r2, #48
+ 386 0082 00E0     		b	.L43
+ 387              	.L28:
+ 445:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 388              		.loc 1 445 0
+ 389 0084 3822     		movs	r2, #56
+ 390              	.L43:
+ 391 0086 A262     		str	r2, [r4, #40]
+ 392              	.L19:
+ 393              	.LBE21:
+ 394              	.LBE20:
+ 555:arch/stm32/mcu_periph/spi_arch.c ****     /* A different config is required in this transaction... */
+ 556:arch/stm32/mcu_periph/spi_arch.c ****     set_comm_from_transaction(&(dma->comm), trans);
+ 557:arch/stm32/mcu_periph/spi_arch.c **** 
+ 558:arch/stm32/mcu_periph/spi_arch.c ****     /* remember the new conf signature */
+ 559:arch/stm32/mcu_periph/spi_arch.c ****     dma->comm_sig = sig;
+ 395              		.loc 1 559 0
+ 396 0088 84F83C30 		strb	r3, [r4, #60]
+ 560:arch/stm32/mcu_periph/spi_arch.c **** 
+ 561:arch/stm32/mcu_periph/spi_arch.c ****     /* apply the new configuration */
+ 562:arch/stm32/mcu_periph/spi_arch.c ****     spi_disable((uint32_t)periph->reg_addr);
+ 397              		.loc 1 562 0
+ 398 008c B06A     		ldr	r0, [r6, #40]
+ 399 008e FFF7FEFF 		bl	spi_disable
+ 400              	.LVL34:
+ 563:arch/stm32/mcu_periph/spi_arch.c ****     spi_init_master((uint32_t)periph->reg_addr, dma->comm.br, dma->comm.cpol,
+ 401              		.loc 1 563 0
+ 402 0092 636B     		ldr	r3, [r4, #52]
+ 403 0094 0093     		str	r3, [sp]
+ 404 0096 A36B     		ldr	r3, [r4, #56]
+ 405 0098 0193     		str	r3, [sp, #4]
+ 406 009a 04F12801 		add	r1, r4, #40
+ 407 009e 0EC9     		ldmia	r1, {r1, r2, r3}
+ 408 00a0 B06A     		ldr	r0, [r6, #40]
+ 409 00a2 FFF7FEFF 		bl	spi_init_master
+ 410              	.LVL35:
+ 564:arch/stm32/mcu_periph/spi_arch.c ****                     dma->comm.cpha, dma->comm.dff, dma->comm.lsbfirst);
+ 565:arch/stm32/mcu_periph/spi_arch.c ****     spi_enable_software_slave_management((uint32_t)periph->reg_addr);
+ 411              		.loc 1 565 0
+ 412 00a6 B06A     		ldr	r0, [r6, #40]
+ 413 00a8 FFF7FEFF 		bl	spi_enable_software_slave_management
+ 414              	.LVL36:
+ 566:arch/stm32/mcu_periph/spi_arch.c ****     spi_set_nss_high((uint32_t)periph->reg_addr);
+ 415              		.loc 1 566 0
+ 416 00ac B06A     		ldr	r0, [r6, #40]
+ 417 00ae FFF7FEFF 		bl	spi_set_nss_high
+ 418              	.LVL37:
+ 567:arch/stm32/mcu_periph/spi_arch.c ****     spi_enable((uint32_t)periph->reg_addr);
+ 419              		.loc 1 567 0
+ 420 00b2 B06A     		ldr	r0, [r6, #40]
+ 421 00b4 FFF7FEFF 		bl	spi_enable
+ 422              	.LVL38:
+ 423              	.L10:
+ 568:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 569:arch/stm32/mcu_periph/spi_arch.c **** 
+ 570:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 571:arch/stm32/mcu_periph/spi_arch.c ****    * Select the slave after reconfiguration of the peripheral
+ 572:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 573:arch/stm32/mcu_periph/spi_arch.c ****   if (trans->select == SPISelectUnselect || trans->select == SPISelect) {
+ 424              		.loc 1 573 0
+ 425 00b8 6B7B     		ldrb	r3, [r5, #13]	@ zero_extendqisi2
+ 426 00ba 012B     		cmp	r3, #1
+ 427 00bc 06D8     		bhi	.L29
+ 428              	.LVL39:
+ 429              	.LBB22:
+ 430              	.LBB23:
+ 177:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 431              		.loc 1 177 0
+ 432 00be 2B7B     		ldrb	r3, [r5, #12]	@ zero_extendqisi2
+ 433 00c0 23B9     		cbnz	r3, .L29
+ 434              	.LVL40:
+ 435              	.LBB24:
+ 436              	.LBB25:
+ 180:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 437              		.loc 1 180 0
+ 438 00c2 4348     		ldr	r0, .L44
+ 439 00c4 4FF40071 		mov	r1, #512
+ 440 00c8 FFF7FEFF 		bl	gpio_clear
+ 441              	.LVL41:
+ 442              	.L29:
+ 443              	.LBE25:
+ 444              	.LBE24:
+ 445              	.LBE23:
+ 446              	.LBE22:
+ 574:arch/stm32/mcu_periph/spi_arch.c ****     SpiSlaveSelect(trans->slave_idx);
+ 575:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 576:arch/stm32/mcu_periph/spi_arch.c **** 
+ 577:arch/stm32/mcu_periph/spi_arch.c ****   /* Run the callback AFTER selecting the slave */
+ 578:arch/stm32/mcu_periph/spi_arch.c ****   if (trans->before_cb != 0) {
+ 447              		.loc 1 578 0
+ 448 00cc 6B69     		ldr	r3, [r5, #20]
+ 449 00ce 0BB1     		cbz	r3, .L31
+ 579:arch/stm32/mcu_periph/spi_arch.c ****     trans->before_cb(trans);
+ 450              		.loc 1 579 0
+ 451 00d0 2846     		mov	r0, r5
+ 452 00d2 9847     		blx	r3
+ 453              	.LVL42:
+ 454              	.L31:
+ 580:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 581:arch/stm32/mcu_periph/spi_arch.c **** 
+ 582:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 583:arch/stm32/mcu_periph/spi_arch.c ****    * Receive DMA channel configuration ----------------------------------------
+ 584:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 585:arch/stm32/mcu_periph/spi_arch.c ****    * We always run the receive DMA until the very end!
+ 586:arch/stm32/mcu_periph/spi_arch.c ****    * This is done so we can use the transfer complete interrupt
+ 587:arch/stm32/mcu_periph/spi_arch.c ****    * of the RX DMA to signal the end of the transaction.
+ 588:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 589:arch/stm32/mcu_periph/spi_arch.c ****    * If we want to receive less than we transmit, a dummy buffer
+ 590:arch/stm32/mcu_periph/spi_arch.c ****    * for the rx DMA is used after for the remaining data.
+ 591:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 592:arch/stm32/mcu_periph/spi_arch.c ****    * In the transmit only case (input_length == 0),
+ 593:arch/stm32/mcu_periph/spi_arch.c ****    * the dummy is used right from the start.
+ 594:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 595:arch/stm32/mcu_periph/spi_arch.c ****   if (trans->input_length == 0) {
+ 455              		.loc 1 595 0
+ 456 00d4 2B89     		ldrh	r3, [r5, #8]
+ 457 00d6 297C     		ldrb	r1, [r5, #16]	@ zero_extendqisi2
+ 458 00d8 227C     		ldrb	r2, [r4, #16]	@ zero_extendqisi2
+ 459 00da 63B9     		cbnz	r3, .L32
+ 596:arch/stm32/mcu_periph/spi_arch.c ****     /* run the dummy rx dma for the complete transaction length */
+ 597:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->rx_chan, (uint32_t)dma->spidr,
+ 598:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->rx_dummy_buf), trans->output_length, trans->dss, FALSE);
+ 460              		.loc 1 598 0
+ 461 00dc 04F12200 		add	r0, r4, #34
+ 597:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->rx_dummy_buf), trans->output_length, trans->dss, FALSE);
+ 462              		.loc 1 597 0
+ 463 00e0 0090     		str	r0, [sp]
+ 464 00e2 6889     		ldrh	r0, [r5, #10]
+ 465 00e4 0190     		str	r0, [sp, #4]
+ 466 00e6 0291     		str	r1, [sp, #8]
+ 467 00e8 0393     		str	r3, [sp, #12]
+ 468 00ea A068     		ldr	r0, [r4, #8]
+ 469 00ec E168     		ldr	r1, [r4, #12]
+ 470 00ee 6368     		ldr	r3, [r4, #4]
+ 471 00f0 FFF7FEFF 		bl	spi_configure_dma
+ 472              	.LVL43:
+ 473 00f4 10E0     		b	.L33
+ 474              	.L32:
+ 599:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 600:arch/stm32/mcu_periph/spi_arch.c ****     /* run the real rx dma for input_length */
+ 601:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->rx_chan, (uint32_t)dma->spidr,
+ 475              		.loc 1 601 0
+ 476 00f6 2868     		ldr	r0, [r5]
+ 477 00f8 0291     		str	r1, [sp, #8]
+ 478 00fa 8DE80900 		stmia	sp, {r0, r3}
+ 479 00fe 0127     		movs	r7, #1
+ 480 0100 0397     		str	r7, [sp, #12]
+ 481 0102 6368     		ldr	r3, [r4, #4]
+ 482 0104 A068     		ldr	r0, [r4, #8]
+ 483 0106 E168     		ldr	r1, [r4, #12]
+ 484 0108 FFF7FEFF 		bl	spi_configure_dma
+ 485              	.LVL44:
+ 602:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t)trans->input_buf, trans->input_length, trans->dss, TRUE);
+ 603:arch/stm32/mcu_periph/spi_arch.c ****     /* use dummy rx dma for the rest */
+ 604:arch/stm32/mcu_periph/spi_arch.c ****     if (trans->output_length > trans->input_length) {
+ 486              		.loc 1 604 0
+ 487 010c 6A89     		ldrh	r2, [r5, #10]
+ 488 010e 2B89     		ldrh	r3, [r5, #8]
+ 489 0110 9A42     		cmp	r2, r3
+ 605:arch/stm32/mcu_periph/spi_arch.c ****       /* Enable use of second dma transfer with dummy buffer (cleared in ISR) */
+ 606:arch/stm32/mcu_periph/spi_arch.c ****       dma->rx_extra_dummy_dma = TRUE;
+ 490              		.loc 1 606 0
+ 491 0112 88BF     		it	hi
+ 492 0114 84F82470 		strbhi	r7, [r4, #36]
+ 493              	.L33:
+ 607:arch/stm32/mcu_periph/spi_arch.c ****     }
+ 608:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 609:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 610:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_read_from_peripheral(dma->dma, dma->rx_chan);
+ 611:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_priority(dma->dma, dma->rx_chan, DMA_CCR_PL_VERY_HIGH);
+ 612:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 613:arch/stm32/mcu_periph/spi_arch.c ****   dma_channel_select(dma->dma, dma->rx_chan, dma->rx_chan_sel);
+ 494              		.loc 1 613 0
+ 495 0118 A068     		ldr	r0, [r4, #8]
+ 496 011a 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 497 011c 6269     		ldr	r2, [r4, #20]
+ 498 011e FFF7FEFF 		bl	dma_channel_select
+ 499              	.LVL45:
+ 614:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_transfer_mode(dma->dma, dma->rx_chan, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
+ 500              		.loc 1 614 0
+ 501 0122 A068     		ldr	r0, [r4, #8]
+ 502 0124 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 503 0126 0022     		movs	r2, #0
+ 504 0128 FFF7FEFF 		bl	dma_set_transfer_mode
+ 505              	.LVL46:
+ 615:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_priority(dma->dma, dma->rx_chan, DMA_SxCR_PL_VERY_HIGH);
+ 506              		.loc 1 615 0
+ 507 012c 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 508 012e A068     		ldr	r0, [r4, #8]
+ 509 0130 4FF44032 		mov	r2, #196608
+ 510 0134 FFF7FEFF 		bl	dma_set_priority
+ 511              	.LVL47:
+ 616:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 617:arch/stm32/mcu_periph/spi_arch.c **** 
+ 618:arch/stm32/mcu_periph/spi_arch.c **** 
+ 619:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 620:arch/stm32/mcu_periph/spi_arch.c ****    * Transmit DMA channel configuration ---------------------------------------
+ 621:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 622:arch/stm32/mcu_periph/spi_arch.c ****    * We always run the transmit DMA!
+ 623:arch/stm32/mcu_periph/spi_arch.c ****    * To receive data, the clock must run, so something has to be transmitted.
+ 624:arch/stm32/mcu_periph/spi_arch.c ****    * If needed, use a dummy DMA transmitting zeros for the remaining length.
+ 625:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 626:arch/stm32/mcu_periph/spi_arch.c ****    * In the reveive only case (output_length == 0),
+ 627:arch/stm32/mcu_periph/spi_arch.c ****    * the dummy is used right from the start.
+ 628:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 629:arch/stm32/mcu_periph/spi_arch.c ****   if (trans->output_length == 0) {
+ 512              		.loc 1 629 0
+ 513 0138 6B89     		ldrh	r3, [r5, #10]
+ 514 013a 297C     		ldrb	r1, [r5, #16]	@ zero_extendqisi2
+ 515 013c 627C     		ldrb	r2, [r4, #17]	@ zero_extendqisi2
+ 516 013e 63B9     		cbnz	r3, .L34
+ 630:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->tx_chan, (uint32_t)dma->spidr,
+ 631:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->tx_dummy_buf), trans->input_length, trans->dss, FALSE);
+ 517              		.loc 1 631 0
+ 518 0140 04F11E00 		add	r0, r4, #30
+ 630:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->tx_chan, (uint32_t)dma->spidr,
+ 519              		.loc 1 630 0
+ 520 0144 0090     		str	r0, [sp]
+ 521 0146 2889     		ldrh	r0, [r5, #8]
+ 522 0148 0190     		str	r0, [sp, #4]
+ 523 014a 0291     		str	r1, [sp, #8]
+ 524 014c 0393     		str	r3, [sp, #12]
+ 525 014e A068     		ldr	r0, [r4, #8]
+ 526 0150 E168     		ldr	r1, [r4, #12]
+ 527 0152 6368     		ldr	r3, [r4, #4]
+ 528 0154 FFF7FEFF 		bl	spi_configure_dma
+ 529              	.LVL48:
+ 530 0158 10E0     		b	.L35
+ 531              	.L34:
+ 632:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 633:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->tx_chan, (uint32_t)dma->spidr,
+ 532              		.loc 1 633 0
+ 533 015a 6868     		ldr	r0, [r5, #4]
+ 534 015c 0291     		str	r1, [sp, #8]
+ 535 015e 8DE80900 		stmia	sp, {r0, r3}
+ 536 0162 0127     		movs	r7, #1
+ 537 0164 0397     		str	r7, [sp, #12]
+ 538 0166 6368     		ldr	r3, [r4, #4]
+ 539 0168 A068     		ldr	r0, [r4, #8]
+ 540 016a E168     		ldr	r1, [r4, #12]
+ 541 016c FFF7FEFF 		bl	spi_configure_dma
+ 542              	.LVL49:
+ 634:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t)trans->output_buf, trans->output_length, trans->dss, TRUE);
+ 635:arch/stm32/mcu_periph/spi_arch.c ****     if (trans->input_length > trans->output_length) {
+ 543              		.loc 1 635 0
+ 544 0170 2A89     		ldrh	r2, [r5, #8]
+ 545 0172 6B89     		ldrh	r3, [r5, #10]
+ 546 0174 9A42     		cmp	r2, r3
+ 636:arch/stm32/mcu_periph/spi_arch.c ****       /* Enable use of second dma transfer with dummy buffer (cleared in ISR) */
+ 637:arch/stm32/mcu_periph/spi_arch.c ****       dma->tx_extra_dummy_dma = TRUE;
+ 547              		.loc 1 637 0
+ 548 0176 88BF     		it	hi
+ 549 0178 84F82070 		strbhi	r7, [r4, #32]
+ 550              	.L35:
+ 638:arch/stm32/mcu_periph/spi_arch.c ****     }
+ 639:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 640:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 641:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_read_from_memory(dma->dma, dma->tx_chan);
+ 642:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_priority(dma->dma, dma->tx_chan, DMA_CCR_PL_MEDIUM);
+ 643:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 644:arch/stm32/mcu_periph/spi_arch.c ****   dma_channel_select(dma->dma, dma->tx_chan, dma->tx_chan_sel);
+ 551              		.loc 1 644 0
+ 552 017c A068     		ldr	r0, [r4, #8]
+ 553 017e 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 554 0180 A269     		ldr	r2, [r4, #24]
+ 555 0182 FFF7FEFF 		bl	dma_channel_select
+ 556              	.LVL50:
+ 645:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_transfer_mode(dma->dma, dma->tx_chan, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
+ 557              		.loc 1 645 0
+ 558 0186 A068     		ldr	r0, [r4, #8]
+ 559 0188 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 560 018a 4022     		movs	r2, #64
+ 561 018c FFF7FEFF 		bl	dma_set_transfer_mode
+ 562              	.LVL51:
+ 646:arch/stm32/mcu_periph/spi_arch.c ****   dma_set_priority(dma->dma, dma->tx_chan, DMA_SxCR_PL_MEDIUM);
+ 563              		.loc 1 646 0
+ 564 0190 4FF48032 		mov	r2, #65536
+ 565 0194 A068     		ldr	r0, [r4, #8]
+ 566 0196 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 567 0198 FFF7FEFF 		bl	dma_set_priority
+ 568              	.LVL52:
+ 647:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 648:arch/stm32/mcu_periph/spi_arch.c **** 
+ 649:arch/stm32/mcu_periph/spi_arch.c ****   /* Enable DMA transfer complete interrupts. */
+ 650:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_transfer_complete_interrupt(dma->dma, dma->rx_chan);
+ 569              		.loc 1 650 0
+ 570 019c A068     		ldr	r0, [r4, #8]
+ 571 019e 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 572 01a0 FFF7FEFF 		bl	dma_enable_transfer_complete_interrupt
+ 573              	.LVL53:
+ 651:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_transfer_complete_interrupt(dma->dma, dma->tx_chan);
+ 574              		.loc 1 651 0
+ 575 01a4 A068     		ldr	r0, [r4, #8]
+ 576 01a6 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 577 01a8 FFF7FEFF 		bl	dma_enable_transfer_complete_interrupt
+ 578              	.LVL54:
+ 652:arch/stm32/mcu_periph/spi_arch.c **** 
+ 653:arch/stm32/mcu_periph/spi_arch.c ****   /* Enable DMA channels */
+ 654:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 655:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_channel(dma->dma, dma->rx_chan);
+ 656:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_channel(dma->dma, dma->tx_chan);
+ 657:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 658:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_stream(dma->dma, dma->rx_chan);
+ 579              		.loc 1 658 0
+ 580 01ac A068     		ldr	r0, [r4, #8]
+ 581 01ae 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 582 01b0 FFF7FEFF 		bl	dma_enable_stream
+ 583              	.LVL55:
+ 659:arch/stm32/mcu_periph/spi_arch.c ****   dma_enable_stream(dma->dma, dma->tx_chan);
+ 584              		.loc 1 659 0
+ 585 01b4 A068     		ldr	r0, [r4, #8]
+ 586 01b6 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 587 01b8 FFF7FEFF 		bl	dma_enable_stream
+ 588              	.LVL56:
+ 660:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 661:arch/stm32/mcu_periph/spi_arch.c **** 
+ 662:arch/stm32/mcu_periph/spi_arch.c ****   /* Enable SPI transfers via DMA */
+ 663:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_rx_dma((uint32_t)periph->reg_addr);
+ 589              		.loc 1 663 0
+ 590 01bc B06A     		ldr	r0, [r6, #40]
+ 591 01be FFF7FEFF 		bl	spi_enable_rx_dma
+ 592              	.LVL57:
+ 664:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_tx_dma((uint32_t)periph->reg_addr);
+ 593              		.loc 1 664 0
+ 594 01c2 B06A     		ldr	r0, [r6, #40]
+ 665:arch/stm32/mcu_periph/spi_arch.c **** }
+ 595              		.loc 1 665 0
+ 596 01c4 05B0     		add	sp, sp, #20
+ 597              		.cfi_def_cfa_offset 20
+ 598              		@ sp needed
+ 599 01c6 BDE8F040 		pop	{r4, r5, r6, r7, lr}
+ 600              		.cfi_restore 14
+ 601              		.cfi_restore 7
+ 602              		.cfi_restore 6
+ 603              		.cfi_restore 5
+ 604              		.cfi_restore 4
+ 605              		.cfi_def_cfa_offset 0
+ 606              	.LVL58:
+ 664:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_tx_dma((uint32_t)periph->reg_addr);
+ 607              		.loc 1 664 0
+ 608 01ca FFF7FEBF 		b	spi_enable_tx_dma
+ 609              	.LVL59:
+ 610              	.L45:
+ 611 01ce 00BF     		.align	2
+ 612              	.L44:
+ 613 01d0 00040240 		.word	1073873920
+ 614              		.cfi_endproc
+ 615              	.LFE21:
+ 617              		.section	.text.spi_slave_select,"ax",%progbits
+ 618              		.align	1
+ 619              		.global	spi_slave_select
+ 620              		.thumb
+ 621              		.thumb_func
+ 623              	spi_slave_select:
+ 624              	.LFB7:
+ 214:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveSelect(slave);
+ 625              		.loc 1 214 0
+ 626              		.cfi_startproc
+ 627              		@ args = 0, pretend = 0, frame = 0
+ 628              		@ frame_needed = 0, uses_anonymous_args = 0
+ 629              		@ link register save eliminated.
+ 630              	.LVL60:
+ 631              	.LBB30:
+ 632              	.LBB31:
+ 177:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 633              		.loc 1 177 0
+ 634 0000 38B9     		cbnz	r0, .L49
+ 635              	.LVL61:
+ 636              	.LBB32:
+ 637              	.LBB33:
+ 180:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 638              		.loc 1 180 0
+ 639 0002 00F18040 		add	r0, r0, #1073741824
+ 640              	.LVL62:
+ 641 0006 00F50130 		add	r0, r0, #132096
+ 642 000a 4FF40071 		mov	r1, #512
+ 643 000e FFF7FEBF 		b	gpio_clear
+ 644              	.LVL63:
+ 645              	.L49:
+ 646 0012 7047     		bx	lr
+ 647              	.LBE33:
+ 648              	.LBE32:
+ 649              	.LBE31:
+ 650              	.LBE30:
+ 651              		.cfi_endproc
+ 652              	.LFE7:
+ 654              		.section	.text.spi_slave_unselect,"ax",%progbits
+ 655              		.align	1
+ 656              		.global	spi_slave_unselect
+ 657              		.thumb
+ 658              		.thumb_func
+ 660              	spi_slave_unselect:
+ 661              	.LFB8:
+ 219:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(slave);
+ 662              		.loc 1 219 0
+ 663              		.cfi_startproc
+ 664              		@ args = 0, pretend = 0, frame = 0
+ 665              		@ frame_needed = 0, uses_anonymous_args = 0
+ 666              		@ link register save eliminated.
+ 667              	.LVL64:
+ 668              	.LBB38:
+ 669              	.LBB39:
+ 139:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 670              		.loc 1 139 0
+ 671 0000 38B9     		cbnz	r0, .L53
+ 672              	.LVL65:
+ 673              	.LBB40:
+ 674              	.LBB41:
+ 142:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 675              		.loc 1 142 0
+ 676 0002 00F18040 		add	r0, r0, #1073741824
+ 677              	.LVL66:
+ 678 0006 00F50130 		add	r0, r0, #132096
+ 679 000a 4FF40071 		mov	r1, #512
+ 680 000e FFF7FEBF 		b	gpio_set
+ 681              	.LVL67:
+ 682              	.L53:
+ 683 0012 7047     		bx	lr
+ 684              	.LBE41:
+ 685              	.LBE40:
+ 686              	.LBE39:
+ 687              	.LBE38:
+ 688              		.cfi_endproc
+ 689              	.LFE8:
+ 691              		.section	.text.spi_init_slaves,"ax",%progbits
+ 692              		.align	1
+ 693              		.global	spi_init_slaves
+ 694              		.thumb
+ 695              		.thumb_func
+ 697              	spi_init_slaves:
+ 698              	.LFB9:
+ 224:arch/stm32/mcu_periph/spi_arch.c **** 
+ 699              		.loc 1 224 0
+ 700              		.cfi_startproc
+ 701              		@ args = 0, pretend = 0, frame = 0
+ 702              		@ frame_needed = 0, uses_anonymous_args = 0
+ 703 0000 10B5     		push	{r4, lr}
+ 704              		.cfi_def_cfa_offset 8
+ 705              		.cfi_offset 4, -8
+ 706              		.cfi_offset 14, -4
+ 227:arch/stm32/mcu_periph/spi_arch.c ****   SpiSlaveUnselect(0);
+ 707              		.loc 1 227 0
+ 708 0002 064C     		ldr	r4, .L55
+ 709 0004 4FF40071 		mov	r1, #512
+ 710 0008 2046     		mov	r0, r4
+ 711 000a FFF7FEFF 		bl	gpio_setup_output
+ 712              	.LVL68:
+ 713              	.LBB46:
+ 714              	.LBB47:
+ 715              	.LBB48:
+ 142:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 716              		.loc 1 142 0
+ 717 000e 2046     		mov	r0, r4
+ 718 0010 4FF40071 		mov	r1, #512
+ 719              	.LBE48:
+ 720              	.LBE47:
+ 721              	.LBE46:
+ 255:arch/stm32/mcu_periph/spi_arch.c **** 
+ 722              		.loc 1 255 0
+ 723 0014 BDE81040 		pop	{r4, lr}
+ 724              		.cfi_restore 14
+ 725              		.cfi_restore 4
+ 726              		.cfi_def_cfa_offset 0
+ 727              	.LBB51:
+ 728              	.LBB50:
+ 729              	.LBB49:
+ 142:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 730              		.loc 1 142 0
+ 731 0018 FFF7FEBF 		b	gpio_set
+ 732              	.LVL69:
+ 733              	.L56:
+ 734              		.align	2
+ 735              	.L55:
+ 736 001c 00040240 		.word	1073873920
+ 737              	.LBE49:
+ 738              	.LBE50:
+ 739              	.LBE51:
+ 740              		.cfi_endproc
+ 741              	.LFE9:
+ 743              		.section	.text.spi_submit,"ax",%progbits
+ 744              		.align	1
+ 745              		.global	spi_submit
+ 746              		.thumb
+ 747              		.thumb_func
+ 749              	spi_submit:
+ 750              	.LFB10:
+ 264:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t idx;
+ 751              		.loc 1 264 0
+ 752              		.cfi_startproc
+ 753              		@ args = 0, pretend = 0, frame = 0
+ 754              		@ frame_needed = 0, uses_anonymous_args = 0
+ 755              	.LVL70:
+ 756 0000 70B5     		push	{r4, r5, r6, lr}
+ 757              		.cfi_def_cfa_offset 16
+ 758              		.cfi_offset 4, -16
+ 759              		.cfi_offset 5, -12
+ 760              		.cfi_offset 6, -8
+ 761              		.cfi_offset 14, -4
+ 266:arch/stm32/mcu_periph/spi_arch.c ****   if (idx >= SPI_TRANSACTION_QUEUE_LEN) { idx = 0; }
+ 762              		.loc 1 266 0
+ 763 0002 90F82050 		ldrb	r5, [r0, #32]	@ zero_extendqisi2
+ 268:arch/stm32/mcu_periph/spi_arch.c ****     t->status = SPITransFailed;
+ 764              		.loc 1 268 0
+ 765 0006 90F82130 		ldrb	r3, [r0, #33]	@ zero_extendqisi2
+ 266:arch/stm32/mcu_periph/spi_arch.c ****   if (idx >= SPI_TRANSACTION_QUEUE_LEN) { idx = 0; }
+ 766              		.loc 1 266 0
+ 767 000a 0135     		adds	r5, r5, #1
+ 768 000c EDB2     		uxtb	r5, r5
+ 769              	.LVL71:
+ 267:arch/stm32/mcu_periph/spi_arch.c ****   if ((idx == p->trans_extract_idx) || ((t->input_length == 0) && (t->output_length == 0))) {
+ 770              		.loc 1 267 0
+ 771 000e 082D     		cmp	r5, #8
+ 772 0010 28BF     		it	cs
+ 773 0012 0025     		movcs	r5, #0
+ 774              	.LVL72:
+ 268:arch/stm32/mcu_periph/spi_arch.c ****     t->status = SPITransFailed;
+ 775              		.loc 1 268 0
+ 776 0014 AB42     		cmp	r3, r5
+ 264:arch/stm32/mcu_periph/spi_arch.c ****   uint8_t idx;
+ 777              		.loc 1 264 0
+ 778 0016 0446     		mov	r4, r0
+ 779 0018 0E46     		mov	r6, r1
+ 268:arch/stm32/mcu_periph/spi_arch.c ****     t->status = SPITransFailed;
+ 780              		.loc 1 268 0
+ 781 001a 01D0     		beq	.L59
+ 268:arch/stm32/mcu_periph/spi_arch.c ****     t->status = SPITransFailed;
+ 782              		.loc 1 268 0 is_stmt 0 discriminator 1
+ 783 001c 8B68     		ldr	r3, [r1, #8]
+ 784 001e 1BB9     		cbnz	r3, .L60
+ 785              	.L59:
+ 269:arch/stm32/mcu_periph/spi_arch.c ****     return FALSE; /* queue full or input_length and output_length both 0 */
+ 786              		.loc 1 269 0 is_stmt 1
+ 787 0020 0323     		movs	r3, #3
+ 788 0022 3377     		strb	r3, [r6, #28]
+ 270:arch/stm32/mcu_periph/spi_arch.c ****     // TODO can't tell why it failed here if it does
+ 789              		.loc 1 270 0
+ 790 0024 0020     		movs	r0, #0
+ 791              	.LVL73:
+ 792 0026 70BD     		pop	{r4, r5, r6, pc}
+ 793              	.LVL74:
+ 794              	.L60:
+ 274:arch/stm32/mcu_periph/spi_arch.c **** 
+ 795              		.loc 1 274 0
+ 796 0028 0023     		movs	r3, #0
+ 797 002a 0B77     		strb	r3, [r1, #28]
+ 278:arch/stm32/mcu_periph/spi_arch.c **** 
+ 798              		.loc 1 278 0
+ 799 002c FFF7FEFF 		bl	spi_arch_int_disable
+ 800              	.LVL75:
+ 281:arch/stm32/mcu_periph/spi_arch.c ****   p->trans_insert_idx = idx;
+ 801              		.loc 1 281 0
+ 802 0030 94F82030 		ldrb	r3, [r4, #32]	@ zero_extendqisi2
+ 803 0034 44F82360 		str	r6, [r4, r3, lsl #2]
+ 285:arch/stm32/mcu_periph/spi_arch.c ****     spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 804              		.loc 1 285 0
+ 805 0038 94F82230 		ldrb	r3, [r4, #34]	@ zero_extendqisi2
+ 282:arch/stm32/mcu_periph/spi_arch.c **** 
+ 806              		.loc 1 282 0
+ 807 003c 84F82050 		strb	r5, [r4, #32]
+ 285:arch/stm32/mcu_periph/spi_arch.c ****     spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 808              		.loc 1 285 0
+ 809 0040 4BB9     		cbnz	r3, .L62
+ 285:arch/stm32/mcu_periph/spi_arch.c ****     spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 810              		.loc 1 285 0 is_stmt 0 discriminator 1
+ 811 0042 94F83130 		ldrb	r3, [r4, #49]	@ zero_extendqisi2
+ 812 0046 33B9     		cbnz	r3, .L62
+ 286:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 813              		.loc 1 286 0 is_stmt 1
+ 814 0048 94F82130 		ldrb	r3, [r4, #33]	@ zero_extendqisi2
+ 815 004c 2046     		mov	r0, r4
+ 816 004e 54F82310 		ldr	r1, [r4, r3, lsl #2]
+ 817 0052 FFF7FEFF 		bl	spi_start_dma_transaction
+ 818              	.LVL76:
+ 819              	.L62:
+ 289:arch/stm32/mcu_periph/spi_arch.c ****   return TRUE;
+ 820              		.loc 1 289 0
+ 821 0056 2046     		mov	r0, r4
+ 822 0058 FFF7FEFF 		bl	spi_arch_int_enable
+ 823              	.LVL77:
+ 290:arch/stm32/mcu_periph/spi_arch.c **** }
+ 824              		.loc 1 290 0
+ 825 005c 0120     		movs	r0, #1
+ 291:arch/stm32/mcu_periph/spi_arch.c **** 
+ 826              		.loc 1 291 0
+ 827 005e 70BD     		pop	{r4, r5, r6, pc}
+ 828              		.cfi_endproc
+ 829              	.LFE10:
+ 831              		.section	.text.spi_lock,"ax",%progbits
+ 832              		.align	1
+ 833              		.global	spi_lock
+ 834              		.thumb
+ 835              		.thumb_func
+ 837              	spi_lock:
+ 838              	.LFB11:
+ 294:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 839              		.loc 1 294 0
+ 840              		.cfi_startproc
+ 841              		@ args = 0, pretend = 0, frame = 0
+ 842              		@ frame_needed = 0, uses_anonymous_args = 0
+ 843              	.LVL78:
+ 844 0000 38B5     		push	{r3, r4, r5, lr}
+ 845              		.cfi_def_cfa_offset 16
+ 846              		.cfi_offset 3, -16
+ 847              		.cfi_offset 4, -12
+ 848              		.cfi_offset 5, -8
+ 849              		.cfi_offset 14, -4
+ 294:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 850              		.loc 1 294 0
+ 851 0002 0C46     		mov	r4, r1
+ 852 0004 0546     		mov	r5, r0
+ 295:arch/stm32/mcu_periph/spi_arch.c ****   if (slave < 254 && p->suspend == 0) {
+ 853              		.loc 1 295 0
+ 854 0006 FFF7FEFF 		bl	spi_arch_int_disable
+ 855              	.LVL79:
+ 296:arch/stm32/mcu_periph/spi_arch.c ****     p->suspend = slave + 1; // 0 is reserved for unlock state
+ 856              		.loc 1 296 0
+ 857 000a FD2C     		cmp	r4, #253
+ 858 000c 0BD8     		bhi	.L64
+ 296:arch/stm32/mcu_periph/spi_arch.c ****     p->suspend = slave + 1; // 0 is reserved for unlock state
+ 859              		.loc 1 296 0 is_stmt 0 discriminator 1
+ 860 000e 95F83130 		ldrb	r3, [r5, #49]	@ zero_extendqisi2
+ 861 0012 43B9     		cbnz	r3, .L64
+ 297:arch/stm32/mcu_periph/spi_arch.c ****     spi_arch_int_enable(p);
+ 862              		.loc 1 297 0 is_stmt 1
+ 863 0014 0134     		adds	r4, r4, #1
+ 864 0016 E4B2     		uxtb	r4, r4
+ 298:arch/stm32/mcu_periph/spi_arch.c ****     return TRUE;
+ 865              		.loc 1 298 0
+ 866 0018 2846     		mov	r0, r5
+ 297:arch/stm32/mcu_periph/spi_arch.c ****     spi_arch_int_enable(p);
+ 867              		.loc 1 297 0
+ 868 001a 85F83140 		strb	r4, [r5, #49]
+ 298:arch/stm32/mcu_periph/spi_arch.c ****     return TRUE;
+ 869              		.loc 1 298 0
+ 870 001e FFF7FEFF 		bl	spi_arch_int_enable
+ 871              	.LVL80:
+ 299:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 872              		.loc 1 299 0
+ 873 0022 0120     		movs	r0, #1
+ 874 0024 38BD     		pop	{r3, r4, r5, pc}
+ 875              	.LVL81:
+ 876              	.L64:
+ 301:arch/stm32/mcu_periph/spi_arch.c ****   return FALSE;
+ 877              		.loc 1 301 0
+ 878 0026 2846     		mov	r0, r5
+ 879 0028 FFF7FEFF 		bl	spi_arch_int_enable
+ 880              	.LVL82:
+ 302:arch/stm32/mcu_periph/spi_arch.c **** }
+ 881              		.loc 1 302 0
+ 882 002c 0020     		movs	r0, #0
+ 303:arch/stm32/mcu_periph/spi_arch.c **** 
+ 883              		.loc 1 303 0
+ 884 002e 38BD     		pop	{r3, r4, r5, pc}
+ 885              		.cfi_endproc
+ 886              	.LFE11:
+ 888              		.section	.text.spi_resume,"ax",%progbits
+ 889              		.align	1
+ 890              		.global	spi_resume
+ 891              		.thumb
+ 892              		.thumb_func
+ 894              	spi_resume:
+ 895              	.LFB12:
+ 306:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 896              		.loc 1 306 0
+ 897              		.cfi_startproc
+ 898              		@ args = 0, pretend = 0, frame = 0
+ 899              		@ frame_needed = 0, uses_anonymous_args = 0
+ 900              	.LVL83:
+ 901 0000 38B5     		push	{r3, r4, r5, lr}
+ 902              		.cfi_def_cfa_offset 16
+ 903              		.cfi_offset 3, -16
+ 904              		.cfi_offset 4, -12
+ 905              		.cfi_offset 5, -8
+ 906              		.cfi_offset 14, -4
+ 306:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_disable(p);
+ 907              		.loc 1 306 0
+ 908 0002 0446     		mov	r4, r0
+ 909 0004 0D46     		mov	r5, r1
+ 307:arch/stm32/mcu_periph/spi_arch.c ****   if (p->suspend == slave + 1) {
+ 910              		.loc 1 307 0
+ 911 0006 FFF7FEFF 		bl	spi_arch_int_disable
+ 912              	.LVL84:
+ 308:arch/stm32/mcu_periph/spi_arch.c ****     // restart fifo
+ 913              		.loc 1 308 0
+ 914 000a 94F83130 		ldrb	r3, [r4, #49]	@ zero_extendqisi2
+ 915 000e 0135     		adds	r5, r5, #1
+ 916 0010 AB42     		cmp	r3, r5
+ 917 0012 4FF00005 		mov	r5, #0
+ 918 0016 14D1     		bne	.L67
+ 311:arch/stm32/mcu_periph/spi_arch.c ****       spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 919              		.loc 1 311 0
+ 920 0018 94F82130 		ldrb	r3, [r4, #33]	@ zero_extendqisi2
+ 921 001c 94F82020 		ldrb	r2, [r4, #32]	@ zero_extendqisi2
+ 310:arch/stm32/mcu_periph/spi_arch.c ****     if (p->trans_extract_idx != p->trans_insert_idx && p->status == SPIIdle) {
+ 922              		.loc 1 310 0
+ 923 0020 84F83150 		strb	r5, [r4, #49]
+ 311:arch/stm32/mcu_periph/spi_arch.c ****       spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 924              		.loc 1 311 0
+ 925 0024 9A42     		cmp	r2, r3
+ 926 0026 07D0     		beq	.L68
+ 311:arch/stm32/mcu_periph/spi_arch.c ****       spi_start_dma_transaction(p, p->trans[p->trans_extract_idx]);
+ 927              		.loc 1 311 0 is_stmt 0 discriminator 1
+ 928 0028 94F82220 		ldrb	r2, [r4, #34]	@ zero_extendqisi2
+ 929 002c 22B9     		cbnz	r2, .L68
+ 312:arch/stm32/mcu_periph/spi_arch.c ****     }
+ 930              		.loc 1 312 0 is_stmt 1
+ 931 002e 2046     		mov	r0, r4
+ 932 0030 54F82310 		ldr	r1, [r4, r3, lsl #2]
+ 933 0034 FFF7FEFF 		bl	spi_start_dma_transaction
+ 934              	.LVL85:
+ 935              	.L68:
+ 314:arch/stm32/mcu_periph/spi_arch.c ****     return TRUE;
+ 936              		.loc 1 314 0
+ 937 0038 2046     		mov	r0, r4
+ 938 003a FFF7FEFF 		bl	spi_arch_int_enable
+ 939              	.LVL86:
+ 315:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 940              		.loc 1 315 0
+ 941 003e 0120     		movs	r0, #1
+ 942 0040 38BD     		pop	{r3, r4, r5, pc}
+ 943              	.LVL87:
+ 944              	.L67:
+ 317:arch/stm32/mcu_periph/spi_arch.c ****   return FALSE;
+ 945              		.loc 1 317 0
+ 946 0042 2046     		mov	r0, r4
+ 947 0044 FFF7FEFF 		bl	spi_arch_int_enable
+ 948              	.LVL88:
+ 318:arch/stm32/mcu_periph/spi_arch.c **** }
+ 949              		.loc 1 318 0
+ 950 0048 2846     		mov	r0, r5
+ 319:arch/stm32/mcu_periph/spi_arch.c **** 
+ 951              		.loc 1 319 0
+ 952 004a 38BD     		pop	{r3, r4, r5, pc}
+ 953              		.cfi_endproc
+ 954              	.LFE12:
+ 956              		.section	.text.spi1_arch_init,"ax",%progbits
+ 957              		.align	1
+ 958              		.global	spi1_arch_init
+ 959              		.thumb
+ 960              		.thumb_func
+ 962              	spi1_arch_init:
+ 963              	.LFB22:
+ 666:arch/stm32/mcu_periph/spi_arch.c **** 
+ 667:arch/stm32/mcu_periph/spi_arch.c **** 
+ 668:arch/stm32/mcu_periph/spi_arch.c **** 
+ 669:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 670:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 671:arch/stm32/mcu_periph/spi_arch.c ****  * Initialization of each SPI peripheral
+ 672:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 673:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 674:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI1
+ 675:arch/stm32/mcu_periph/spi_arch.c **** void spi1_arch_init(void)
+ 676:arch/stm32/mcu_periph/spi_arch.c **** {
+ 964              		.loc 1 676 0
+ 965              		.cfi_startproc
+ 966              		@ args = 0, pretend = 0, frame = 0
+ 967              		@ frame_needed = 0, uses_anonymous_args = 0
+ 968 0000 2DE9F74F 		push	{r0, r1, r2, r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 969              		.cfi_def_cfa_offset 48
+ 970              		.cfi_offset 4, -36
+ 971              		.cfi_offset 5, -32
+ 972              		.cfi_offset 6, -28
+ 973              		.cfi_offset 7, -24
+ 974              		.cfi_offset 8, -20
+ 975              		.cfi_offset 9, -16
+ 976              		.cfi_offset 10, -12
+ 977              		.cfi_offset 11, -8
+ 978              		.cfi_offset 14, -4
+ 677:arch/stm32/mcu_periph/spi_arch.c **** 
+ 678:arch/stm32/mcu_periph/spi_arch.c ****   // set dma options
+ 679:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.spidr = (uint32_t)&SPI1_DR;
+ 979              		.loc 1 679 0
+ 980 0004 3E4C     		ldr	r4, .L71
+ 981 0006 3F4B     		ldr	r3, .L71+4
+ 982 0008 6360     		str	r3, [r4, #4]
+ 680:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 681:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.dma = DMA1;
+ 682:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rcc_dma = RCC_DMA1;
+ 683:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_chan = DMA_CHANNEL2;
+ 684:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_chan = DMA_CHANNEL3;
+ 685:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_nvic_irq = NVIC_DMA1_CHANNEL2_IRQ;
+ 686:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_nvic_irq = NVIC_DMA1_CHANNEL3_IRQ;
+ 687:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 688:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.dma = DMA2;
+ 983              		.loc 1 688 0
+ 984 000a 3F4B     		ldr	r3, .L71+8
+ 985 000c A360     		str	r3, [r4, #8]
+ 689:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rcc_dma = RCC_DMA2;
+ 986              		.loc 1 689 0
+ 987 000e 40F21663 		movw	r3, #1558
+ 988 0012 E360     		str	r3, [r4, #12]
+ 690:arch/stm32/mcu_periph/spi_arch.c ****   // TODO make a macro to configure this from board/airframe file ?
+ 691:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_chan = DMA_STREAM0;
+ 692:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_chan = DMA_STREAM5;
+ 693:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_chan_sel = DMA_SxCR_CHSEL_3;
+ 989              		.loc 1 693 0
+ 990 0014 4FF0C063 		mov	r3, #100663296
+ 991 0018 6361     		str	r3, [r4, #20]
+ 694:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_chan_sel = DMA_SxCR_CHSEL_3;
+ 992              		.loc 1 694 0
+ 993 001a A361     		str	r3, [r4, #24]
+ 695:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_nvic_irq = NVIC_DMA2_STREAM0_IRQ;
+ 994              		.loc 1 695 0
+ 995 001c 3823     		movs	r3, #56
+ 996 001e 2377     		strb	r3, [r4, #28]
+ 696:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_nvic_irq = NVIC_DMA2_STREAM5_IRQ;
+ 997              		.loc 1 696 0
+ 998 0020 4423     		movs	r3, #68
+ 697:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 698:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_dummy_buf = 0;
+ 699:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_extra_dummy_dma = FALSE;
+ 700:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_dummy_buf = 0;
+ 701:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_extra_dummy_dma = FALSE;
+ 702:arch/stm32/mcu_periph/spi_arch.c **** 
+ 703:arch/stm32/mcu_periph/spi_arch.c ****   // set the default configuration
+ 704:arch/stm32/mcu_periph/spi_arch.c ****   set_default_comm_config(&spi1_dma.comm);
+ 705:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.comm_sig = get_comm_signature(&spi1_dma.comm);
+ 706:arch/stm32/mcu_periph/spi_arch.c **** 
+ 707:arch/stm32/mcu_periph/spi_arch.c ****   // set init struct, indices and status
+ 708:arch/stm32/mcu_periph/spi_arch.c ****   spi1.reg_addr = (void *)SPI1;
+ 999              		.loc 1 708 0
+ 1000 0022 3A4F     		ldr	r7, .L71+12
+ 709:arch/stm32/mcu_periph/spi_arch.c ****   spi1.init_struct = &spi1_dma;
+ 710:arch/stm32/mcu_periph/spi_arch.c ****   spi1.trans_insert_idx = 0;
+ 711:arch/stm32/mcu_periph/spi_arch.c ****   spi1.trans_extract_idx = 0;
+ 712:arch/stm32/mcu_periph/spi_arch.c ****   spi1.status = SPIIdle;
+ 713:arch/stm32/mcu_periph/spi_arch.c **** 
+ 714:arch/stm32/mcu_periph/spi_arch.c **** 
+ 715:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI1 Periph and gpio clocks
+ 716:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(RCC_SPI1);
+ 717:arch/stm32/mcu_periph/spi_arch.c **** 
+ 718:arch/stm32/mcu_periph/spi_arch.c ****   // Configure GPIOs: SCK, MISO and MOSI
+ 719:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 720:arch/stm32/mcu_periph/spi_arch.c ****   // TODO configure lisa board files to use gpio_setup_pin_af function
+ 721:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI1_SCK, GPIO_MODE_OUTPUT_50_MHZ,
+ 722:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_CNF_OUTPUT_ALTFN_PUSHPULL,
+ 723:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI1_SCK | GPIO_SPI1_MOSI);
+ 724:arch/stm32/mcu_periph/spi_arch.c **** 
+ 725:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI1_MISO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+ 726:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI1_MISO);
+ 727:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 728:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI1_GPIO_PORT_MISO, SPI1_GPIO_MISO, SPI1_GPIO_AF, FALSE);
+ 1001              		.loc 1 728 0
+ 1002 0024 DFF8F080 		ldr	r8, .L71+24
+ 696:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 1003              		.loc 1 696 0
+ 1004 0028 6377     		strb	r3, [r4, #29]
+ 1005              	.LBB56:
+ 1006              	.LBB57:
+ 329:arch/stm32/mcu_periph/spi_arch.c ****   c->cpol = SPI_CR1_CPOL_CLK_TO_1_WHEN_IDLE;
+ 1007              		.loc 1 329 0
+ 1008 002a 2823     		movs	r3, #40
+ 1009              	.LBE57:
+ 1010              	.LBE56:
+ 691:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_chan = DMA_STREAM5;
+ 1011              		.loc 1 691 0
+ 1012 002c 0025     		movs	r5, #0
+ 708:arch/stm32/mcu_periph/spi_arch.c ****   spi1.init_struct = &spi1_dma;
+ 1013              		.loc 1 708 0
+ 1014 002e 384E     		ldr	r6, .L71+16
+ 1015              	.LBB61:
+ 1016              	.LBB58:
+ 329:arch/stm32/mcu_periph/spi_arch.c ****   c->cpol = SPI_CR1_CPOL_CLK_TO_1_WHEN_IDLE;
+ 1017              		.loc 1 329 0
+ 1018 0030 A362     		str	r3, [r4, #40]
+ 1019              	.LBE58:
+ 1020              	.LBE61:
+ 692:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_chan_sel = DMA_SxCR_CHSEL_3;
+ 1021              		.loc 1 692 0
+ 1022 0032 4FF00509 		mov	r9, #5
+ 1023              	.LBB62:
+ 1024              	.LBB59:
+ 330:arch/stm32/mcu_periph/spi_arch.c ****   c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_2;
+ 1025              		.loc 1 330 0
+ 1026 0036 4FF0020A 		mov	r10, #2
+ 331:arch/stm32/mcu_periph/spi_arch.c ****   c->dff = SPI_CR1_DFF_8BIT;
+ 1027              		.loc 1 331 0
+ 1028 003a 4FF0010B 		mov	fp, #1
+ 1029              	.LBE59:
+ 1030              	.LBE62:
+ 705:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1031              		.loc 1 705 0
+ 1032 003e 2B23     		movs	r3, #43
+ 716:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1033              		.loc 1 716 0
+ 1034 0040 40F68C00 		movw	r0, #2188
+ 705:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1035              		.loc 1 705 0
+ 1036 0044 84F83C30 		strb	r3, [r4, #60]
+ 691:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_chan = DMA_STREAM5;
+ 1037              		.loc 1 691 0
+ 1038 0048 2574     		strb	r5, [r4, #16]
+ 692:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_chan_sel = DMA_SxCR_CHSEL_3;
+ 1039              		.loc 1 692 0
+ 1040 004a 84F81190 		strb	r9, [r4, #17]
+ 698:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.tx_extra_dummy_dma = FALSE;
+ 1041              		.loc 1 698 0
+ 1042 004e E583     		strh	r5, [r4, #30]	@ movhi
+ 699:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_dummy_buf = 0;
+ 1043              		.loc 1 699 0
+ 1044 0050 84F82050 		strb	r5, [r4, #32]
+ 700:arch/stm32/mcu_periph/spi_arch.c ****   spi1_dma.rx_extra_dummy_dma = FALSE;
+ 1045              		.loc 1 700 0
+ 1046 0054 6584     		strh	r5, [r4, #34]	@ movhi
+ 701:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1047              		.loc 1 701 0
+ 1048 0056 84F82450 		strb	r5, [r4, #36]
+ 1049              	.LVL89:
+ 1050              	.LBB63:
+ 1051              	.LBB60:
+ 330:arch/stm32/mcu_periph/spi_arch.c ****   c->cpha = SPI_CR1_CPHA_CLK_TRANSITION_2;
+ 1052              		.loc 1 330 0
+ 1053 005a C4F82CA0 		str	r10, [r4, #44]
+ 331:arch/stm32/mcu_periph/spi_arch.c ****   c->dff = SPI_CR1_DFF_8BIT;
+ 1054              		.loc 1 331 0
+ 1055 005e C4F830B0 		str	fp, [r4, #48]
+ 332:arch/stm32/mcu_periph/spi_arch.c ****   c->lsbfirst = SPI_CR1_MSBFIRST;
+ 1056              		.loc 1 332 0
+ 1057 0062 6563     		str	r5, [r4, #52]
+ 333:arch/stm32/mcu_periph/spi_arch.c **** }
+ 1058              		.loc 1 333 0
+ 1059 0064 A563     		str	r5, [r4, #56]
+ 1060              	.LVL90:
+ 1061              	.LBE60:
+ 1062              	.LBE63:
+ 708:arch/stm32/mcu_periph/spi_arch.c ****   spi1.init_struct = &spi1_dma;
+ 1063              		.loc 1 708 0
+ 1064 0066 BE62     		str	r6, [r7, #40]
+ 709:arch/stm32/mcu_periph/spi_arch.c ****   spi1.trans_insert_idx = 0;
+ 1065              		.loc 1 709 0
+ 1066 0068 FC62     		str	r4, [r7, #44]
+ 710:arch/stm32/mcu_periph/spi_arch.c ****   spi1.trans_extract_idx = 0;
+ 1067              		.loc 1 710 0
+ 1068 006a 87F82050 		strb	r5, [r7, #32]
+ 711:arch/stm32/mcu_periph/spi_arch.c ****   spi1.status = SPIIdle;
+ 1069              		.loc 1 711 0
+ 1070 006e 87F82150 		strb	r5, [r7, #33]
+ 712:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1071              		.loc 1 712 0
+ 1072 0072 87F82250 		strb	r5, [r7, #34]
+ 716:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1073              		.loc 1 716 0
+ 1074 0076 FFF7FEFF 		bl	rcc_periph_clock_enable
+ 1075              	.LVL91:
+ 1076              		.loc 1 728 0
+ 1077 007a 4046     		mov	r0, r8
+ 1078 007c 4A46     		mov	r2, r9
+ 1079 007e 2B46     		mov	r3, r5
+ 1080 0080 4021     		movs	r1, #64
+ 1081 0082 FFF7FEFF 		bl	gpio_setup_pin_af
+ 1082              	.LVL92:
+ 729:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI1_GPIO_PORT_MOSI, SPI1_GPIO_MOSI, SPI1_GPIO_AF, TRUE);
+ 1083              		.loc 1 729 0
+ 1084 0086 4046     		mov	r0, r8
+ 1085 0088 4A46     		mov	r2, r9
+ 1086 008a 5B46     		mov	r3, fp
+ 1087 008c 8021     		movs	r1, #128
+ 1088 008e FFF7FEFF 		bl	gpio_setup_pin_af
+ 1089              	.LVL93:
+ 730:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI1_GPIO_PORT_SCK, SPI1_GPIO_SCK, SPI1_GPIO_AF, TRUE);
+ 1090              		.loc 1 730 0
+ 1091 0092 4046     		mov	r0, r8
+ 1092 0094 4A46     		mov	r2, r9
+ 1093 0096 5B46     		mov	r3, fp
+ 1094 0098 2021     		movs	r1, #32
+ 1095 009a FFF7FEFF 		bl	gpio_setup_pin_af
+ 1096              	.LVL94:
+ 731:arch/stm32/mcu_periph/spi_arch.c **** 
+ 732:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI1_GPIO_PORT_MOSI, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI1_GPIO_MOSI);
+ 1097              		.loc 1 732 0
+ 1098 009e 4046     		mov	r0, r8
+ 1099 00a0 2946     		mov	r1, r5
+ 1100 00a2 5246     		mov	r2, r10
+ 1101 00a4 8023     		movs	r3, #128
+ 1102 00a6 FFF7FEFF 		bl	gpio_set_output_options
+ 1103              	.LVL95:
+ 733:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI1_GPIO_PORT_SCK, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI1_GPIO_SCK);
+ 1104              		.loc 1 733 0
+ 1105 00aa 2946     		mov	r1, r5
+ 1106 00ac 5246     		mov	r2, r10
+ 1107 00ae 2023     		movs	r3, #32
+ 1108 00b0 4046     		mov	r0, r8
+ 1109 00b2 FFF7FEFF 		bl	gpio_set_output_options
+ 1110              	.LVL96:
+ 734:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 735:arch/stm32/mcu_periph/spi_arch.c **** 
+ 736:arch/stm32/mcu_periph/spi_arch.c ****   // reset SPI
+ 737:arch/stm32/mcu_periph/spi_arch.c ****   spi_reset(SPI1);
+ 1111              		.loc 1 737 0
+ 1112 00b6 3046     		mov	r0, r6
+ 1113 00b8 FFF7FEFF 		bl	spi_reset
+ 1114              	.LVL97:
+ 738:arch/stm32/mcu_periph/spi_arch.c **** 
+ 739:arch/stm32/mcu_periph/spi_arch.c ****   // Disable SPI peripheral
+ 740:arch/stm32/mcu_periph/spi_arch.c ****   spi_disable(SPI1);
+ 1115              		.loc 1 740 0
+ 1116 00bc 3046     		mov	r0, r6
+ 1117 00be FFF7FEFF 		bl	spi_disable
+ 1118              	.LVL98:
+ 741:arch/stm32/mcu_periph/spi_arch.c **** 
+ 742:arch/stm32/mcu_periph/spi_arch.c ****   // Force SPI mode over I2S.
+ 743:arch/stm32/mcu_periph/spi_arch.c ****   SPI1_I2SCFGR = 0;
+ 1119              		.loc 1 743 0
+ 1120 00c2 144B     		ldr	r3, .L71+20
+ 1121 00c4 1D60     		str	r5, [r3]
+ 744:arch/stm32/mcu_periph/spi_arch.c **** 
+ 745:arch/stm32/mcu_periph/spi_arch.c ****   // configure master SPI.
+ 746:arch/stm32/mcu_periph/spi_arch.c ****   spi_init_master(SPI1, spi1_dma.comm.br, spi1_dma.comm.cpol, spi1_dma.comm.cpha,
+ 1122              		.loc 1 746 0
+ 1123 00c6 636B     		ldr	r3, [r4, #52]
+ 1124 00c8 0093     		str	r3, [sp]
+ 1125 00ca A36B     		ldr	r3, [r4, #56]
+ 1126 00cc 0193     		str	r3, [sp, #4]
+ 1127 00ce 04F12801 		add	r1, r4, #40
+ 1128 00d2 0EC9     		ldmia	r1, {r1, r2, r3}
+ 1129 00d4 3046     		mov	r0, r6
+ 1130 00d6 FFF7FEFF 		bl	spi_init_master
+ 1131              	.LVL99:
+ 747:arch/stm32/mcu_periph/spi_arch.c ****                   spi1_dma.comm.dff, spi1_dma.comm.lsbfirst);
+ 748:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 749:arch/stm32/mcu_periph/spi_arch.c ****    * Set NSS management to software.
+ 750:arch/stm32/mcu_periph/spi_arch.c ****    *
+ 751:arch/stm32/mcu_periph/spi_arch.c ****    * Note:
+ 752:arch/stm32/mcu_periph/spi_arch.c ****    * Setting nss high is very important, even if we are controlling the GPIO
+ 753:arch/stm32/mcu_periph/spi_arch.c ****    * ourselves this bit needs to be at least set to 1, otherwise the spi
+ 754:arch/stm32/mcu_periph/spi_arch.c ****    * peripheral will not send any data out.
+ 755:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 756:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_software_slave_management(SPI1);
+ 1132              		.loc 1 756 0
+ 1133 00da 3046     		mov	r0, r6
+ 1134 00dc FFF7FEFF 		bl	spi_enable_software_slave_management
+ 1135              	.LVL100:
+ 757:arch/stm32/mcu_periph/spi_arch.c ****   spi_set_nss_high(SPI1);
+ 1136              		.loc 1 757 0
+ 1137 00e0 3046     		mov	r0, r6
+ 1138 00e2 FFF7FEFF 		bl	spi_set_nss_high
+ 1139              	.LVL101:
+ 758:arch/stm32/mcu_periph/spi_arch.c **** 
+ 759:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI_1 DMA clock
+ 760:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(spi1_dma.rcc_dma);
+ 1140              		.loc 1 760 0
+ 1141 00e6 A089     		ldrh	r0, [r4, #12]
+ 1142 00e8 FFF7FEFF 		bl	rcc_periph_clock_enable
+ 1143              	.LVL102:
+ 761:arch/stm32/mcu_periph/spi_arch.c **** 
+ 762:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI1 periph.
+ 763:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable(SPI1);
+ 1144              		.loc 1 763 0
+ 1145 00ec 3046     		mov	r0, r6
+ 1146 00ee FFF7FEFF 		bl	spi_enable
+ 1147              	.LVL103:
+ 764:arch/stm32/mcu_periph/spi_arch.c **** 
+ 765:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(&spi1);
+ 1148              		.loc 1 765 0
+ 1149 00f2 3846     		mov	r0, r7
+ 766:arch/stm32/mcu_periph/spi_arch.c **** }
+ 1150              		.loc 1 766 0
+ 1151 00f4 03B0     		add	sp, sp, #12
+ 1152              		.cfi_def_cfa_offset 36
+ 1153              		@ sp needed
+ 1154 00f6 BDE8F04F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 1155              		.cfi_restore 14
+ 1156              		.cfi_restore 11
+ 1157              		.cfi_restore 10
+ 1158              		.cfi_restore 9
+ 1159              		.cfi_restore 8
+ 1160              		.cfi_restore 7
+ 1161              		.cfi_restore 6
+ 1162              		.cfi_restore 5
+ 1163              		.cfi_restore 4
+ 1164              		.cfi_def_cfa_offset 0
+ 765:arch/stm32/mcu_periph/spi_arch.c **** }
+ 1165              		.loc 1 765 0
+ 1166 00fa FFF7FEBF 		b	spi_arch_int_enable
+ 1167              	.LVL104:
+ 1168              	.L72:
+ 1169 00fe 00BF     		.align	2
+ 1170              	.L71:
+ 1171 0100 00000000 		.word	.LANCHOR0
+ 1172 0104 0C300140 		.word	1073819660
+ 1173 0108 00640240 		.word	1073898496
+ 1174 010c 00000000 		.word	spi1
+ 1175 0110 00300140 		.word	1073819648
+ 1176 0114 1C300140 		.word	1073819676
+ 1177 0118 00000240 		.word	1073872896
+ 1178              		.cfi_endproc
+ 1179              	.LFE22:
+ 1181              		.section	.text.dma2_stream0_isr,"ax",%progbits
+ 1182              		.align	1
+ 1183              		.weak	dma2_stream0_isr
+ 1184              		.thumb
+ 1185              		.thumb_func
+ 1187              	dma2_stream0_isr:
+ 1188              	.LFB23:
+ 767:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 768:arch/stm32/mcu_periph/spi_arch.c **** 
+ 769:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI2
+ 770:arch/stm32/mcu_periph/spi_arch.c **** void spi2_arch_init(void)
+ 771:arch/stm32/mcu_periph/spi_arch.c **** {
+ 772:arch/stm32/mcu_periph/spi_arch.c **** 
+ 773:arch/stm32/mcu_periph/spi_arch.c ****   // set dma options
+ 774:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.spidr = (uint32_t)&SPI2_DR;
+ 775:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.dma = DMA1;
+ 776:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rcc_dma = RCC_DMA1;
+ 777:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 778:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_chan = DMA_CHANNEL4;
+ 779:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_chan = DMA_CHANNEL5;
+ 780:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_nvic_irq = NVIC_DMA1_CHANNEL4_IRQ;
+ 781:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_nvic_irq = NVIC_DMA1_CHANNEL5_IRQ;
+ 782:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 783:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_chan = DMA_STREAM3;
+ 784:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_chan = DMA_STREAM4;
+ 785:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_chan_sel = DMA_SxCR_CHSEL_0;
+ 786:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_chan_sel = DMA_SxCR_CHSEL_0;
+ 787:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_nvic_irq = NVIC_DMA1_STREAM3_IRQ;
+ 788:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_nvic_irq = NVIC_DMA1_STREAM4_IRQ;
+ 789:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 790:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_dummy_buf = 0;
+ 791:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.tx_extra_dummy_dma = FALSE;
+ 792:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_dummy_buf = 0;
+ 793:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.rx_extra_dummy_dma = FALSE;
+ 794:arch/stm32/mcu_periph/spi_arch.c **** 
+ 795:arch/stm32/mcu_periph/spi_arch.c ****   // set the default configuration
+ 796:arch/stm32/mcu_periph/spi_arch.c ****   set_default_comm_config(&spi2_dma.comm);
+ 797:arch/stm32/mcu_periph/spi_arch.c ****   spi2_dma.comm_sig = get_comm_signature(&spi2_dma.comm);
+ 798:arch/stm32/mcu_periph/spi_arch.c **** 
+ 799:arch/stm32/mcu_periph/spi_arch.c ****   // set init struct, indices and status
+ 800:arch/stm32/mcu_periph/spi_arch.c ****   spi2.reg_addr = (void *)SPI2;
+ 801:arch/stm32/mcu_periph/spi_arch.c ****   spi2.init_struct = &spi2_dma;
+ 802:arch/stm32/mcu_periph/spi_arch.c ****   spi2.trans_insert_idx = 0;
+ 803:arch/stm32/mcu_periph/spi_arch.c ****   spi2.trans_extract_idx = 0;
+ 804:arch/stm32/mcu_periph/spi_arch.c ****   spi2.status = SPIIdle;
+ 805:arch/stm32/mcu_periph/spi_arch.c **** 
+ 806:arch/stm32/mcu_periph/spi_arch.c **** 
+ 807:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI2 Periph and gpio clocks
+ 808:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(RCC_SPI2);
+ 809:arch/stm32/mcu_periph/spi_arch.c **** 
+ 810:arch/stm32/mcu_periph/spi_arch.c ****   // Configure GPIOs: SCK, MISO and MOSI
+ 811:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 812:arch/stm32/mcu_periph/spi_arch.c ****   // TODO configure lisa board files to use gpio_setup_pin_af function
+ 813:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI2_SCK, GPIO_MODE_OUTPUT_50_MHZ,
+ 814:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_CNF_OUTPUT_ALTFN_PUSHPULL,
+ 815:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI2_SCK | GPIO_SPI2_MOSI);
+ 816:arch/stm32/mcu_periph/spi_arch.c **** 
+ 817:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI2_MISO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+ 818:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI2_MISO);
+ 819:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 820:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI2_GPIO_PORT_MISO, SPI2_GPIO_MISO, SPI2_GPIO_AF, FALSE);
+ 821:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI2_GPIO_PORT_MOSI, SPI2_GPIO_MOSI, SPI2_GPIO_AF, TRUE);
+ 822:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI2_GPIO_PORT_SCK, SPI2_GPIO_SCK, SPI2_GPIO_AF, TRUE);
+ 823:arch/stm32/mcu_periph/spi_arch.c **** 
+ 824:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI2_GPIO_PORT_MOSI, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI2_GPIO_MOSI);
+ 825:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI2_GPIO_PORT_SCK, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI2_GPIO_SCK);
+ 826:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 827:arch/stm32/mcu_periph/spi_arch.c **** 
+ 828:arch/stm32/mcu_periph/spi_arch.c ****   // reset SPI
+ 829:arch/stm32/mcu_periph/spi_arch.c ****   spi_reset(SPI2);
+ 830:arch/stm32/mcu_periph/spi_arch.c **** 
+ 831:arch/stm32/mcu_periph/spi_arch.c ****   // Disable SPI peripheral
+ 832:arch/stm32/mcu_periph/spi_arch.c ****   spi_disable(SPI2);
+ 833:arch/stm32/mcu_periph/spi_arch.c **** 
+ 834:arch/stm32/mcu_periph/spi_arch.c ****   // Force SPI mode over I2S.
+ 835:arch/stm32/mcu_periph/spi_arch.c ****   SPI2_I2SCFGR = 0;
+ 836:arch/stm32/mcu_periph/spi_arch.c **** 
+ 837:arch/stm32/mcu_periph/spi_arch.c ****   // configure master SPI.
+ 838:arch/stm32/mcu_periph/spi_arch.c ****   spi_init_master(SPI2, spi2_dma.comm.br, spi2_dma.comm.cpol, spi2_dma.comm.cpha,
+ 839:arch/stm32/mcu_periph/spi_arch.c ****                   spi2_dma.comm.dff, spi2_dma.comm.lsbfirst);
+ 840:arch/stm32/mcu_periph/spi_arch.c **** 
+ 841:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 842:arch/stm32/mcu_periph/spi_arch.c ****    * Set NSS management to software.
+ 843:arch/stm32/mcu_periph/spi_arch.c ****    * Setting nss high is very important, even if we are controlling the GPIO
+ 844:arch/stm32/mcu_periph/spi_arch.c ****    * ourselves this bit needs to be at least set to 1, otherwise the spi
+ 845:arch/stm32/mcu_periph/spi_arch.c ****    * peripheral will not send any data out.
+ 846:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 847:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_software_slave_management(SPI2);
+ 848:arch/stm32/mcu_periph/spi_arch.c ****   spi_set_nss_high(SPI2);
+ 849:arch/stm32/mcu_periph/spi_arch.c **** 
+ 850:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI_2 DMA clock
+ 851:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(spi2_dma.rcc_dma);
+ 852:arch/stm32/mcu_periph/spi_arch.c **** 
+ 853:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI2 periph.
+ 854:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable(SPI2);
+ 855:arch/stm32/mcu_periph/spi_arch.c **** 
+ 856:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(&spi2);
+ 857:arch/stm32/mcu_periph/spi_arch.c **** }
+ 858:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 859:arch/stm32/mcu_periph/spi_arch.c **** 
+ 860:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI3
+ 861:arch/stm32/mcu_periph/spi_arch.c **** void spi3_arch_init(void)
+ 862:arch/stm32/mcu_periph/spi_arch.c **** {
+ 863:arch/stm32/mcu_periph/spi_arch.c **** 
+ 864:arch/stm32/mcu_periph/spi_arch.c ****   // set the default configuration
+ 865:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.spidr = (uint32_t)&SPI3_DR;
+ 866:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 867:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.dma = DMA2;
+ 868:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rcc_dma = RCC_DMA2;
+ 869:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_chan = DMA_CHANNEL1;
+ 870:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_chan = DMA_CHANNEL2;
+ 871:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_nvic_irq = NVIC_DMA2_CHANNEL1_IRQ;
+ 872:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_nvic_irq = NVIC_DMA2_CHANNEL2_IRQ;
+ 873:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 874:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.dma = DMA1;
+ 875:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rcc_dma = RCC_DMA1;
+ 876:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_chan = DMA_STREAM0;
+ 877:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_chan = DMA_STREAM5;
+ 878:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_chan_sel = DMA_SxCR_CHSEL_0;
+ 879:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_chan_sel = DMA_SxCR_CHSEL_0;
+ 880:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_nvic_irq = NVIC_DMA1_STREAM0_IRQ;
+ 881:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_nvic_irq = NVIC_DMA1_STREAM5_IRQ;
+ 882:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 883:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_dummy_buf = 0;
+ 884:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.tx_extra_dummy_dma = FALSE;
+ 885:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_dummy_buf = 0;
+ 886:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.rx_extra_dummy_dma = FALSE;
+ 887:arch/stm32/mcu_periph/spi_arch.c **** 
+ 888:arch/stm32/mcu_periph/spi_arch.c ****   // set the default configuration
+ 889:arch/stm32/mcu_periph/spi_arch.c ****   set_default_comm_config(&spi3_dma.comm);
+ 890:arch/stm32/mcu_periph/spi_arch.c ****   spi3_dma.comm_sig = get_comm_signature(&spi3_dma.comm);
+ 891:arch/stm32/mcu_periph/spi_arch.c **** 
+ 892:arch/stm32/mcu_periph/spi_arch.c ****   // set init struct, indices and status
+ 893:arch/stm32/mcu_periph/spi_arch.c ****   spi3.reg_addr = (void *)SPI3;
+ 894:arch/stm32/mcu_periph/spi_arch.c ****   spi3.init_struct = &spi3_dma;
+ 895:arch/stm32/mcu_periph/spi_arch.c ****   spi3.trans_insert_idx = 0;
+ 896:arch/stm32/mcu_periph/spi_arch.c ****   spi3.trans_extract_idx = 0;
+ 897:arch/stm32/mcu_periph/spi_arch.c ****   spi3.status = SPIIdle;
+ 898:arch/stm32/mcu_periph/spi_arch.c **** 
+ 899:arch/stm32/mcu_periph/spi_arch.c **** 
+ 900:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI3 Periph and gpio clocks
+ 901:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(RCC_SPI3);
+ 902:arch/stm32/mcu_periph/spi_arch.c **** 
+ 903:arch/stm32/mcu_periph/spi_arch.c ****   // Configure GPIOs: SCK, MISO and MOSI
+ 904:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 905:arch/stm32/mcu_periph/spi_arch.c ****   // TODO configure lisa board files to use gpio_setup_pin_af function
+ 906:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI3_SCK, GPIO_MODE_OUTPUT_50_MHZ,
+ 907:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_CNF_OUTPUT_ALTFN_PUSHPULL,
+ 908:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI3_SCK | GPIO_SPI3_MOSI);
+ 909:arch/stm32/mcu_periph/spi_arch.c **** 
+ 910:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_mode(GPIO_BANK_SPI3_MISO, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+ 911:arch/stm32/mcu_periph/spi_arch.c ****                 GPIO_SPI3_MISO);
+ 912:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 913:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI3_GPIO_PORT_MISO, SPI3_GPIO_MISO, SPI3_GPIO_AF, FALSE);
+ 914:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI3_GPIO_PORT_MOSI, SPI3_GPIO_MOSI, SPI3_GPIO_AF, TRUE);
+ 915:arch/stm32/mcu_periph/spi_arch.c ****   gpio_setup_pin_af(SPI3_GPIO_PORT_SCK, SPI3_GPIO_SCK, SPI3_GPIO_AF, TRUE);
+ 916:arch/stm32/mcu_periph/spi_arch.c **** 
+ 917:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI3_GPIO_PORT_MOSI, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI3_GPIO_MOSI);
+ 918:arch/stm32/mcu_periph/spi_arch.c ****   gpio_set_output_options(SPI3_GPIO_PORT_SCK, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SPI3_GPIO_SCK);
+ 919:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 920:arch/stm32/mcu_periph/spi_arch.c **** 
+ 921:arch/stm32/mcu_periph/spi_arch.c ****   /// @todo disable JTAG so the pins can be used?
+ 922:arch/stm32/mcu_periph/spi_arch.c **** 
+ 923:arch/stm32/mcu_periph/spi_arch.c ****   // reset SPI
+ 924:arch/stm32/mcu_periph/spi_arch.c ****   spi_reset(SPI3);
+ 925:arch/stm32/mcu_periph/spi_arch.c **** 
+ 926:arch/stm32/mcu_periph/spi_arch.c ****   // Disable SPI peripheral
+ 927:arch/stm32/mcu_periph/spi_arch.c ****   spi_disable(SPI3);
+ 928:arch/stm32/mcu_periph/spi_arch.c **** 
+ 929:arch/stm32/mcu_periph/spi_arch.c ****   // Force SPI mode over I2S.
+ 930:arch/stm32/mcu_periph/spi_arch.c ****   SPI3_I2SCFGR = 0;
+ 931:arch/stm32/mcu_periph/spi_arch.c **** 
+ 932:arch/stm32/mcu_periph/spi_arch.c ****   // configure master SPI.
+ 933:arch/stm32/mcu_periph/spi_arch.c ****   spi_init_master(SPI3, spi3_dma.comm.br, spi3_dma.comm.cpol, spi3_dma.comm.cpha,
+ 934:arch/stm32/mcu_periph/spi_arch.c ****                   spi3_dma.comm.dff, spi3_dma.comm.lsbfirst);
+ 935:arch/stm32/mcu_periph/spi_arch.c **** 
+ 936:arch/stm32/mcu_periph/spi_arch.c ****   /*
+ 937:arch/stm32/mcu_periph/spi_arch.c ****    * Set NSS management to software.
+ 938:arch/stm32/mcu_periph/spi_arch.c ****    * Setting nss high is very important, even if we are controlling the GPIO
+ 939:arch/stm32/mcu_periph/spi_arch.c ****    * ourselves this bit needs to be at least set to 1, otherwise the spi
+ 940:arch/stm32/mcu_periph/spi_arch.c ****    * peripheral will not send any data out.
+ 941:arch/stm32/mcu_periph/spi_arch.c ****    */
+ 942:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable_software_slave_management(SPI3);
+ 943:arch/stm32/mcu_periph/spi_arch.c ****   spi_set_nss_high(SPI3);
+ 944:arch/stm32/mcu_periph/spi_arch.c **** 
+ 945:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI_3 DMA clock
+ 946:arch/stm32/mcu_periph/spi_arch.c ****   rcc_periph_clock_enable(spi3_dma.rcc_dma);
+ 947:arch/stm32/mcu_periph/spi_arch.c **** 
+ 948:arch/stm32/mcu_periph/spi_arch.c ****   // Enable SPI3 periph.
+ 949:arch/stm32/mcu_periph/spi_arch.c ****   spi_enable(SPI3);
+ 950:arch/stm32/mcu_periph/spi_arch.c **** 
+ 951:arch/stm32/mcu_periph/spi_arch.c ****   spi_arch_int_enable(&spi3);
+ 952:arch/stm32/mcu_periph/spi_arch.c **** }
+ 953:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 954:arch/stm32/mcu_periph/spi_arch.c **** 
+ 955:arch/stm32/mcu_periph/spi_arch.c **** 
+ 956:arch/stm32/mcu_periph/spi_arch.c **** 
+ 957:arch/stm32/mcu_periph/spi_arch.c **** 
+ 958:arch/stm32/mcu_periph/spi_arch.c **** /******************************************************************************
+ 959:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 960:arch/stm32/mcu_periph/spi_arch.c ****  * DMA Interrupt service routines
+ 961:arch/stm32/mcu_periph/spi_arch.c ****  *
+ 962:arch/stm32/mcu_periph/spi_arch.c ****  *****************************************************************************/
+ 963:arch/stm32/mcu_periph/spi_arch.c **** #ifdef USE_SPI1
+ 964:arch/stm32/mcu_periph/spi_arch.c **** /// receive transferred over DMA
+ 965:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 966:arch/stm32/mcu_periph/spi_arch.c **** void dma1_channel2_isr(void)
+ 967:arch/stm32/mcu_periph/spi_arch.c **** {
+ 968:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_ISR & DMA_ISR_TCIF2) != 0) {
+ 969:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 970:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_IFCR |= DMA_IFCR_CTCIF2;
+ 971:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 972:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 973:arch/stm32/mcu_periph/spi_arch.c **** void dma2_stream0_isr(void) {
+ 1189              		.loc 1 973 0
+ 1190              		.cfi_startproc
+ 1191              		@ args = 0, pretend = 0, frame = 0
+ 1192              		@ frame_needed = 0, uses_anonymous_args = 0
+ 974:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_LISR & DMA_LISR_TCIF0) != 0) {
+ 1193              		.loc 1 974 0
+ 1194 0000 424B     		ldr	r3, .L92
+ 1195 0002 1B68     		ldr	r3, [r3]
+ 1196 0004 9B06     		lsls	r3, r3, #26
+ 975:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 976:arch/stm32/mcu_periph/spi_arch.c ****     DMA2_LIFCR |= DMA_LIFCR_CTCIF0;
+ 1197              		.loc 1 976 0
+ 1198 0006 48BF     		it	mi
+ 1199 0008 414A     		ldrmi	r2, .L92+4
+ 973:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_LISR & DMA_LISR_TCIF0) != 0) {
+ 1200              		.loc 1 973 0
+ 1201 000a F0B5     		push	{r4, r5, r6, r7, lr}
+ 1202              		.cfi_def_cfa_offset 20
+ 1203              		.cfi_offset 4, -20
+ 1204              		.cfi_offset 5, -16
+ 1205              		.cfi_offset 6, -12
+ 1206              		.cfi_offset 7, -8
+ 1207              		.cfi_offset 14, -4
+ 1208              		.loc 1 976 0
+ 1209 000c 48BF     		it	mi
+ 1210 000e 1368     		ldrmi	r3, [r2]
+ 1211              	.LBB73:
+ 1212              	.LBB74:
+ 977:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 978:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 979:arch/stm32/mcu_periph/spi_arch.c ****   process_rx_dma_interrupt(&spi1);
+ 980:arch/stm32/mcu_periph/spi_arch.c **** }
+ 981:arch/stm32/mcu_periph/spi_arch.c **** 
+ 982:arch/stm32/mcu_periph/spi_arch.c **** /// transmit transferred over DMA
+ 983:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+ 984:arch/stm32/mcu_periph/spi_arch.c **** void dma1_channel3_isr(void) {
+ 985:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_ISR & DMA_ISR_TCIF3) != 0) {
+ 986:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 987:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_IFCR |= DMA_IFCR_CTCIF3;
+ 988:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 989:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+ 990:arch/stm32/mcu_periph/spi_arch.c **** void dma2_stream5_isr(void) {
+ 991:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_HISR & DMA_HISR_TCIF5) != 0) {
+ 992:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 993:arch/stm32/mcu_periph/spi_arch.c ****     DMA2_HIFCR |= DMA_HIFCR_CTCIF5;
+ 994:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 995:arch/stm32/mcu_periph/spi_arch.c **** #endif
+ 996:arch/stm32/mcu_periph/spi_arch.c ****   process_tx_dma_interrupt(&spi1);
+ 997:arch/stm32/mcu_periph/spi_arch.c **** }
+ 998:arch/stm32/mcu_periph/spi_arch.c **** 
+ 999:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1000:arch/stm32/mcu_periph/spi_arch.c **** 
+1001:arch/stm32/mcu_periph/spi_arch.c **** #ifdef USE_SPI2
+1002:arch/stm32/mcu_periph/spi_arch.c **** /// receive transferred over DMA
+1003:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1004:arch/stm32/mcu_periph/spi_arch.c **** void dma1_channel4_isr(void) {
+1005:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_ISR & DMA_ISR_TCIF4) != 0) {
+1006:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1007:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_IFCR |= DMA_IFCR_CTCIF4;
+1008:arch/stm32/mcu_periph/spi_arch.c ****   }
+1009:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1010:arch/stm32/mcu_periph/spi_arch.c **** void dma1_stream3_isr(void) {
+1011:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_LISR & DMA_LISR_TCIF3) != 0) {
+1012:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1013:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_LIFCR |= DMA_LIFCR_CTCIF3;
+1014:arch/stm32/mcu_periph/spi_arch.c ****   }
+1015:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1016:arch/stm32/mcu_periph/spi_arch.c ****   process_rx_dma_interrupt(&spi2);
+1017:arch/stm32/mcu_periph/spi_arch.c **** }
+1018:arch/stm32/mcu_periph/spi_arch.c **** 
+1019:arch/stm32/mcu_periph/spi_arch.c **** /// transmit transferred over DMA
+1020:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1021:arch/stm32/mcu_periph/spi_arch.c **** void dma1_channel5_isr(void) {
+1022:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_ISR & DMA_ISR_TCIF5) != 0) {
+1023:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1024:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_IFCR |= DMA_IFCR_CTCIF5;
+1025:arch/stm32/mcu_periph/spi_arch.c ****   }
+1026:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1027:arch/stm32/mcu_periph/spi_arch.c **** void dma1_stream4_isr(void) {
+1028:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_HISR & DMA_HISR_TCIF4) != 0) {
+1029:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1030:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_HIFCR |= DMA_HIFCR_CTCIF4;
+1031:arch/stm32/mcu_periph/spi_arch.c ****   }
+1032:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1033:arch/stm32/mcu_periph/spi_arch.c ****   process_tx_dma_interrupt(&spi2);
+1034:arch/stm32/mcu_periph/spi_arch.c **** }
+1035:arch/stm32/mcu_periph/spi_arch.c **** 
+1036:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1037:arch/stm32/mcu_periph/spi_arch.c **** 
+1038:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI3
+1039:arch/stm32/mcu_periph/spi_arch.c **** /// receive transferred over DMA
+1040:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1041:arch/stm32/mcu_periph/spi_arch.c **** void dma2_channel1_isr(void) {
+1042:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_ISR & DMA_ISR_TCIF1) != 0) {
+1043:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1044:arch/stm32/mcu_periph/spi_arch.c ****     DMA2_IFCR |= DMA_IFCR_CTCIF1;
+1045:arch/stm32/mcu_periph/spi_arch.c ****   }
+1046:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1047:arch/stm32/mcu_periph/spi_arch.c **** void dma1_stream0_isr(void) {
+1048:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_LISR & DMA_LISR_TCIF0) != 0) {
+1049:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1050:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_LIFCR |= DMA_LIFCR_CTCIF0;
+1051:arch/stm32/mcu_periph/spi_arch.c ****   }
+1052:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1053:arch/stm32/mcu_periph/spi_arch.c ****   process_rx_dma_interrupt(&spi3);
+1054:arch/stm32/mcu_periph/spi_arch.c **** }
+1055:arch/stm32/mcu_periph/spi_arch.c **** 
+1056:arch/stm32/mcu_periph/spi_arch.c **** /// transmit transferred over DMA
+1057:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1058:arch/stm32/mcu_periph/spi_arch.c **** void dma2_channel2_isr(void) {
+1059:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_ISR & DMA_ISR_TCIF2) != 0) {
+1060:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1061:arch/stm32/mcu_periph/spi_arch.c ****     DMA2_IFCR |= DMA_IFCR_CTCIF2;
+1062:arch/stm32/mcu_periph/spi_arch.c ****   }
+1063:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1064:arch/stm32/mcu_periph/spi_arch.c **** void dma1_stream5_isr(void) {
+1065:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA1_HISR & DMA_HISR_TCIF5) != 0) {
+1066:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+1067:arch/stm32/mcu_periph/spi_arch.c ****     DMA1_HIFCR |= DMA_HIFCR_CTCIF5;
+1068:arch/stm32/mcu_periph/spi_arch.c ****   }
+1069:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1070:arch/stm32/mcu_periph/spi_arch.c ****   process_tx_dma_interrupt(&spi3);
+1071:arch/stm32/mcu_periph/spi_arch.c **** }
+1072:arch/stm32/mcu_periph/spi_arch.c **** 
+1073:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1074:arch/stm32/mcu_periph/spi_arch.c **** 
+1075:arch/stm32/mcu_periph/spi_arch.c **** /// Processing done after rx completes.
+1076:arch/stm32/mcu_periph/spi_arch.c **** void process_rx_dma_interrupt(struct spi_periph * periph) {
+1077:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_periph_dma *dma = periph->init_struct;
+ 1213              		.loc 1 1077 0
+ 1214 0010 404E     		ldr	r6, .L92+8
+ 1215              	.LBE74:
+ 1216              	.LBE73:
+ 976:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 1217              		.loc 1 976 0
+ 1218 0012 44BF     		itt	mi
+ 1219 0014 43F02003 		orrmi	r3, r3, #32
+ 1220 0018 1360     		strmi	r3, [r2]
+ 1221              	.LVL105:
+ 1222              	.LBB92:
+ 1223              	.LBB87:
+ 1224              		.loc 1 1077 0
+ 1225 001a F46A     		ldr	r4, [r6, #44]
+ 1226              	.LVL106:
+1078:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_transaction *trans = periph->trans[periph->trans_extract_idx];
+ 1227              		.loc 1 1078 0
+ 1228 001c 96F82130 		ldrb	r3, [r6, #33]	@ zero_extendqisi2
+1079:arch/stm32/mcu_periph/spi_arch.c **** 
+1080:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable DMA Channel */
+1081:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_transfer_complete_interrupt(dma->dma, dma->rx_chan);
+ 1229              		.loc 1 1081 0
+ 1230 0020 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1231 0022 A068     		ldr	r0, [r4, #8]
+1078:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_transaction *trans = periph->trans[periph->trans_extract_idx];
+ 1232              		.loc 1 1078 0
+ 1233 0024 56F82350 		ldr	r5, [r6, r3, lsl #2]
+ 1234              	.LVL107:
+ 1235              	.LBE87:
+ 1236              	.LBE92:
+ 973:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_LISR & DMA_LISR_TCIF0) != 0) {
+ 1237              		.loc 1 973 0
+ 1238 0028 85B0     		sub	sp, sp, #20
+ 1239              		.cfi_def_cfa_offset 40
+ 1240              	.LBB93:
+ 1241              	.LBB88:
+ 1242              		.loc 1 1081 0
+ 1243 002a FFF7FEFF 		bl	dma_disable_transfer_complete_interrupt
+ 1244              	.LVL108:
+1082:arch/stm32/mcu_periph/spi_arch.c **** 
+1083:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable SPI Rx request */
+1084:arch/stm32/mcu_periph/spi_arch.c ****   spi_disable_rx_dma((uint32_t)periph->reg_addr);
+ 1245              		.loc 1 1084 0
+ 1246 002e B06A     		ldr	r0, [r6, #40]
+ 1247 0030 FFF7FEFF 		bl	spi_disable_rx_dma
+ 1248              	.LVL109:
+1085:arch/stm32/mcu_periph/spi_arch.c **** 
+1086:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable DMA rx channel */
+1087:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1088:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_channel(dma->dma, dma->rx_chan);
+1089:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1090:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_stream(dma->dma, dma->rx_chan);
+ 1249              		.loc 1 1090 0
+ 1250 0034 A068     		ldr	r0, [r4, #8]
+ 1251 0036 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1252 0038 FFF7FEFF 		bl	dma_disable_stream
+ 1253              	.LVL110:
+1091:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1092:arch/stm32/mcu_periph/spi_arch.c **** 
+1093:arch/stm32/mcu_periph/spi_arch.c **** 
+1094:arch/stm32/mcu_periph/spi_arch.c ****   if (dma->rx_extra_dummy_dma) {
+ 1254              		.loc 1 1094 0
+ 1255 003c 94F82430 		ldrb	r3, [r4, #36]	@ zero_extendqisi2
+ 1256 0040 3746     		mov	r7, r6
+ 1257 0042 002B     		cmp	r3, #0
+ 1258 0044 31D0     		beq	.L75
+ 1259              	.LBB75:
+1095:arch/stm32/mcu_periph/spi_arch.c ****     /*
+1096:arch/stm32/mcu_periph/spi_arch.c ****      * We are finished the first part of the receive with real data,
+1097:arch/stm32/mcu_periph/spi_arch.c ****      * but still need to run the dummy to get a transfer complete interrupt
+1098:arch/stm32/mcu_periph/spi_arch.c ****      * after the complete transaction is done.
+1099:arch/stm32/mcu_periph/spi_arch.c ****      */
+1100:arch/stm32/mcu_periph/spi_arch.c **** 
+1101:arch/stm32/mcu_periph/spi_arch.c ****     /* Reset the flag so this only happens once in a transaction */
+1102:arch/stm32/mcu_periph/spi_arch.c ****     dma->rx_extra_dummy_dma = FALSE;
+ 1260              		.loc 1 1102 0
+ 1261 0046 0027     		movs	r7, #0
+1103:arch/stm32/mcu_periph/spi_arch.c **** 
+1104:arch/stm32/mcu_periph/spi_arch.c ****     /* Use the difference in length between rx and tx */
+1105:arch/stm32/mcu_periph/spi_arch.c ****     uint16_t len_remaining = trans->output_length - trans->input_length;
+1106:arch/stm32/mcu_periph/spi_arch.c **** 
+1107:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->rx_chan, (uint32_t)dma->spidr,
+1108:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->rx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1262              		.loc 1 1108 0
+ 1263 0048 04F12203 		add	r3, r4, #34
+1102:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1264              		.loc 1 1102 0
+ 1265 004c 84F82470 		strb	r7, [r4, #36]
+ 1266              	.LVL111:
+1107:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->rx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1267              		.loc 1 1107 0
+ 1268 0050 227C     		ldrb	r2, [r4, #16]	@ zero_extendqisi2
+ 1269 0052 0093     		str	r3, [sp]
+ 1270              	.LVL112:
+1105:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1271              		.loc 1 1105 0
+ 1272 0054 2989     		ldrh	r1, [r5, #8]
+ 1273 0056 6B89     		ldrh	r3, [r5, #10]
+ 1274 0058 5B1A     		subs	r3, r3, r1
+1107:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->rx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1275              		.loc 1 1107 0
+ 1276 005a 9BB2     		uxth	r3, r3
+ 1277 005c 0193     		str	r3, [sp, #4]
+ 1278 005e 2B7C     		ldrb	r3, [r5, #16]	@ zero_extendqisi2
+ 1279 0060 0293     		str	r3, [sp, #8]
+ 1280 0062 0397     		str	r7, [sp, #12]
+ 1281 0064 6368     		ldr	r3, [r4, #4]
+ 1282 0066 A068     		ldr	r0, [r4, #8]
+ 1283 0068 E168     		ldr	r1, [r4, #12]
+ 1284 006a FFF7FEFF 		bl	spi_configure_dma
+ 1285              	.LVL113:
+1109:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1110:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_read_from_peripheral(dma->dma, dma->rx_chan);
+1111:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_priority(dma->dma, dma->rx_chan, DMA_CCR_PL_HIGH);
+1112:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1113:arch/stm32/mcu_periph/spi_arch.c ****     dma_channel_select(dma->dma, dma->rx_chan, dma->rx_chan_sel);
+ 1286              		.loc 1 1113 0
+ 1287 006e A068     		ldr	r0, [r4, #8]
+ 1288 0070 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1289 0072 6269     		ldr	r2, [r4, #20]
+ 1290 0074 FFF7FEFF 		bl	dma_channel_select
+ 1291              	.LVL114:
+1114:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_transfer_mode(dma->dma, dma->rx_chan, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
+ 1292              		.loc 1 1114 0
+ 1293 0078 A068     		ldr	r0, [r4, #8]
+ 1294 007a 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1295 007c 3A46     		mov	r2, r7
+ 1296 007e FFF7FEFF 		bl	dma_set_transfer_mode
+ 1297              	.LVL115:
+1115:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_priority(dma->dma, dma->rx_chan, DMA_SxCR_PL_HIGH);
+ 1298              		.loc 1 1115 0
+ 1299 0082 4FF40032 		mov	r2, #131072
+ 1300 0086 A068     		ldr	r0, [r4, #8]
+ 1301 0088 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1302 008a FFF7FEFF 		bl	dma_set_priority
+ 1303              	.LVL116:
+1116:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1117:arch/stm32/mcu_periph/spi_arch.c **** 
+1118:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable DMA transfer complete interrupts. */
+1119:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_transfer_complete_interrupt(dma->dma, dma->rx_chan);
+ 1304              		.loc 1 1119 0
+ 1305 008e A068     		ldr	r0, [r4, #8]
+ 1306 0090 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1307 0092 FFF7FEFF 		bl	dma_enable_transfer_complete_interrupt
+ 1308              	.LVL117:
+1120:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable DMA channels */
+1121:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1122:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_channel(dma->dma, dma->rx_chan);
+1123:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1124:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_stream(dma->dma, dma->rx_chan);
+ 1309              		.loc 1 1124 0
+ 1310 0096 A068     		ldr	r0, [r4, #8]
+ 1311 0098 217C     		ldrb	r1, [r4, #16]	@ zero_extendqisi2
+ 1312 009a FFF7FEFF 		bl	dma_enable_stream
+ 1313              	.LVL118:
+1125:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1126:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable SPI transfers via DMA */
+1127:arch/stm32/mcu_periph/spi_arch.c ****     spi_enable_rx_dma((uint32_t)periph->reg_addr);
+ 1314              		.loc 1 1127 0
+ 1315 009e B06A     		ldr	r0, [r6, #40]
+ 1316              	.LBE75:
+ 1317              	.LBE88:
+ 1318              	.LBE93:
+ 980:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1319              		.loc 1 980 0
+ 1320 00a0 05B0     		add	sp, sp, #20
+ 1321              		.cfi_remember_state
+ 1322              		.cfi_def_cfa_offset 20
+ 1323              		@ sp needed
+ 1324 00a2 BDE8F040 		pop	{r4, r5, r6, r7, lr}
+ 1325              		.cfi_restore 14
+ 1326              		.cfi_restore 7
+ 1327              		.cfi_restore 6
+ 1328              		.cfi_restore 5
+ 1329              		.cfi_restore 4
+ 1330              		.cfi_def_cfa_offset 0
+ 1331              	.LVL119:
+ 1332              	.LBB94:
+ 1333              	.LBB89:
+ 1334              	.LBB76:
+ 1335              		.loc 1 1127 0
+ 1336 00a6 FFF7FEBF 		b	spi_enable_rx_dma
+ 1337              	.LVL120:
+ 1338              	.L75:
+ 1339              		.cfi_restore_state
+ 1340              	.LBE76:
+1128:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+1129:arch/stm32/mcu_periph/spi_arch.c ****     /*
+1130:arch/stm32/mcu_periph/spi_arch.c ****      * Since the receive DMA is always run until the very end
+1131:arch/stm32/mcu_periph/spi_arch.c ****      * and this interrupt is triggered after the last data word was read,
+1132:arch/stm32/mcu_periph/spi_arch.c ****      * we now know that this transaction is finished.
+1133:arch/stm32/mcu_periph/spi_arch.c ****      */
+1134:arch/stm32/mcu_periph/spi_arch.c **** 
+1135:arch/stm32/mcu_periph/spi_arch.c ****     /* Run the callback */
+1136:arch/stm32/mcu_periph/spi_arch.c ****     trans->status = SPITransSuccess;
+ 1341              		.loc 1 1136 0
+ 1342 00aa 0223     		movs	r3, #2
+ 1343 00ac 2B77     		strb	r3, [r5, #28]
+1137:arch/stm32/mcu_periph/spi_arch.c ****     if (trans->after_cb != 0) {
+ 1344              		.loc 1 1137 0
+ 1345 00ae AB69     		ldr	r3, [r5, #24]
+ 1346 00b0 0BB1     		cbz	r3, .L76
+1138:arch/stm32/mcu_periph/spi_arch.c ****       trans->after_cb(trans);
+ 1347              		.loc 1 1138 0
+ 1348 00b2 2846     		mov	r0, r5
+ 1349 00b4 9847     		blx	r3
+ 1350              	.LVL121:
+ 1351              	.L76:
+1139:arch/stm32/mcu_periph/spi_arch.c ****     }
+1140:arch/stm32/mcu_periph/spi_arch.c **** 
+1141:arch/stm32/mcu_periph/spi_arch.c ****     /* AFTER the callback, then unselect the slave if required */
+1142:arch/stm32/mcu_periph/spi_arch.c ****     if (trans->select == SPISelectUnselect || trans->select == SPIUnselect) {
+ 1352              		.loc 1 1142 0
+ 1353 00b6 6B7B     		ldrb	r3, [r5, #13]	@ zero_extendqisi2
+ 1354 00b8 13F0FD0F 		tst	r3, #253
+ 1355 00bc 06D1     		bne	.L77
+ 1356              	.LVL122:
+ 1357              	.LBB77:
+ 1358              	.LBB78:
+ 139:arch/stm32/mcu_periph/spi_arch.c **** #if USE_SPI_SLAVE0
+ 1359              		.loc 1 139 0
+ 1360 00be 2B7B     		ldrb	r3, [r5, #12]	@ zero_extendqisi2
+ 1361 00c0 23B9     		cbnz	r3, .L77
+ 1362              	.LVL123:
+ 1363              	.LBB79:
+ 1364              	.LBB80:
+ 142:arch/stm32/mcu_periph/spi_arch.c ****       break;
+ 1365              		.loc 1 142 0
+ 1366 00c2 1548     		ldr	r0, .L92+12
+ 1367 00c4 4FF40071 		mov	r1, #512
+ 1368 00c8 FFF7FEFF 		bl	gpio_set
+ 1369              	.LVL124:
+ 1370              	.L77:
+ 1371              	.LBE80:
+ 1372              	.LBE79:
+ 1373              	.LBE78:
+ 1374              	.LBE77:
+ 1375              	.LBB81:
+ 1376              	.LBB82:
+ 520:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1377              		.loc 1 520 0
+ 1378 00cc 97F82130 		ldrb	r3, [r7, #33]	@ zero_extendqisi2
+ 1379 00d0 104A     		ldr	r2, .L92+8
+ 528:arch/stm32/mcu_periph/spi_arch.c ****     periph->status = SPIIdle;
+ 1380              		.loc 1 528 0
+ 1381 00d2 1048     		ldr	r0, .L92+8
+ 520:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1382              		.loc 1 520 0
+ 1383 00d4 0133     		adds	r3, r3, #1
+ 1384 00d6 DBB2     		uxtb	r3, r3
+ 523:arch/stm32/mcu_periph/spi_arch.c ****     periph->trans_extract_idx = 0;
+ 1385              		.loc 1 523 0
+ 1386 00d8 072B     		cmp	r3, #7
+ 524:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 1387              		.loc 1 524 0
+ 1388 00da 88BF     		it	hi
+ 1389 00dc 0023     		movhi	r3, #0
+ 1390 00de 82F82130 		strb	r3, [r2, #33]
+ 528:arch/stm32/mcu_periph/spi_arch.c ****     periph->status = SPIIdle;
+ 1391              		.loc 1 528 0
+ 1392 00e2 97F82130 		ldrb	r3, [r7, #33]	@ zero_extendqisi2
+ 1393 00e6 97F82020 		ldrb	r2, [r7, #32]	@ zero_extendqisi2
+ 1394 00ea 9A42     		cmp	r2, r3
+ 1395 00ec 02D0     		beq	.L81
+ 1396 00ee 90F83120 		ldrb	r2, [r0, #49]	@ zero_extendqisi2
+ 1397 00f2 22B1     		cbz	r2, .L82
+ 1398              	.L81:
+ 529:arch/stm32/mcu_periph/spi_arch.c ****   } else {
+ 1399              		.loc 1 529 0
+ 1400 00f4 0023     		movs	r3, #0
+ 1401 00f6 87F82230 		strb	r3, [r7, #34]
+ 1402              	.LBE82:
+ 1403              	.LBE81:
+ 1404              	.LBE89:
+ 1405              	.LBE94:
+ 980:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1406              		.loc 1 980 0
+ 1407 00fa 05B0     		add	sp, sp, #20
+ 1408              		.cfi_remember_state
+ 1409              		.cfi_def_cfa_offset 20
+ 1410              		@ sp needed
+ 1411 00fc F0BD     		pop	{r4, r5, r6, r7, pc}
+ 1412              	.LVL125:
+ 1413              	.L82:
+ 1414              		.cfi_restore_state
+ 1415              	.LBB95:
+ 1416              	.LBB90:
+ 1417              	.LBB85:
+ 1418              	.LBB83:
+ 531:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 1419              		.loc 1 531 0
+ 1420 00fe 50F82310 		ldr	r1, [r0, r3, lsl #2]
+ 1421              	.LBE83:
+ 1422              	.LBE85:
+ 1423              	.LBE90:
+ 1424              	.LBE95:
+ 980:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1425              		.loc 1 980 0
+ 1426 0102 05B0     		add	sp, sp, #20
+ 1427              		.cfi_def_cfa_offset 20
+ 1428              		@ sp needed
+ 1429 0104 BDE8F040 		pop	{r4, r5, r6, r7, lr}
+ 1430              		.cfi_restore 14
+ 1431              		.cfi_restore 7
+ 1432              		.cfi_restore 6
+ 1433              		.cfi_restore 5
+ 1434              		.cfi_restore 4
+ 1435              		.cfi_def_cfa_offset 0
+ 1436              	.LVL126:
+ 1437              	.LBB96:
+ 1438              	.LBB91:
+ 1439              	.LBB86:
+ 1440              	.LBB84:
+ 531:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 1441              		.loc 1 531 0
+ 1442 0108 FFF7FEBF 		b	spi_start_dma_transaction
+ 1443              	.LVL127:
+ 1444              	.L93:
+ 1445              		.align	2
+ 1446              	.L92:
+ 1447 010c 00640240 		.word	1073898496
+ 1448 0110 08640240 		.word	1073898504
+ 1449 0114 00000000 		.word	spi1
+ 1450 0118 00040240 		.word	1073873920
+ 1451              	.LBE84:
+ 1452              	.LBE86:
+ 1453              	.LBE91:
+ 1454              	.LBE96:
+ 1455              		.cfi_endproc
+ 1456              	.LFE23:
+ 1458              		.section	.text.dma2_stream5_isr,"ax",%progbits
+ 1459              		.align	1
+ 1460              		.weak	dma2_stream5_isr
+ 1461              		.thumb
+ 1462              		.thumb_func
+ 1464              	dma2_stream5_isr:
+ 1465              	.LFB24:
+ 990:arch/stm32/mcu_periph/spi_arch.c ****   if ((DMA2_HISR & DMA_HISR_TCIF5) != 0) {
+ 1466              		.loc 1 990 0
+ 1467              		.cfi_startproc
+ 1468              		@ args = 0, pretend = 0, frame = 0
+ 1469              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1470 0000 7FB5     		push	{r0, r1, r2, r3, r4, r5, r6, lr}
+ 1471              		.cfi_def_cfa_offset 32
+ 1472              		.cfi_offset 4, -16
+ 1473              		.cfi_offset 5, -12
+ 1474              		.cfi_offset 6, -8
+ 1475              		.cfi_offset 14, -4
+ 991:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 1476              		.loc 1 991 0
+ 1477 0002 294B     		ldr	r3, .L100
+ 1478              	.LBB100:
+ 1479              	.LBB101:
+1143:arch/stm32/mcu_periph/spi_arch.c ****       SpiSlaveUnselect(trans->slave_idx);
+1144:arch/stm32/mcu_periph/spi_arch.c ****     }
+1145:arch/stm32/mcu_periph/spi_arch.c **** 
+1146:arch/stm32/mcu_periph/spi_arch.c ****     spi_next_transaction(periph);
+1147:arch/stm32/mcu_periph/spi_arch.c ****   }
+1148:arch/stm32/mcu_periph/spi_arch.c **** }
+1149:arch/stm32/mcu_periph/spi_arch.c **** 
+1150:arch/stm32/mcu_periph/spi_arch.c **** /// Processing done after tx completes
+1151:arch/stm32/mcu_periph/spi_arch.c **** void process_tx_dma_interrupt(struct spi_periph * periph) {
+1152:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_periph_dma *dma = periph->init_struct;
+ 1480              		.loc 1 1152 0
+ 1481 0004 294D     		ldr	r5, .L100+4
+ 1482              	.LBE101:
+ 1483              	.LBE100:
+ 991:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 1484              		.loc 1 991 0
+ 1485 0006 1B68     		ldr	r3, [r3]
+ 1486              	.LBB107:
+ 1487              	.LBB104:
+ 1488              		.loc 1 1152 0
+ 1489 0008 EC6A     		ldr	r4, [r5, #44]
+ 1490              	.LBE104:
+ 1491              	.LBE107:
+ 991:arch/stm32/mcu_periph/spi_arch.c ****     // clear int pending bit
+ 1492              		.loc 1 991 0
+ 1493 000a 1B05     		lsls	r3, r3, #20
+ 993:arch/stm32/mcu_periph/spi_arch.c ****   }
+ 1494              		.loc 1 993 0
+ 1495 000c 41BF     		itttt	mi
+ 1496 000e 284A     		ldrmi	r2, .L100+8
+ 1497 0010 1368     		ldrmi	r3, [r2]
+ 1498 0012 43F40063 		orrmi	r3, r3, #2048
+ 1499 0016 1360     		strmi	r3, [r2]
+ 1500              	.LVL128:
+ 1501              	.LBB108:
+ 1502              	.LBB105:
+1153:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_transaction *trans = periph->trans[periph->trans_extract_idx];
+ 1503              		.loc 1 1153 0
+ 1504 0018 95F82130 		ldrb	r3, [r5, #33]	@ zero_extendqisi2
+1154:arch/stm32/mcu_periph/spi_arch.c **** 
+1155:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable DMA Channel */
+1156:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_transfer_complete_interrupt(dma->dma, dma->tx_chan);
+ 1505              		.loc 1 1156 0
+ 1506 001c 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1507 001e A068     		ldr	r0, [r4, #8]
+1153:arch/stm32/mcu_periph/spi_arch.c ****   struct spi_transaction *trans = periph->trans[periph->trans_extract_idx];
+ 1508              		.loc 1 1153 0
+ 1509 0020 55F82360 		ldr	r6, [r5, r3, lsl #2]
+ 1510              	.LVL129:
+ 1511              		.loc 1 1156 0
+ 1512 0024 FFF7FEFF 		bl	dma_disable_transfer_complete_interrupt
+ 1513              	.LVL130:
+1157:arch/stm32/mcu_periph/spi_arch.c **** 
+1158:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable SPI TX request */
+1159:arch/stm32/mcu_periph/spi_arch.c ****   spi_disable_tx_dma((uint32_t)periph->reg_addr);
+ 1514              		.loc 1 1159 0
+ 1515 0028 A86A     		ldr	r0, [r5, #40]
+ 1516 002a FFF7FEFF 		bl	spi_disable_tx_dma
+ 1517              	.LVL131:
+1160:arch/stm32/mcu_periph/spi_arch.c **** 
+1161:arch/stm32/mcu_periph/spi_arch.c ****   /* Disable DMA tx channel */
+1162:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1163:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_channel(dma->dma, dma->tx_chan);
+1164:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1165:arch/stm32/mcu_periph/spi_arch.c ****   dma_disable_stream(dma->dma, dma->tx_chan);
+ 1518              		.loc 1 1165 0
+ 1519 002e A068     		ldr	r0, [r4, #8]
+ 1520 0030 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1521 0032 FFF7FEFF 		bl	dma_disable_stream
+ 1522              	.LVL132:
+1166:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1167:arch/stm32/mcu_periph/spi_arch.c **** 
+1168:arch/stm32/mcu_periph/spi_arch.c ****   if (dma->tx_extra_dummy_dma) {
+ 1523              		.loc 1 1168 0
+ 1524 0036 94F82030 		ldrb	r3, [r4, #32]	@ zero_extendqisi2
+ 1525 003a 002B     		cmp	r3, #0
+ 1526 003c 31D0     		beq	.L94
+ 1527              	.LBB102:
+1169:arch/stm32/mcu_periph/spi_arch.c ****     /*
+1170:arch/stm32/mcu_periph/spi_arch.c ****      * We are finished the first part of the transmit with real data,
+1171:arch/stm32/mcu_periph/spi_arch.c ****      * but still need to clock in the rest of the receive data.
+1172:arch/stm32/mcu_periph/spi_arch.c ****      * Set up a dummy dma transmit transfer to accomplish this.
+1173:arch/stm32/mcu_periph/spi_arch.c ****      */
+1174:arch/stm32/mcu_periph/spi_arch.c **** 
+1175:arch/stm32/mcu_periph/spi_arch.c ****     /* Reset the flag so this only happens once in a transaction */
+1176:arch/stm32/mcu_periph/spi_arch.c ****     dma->tx_extra_dummy_dma = FALSE;
+ 1528              		.loc 1 1176 0
+ 1529 003e 0021     		movs	r1, #0
+1177:arch/stm32/mcu_periph/spi_arch.c **** 
+1178:arch/stm32/mcu_periph/spi_arch.c ****     /* Use the difference in length between tx and rx */
+1179:arch/stm32/mcu_periph/spi_arch.c ****     uint16_t len_remaining = trans->input_length - trans->output_length;
+1180:arch/stm32/mcu_periph/spi_arch.c **** 
+1181:arch/stm32/mcu_periph/spi_arch.c ****     spi_configure_dma(dma->dma, dma->rcc_dma, dma->tx_chan, (uint32_t)dma->spidr,
+1182:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->tx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1530              		.loc 1 1182 0
+ 1531 0040 04F11E03 		add	r3, r4, #30
+1176:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1532              		.loc 1 1176 0
+ 1533 0044 84F82010 		strb	r1, [r4, #32]
+ 1534              	.LVL133:
+1181:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->tx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1535              		.loc 1 1181 0
+ 1536 0048 627C     		ldrb	r2, [r4, #17]	@ zero_extendqisi2
+ 1537 004a 0093     		str	r3, [sp]
+ 1538              	.LVL134:
+1179:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1539              		.loc 1 1179 0
+ 1540 004c 7089     		ldrh	r0, [r6, #10]
+ 1541 004e 3389     		ldrh	r3, [r6, #8]
+ 1542 0050 1B1A     		subs	r3, r3, r0
+1181:arch/stm32/mcu_periph/spi_arch.c ****                       (uint32_t) & (dma->tx_dummy_buf), len_remaining, trans->dss, FALSE);
+ 1543              		.loc 1 1181 0
+ 1544 0052 9BB2     		uxth	r3, r3
+ 1545 0054 0193     		str	r3, [sp, #4]
+ 1546 0056 337C     		ldrb	r3, [r6, #16]	@ zero_extendqisi2
+ 1547 0058 0293     		str	r3, [sp, #8]
+ 1548 005a 0391     		str	r1, [sp, #12]
+ 1549 005c 6368     		ldr	r3, [r4, #4]
+ 1550 005e A068     		ldr	r0, [r4, #8]
+ 1551 0060 E168     		ldr	r1, [r4, #12]
+ 1552 0062 FFF7FEFF 		bl	spi_configure_dma
+ 1553              	.LVL135:
+1183:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1184:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_read_from_memory(dma->dma, dma->tx_chan);
+1185:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_priority(dma->dma, dma->tx_chan, DMA_CCR_PL_MEDIUM);
+1186:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1187:arch/stm32/mcu_periph/spi_arch.c ****     dma_channel_select(dma->dma, dma->tx_chan, dma->tx_chan_sel);
+ 1554              		.loc 1 1187 0
+ 1555 0066 A068     		ldr	r0, [r4, #8]
+ 1556 0068 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1557 006a A269     		ldr	r2, [r4, #24]
+ 1558 006c FFF7FEFF 		bl	dma_channel_select
+ 1559              	.LVL136:
+1188:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_transfer_mode(dma->dma, dma->tx_chan, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
+ 1560              		.loc 1 1188 0
+ 1561 0070 A068     		ldr	r0, [r4, #8]
+ 1562 0072 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1563 0074 4022     		movs	r2, #64
+ 1564 0076 FFF7FEFF 		bl	dma_set_transfer_mode
+ 1565              	.LVL137:
+1189:arch/stm32/mcu_periph/spi_arch.c ****     dma_set_priority(dma->dma, dma->tx_chan, DMA_SxCR_PL_MEDIUM);
+ 1566              		.loc 1 1189 0
+ 1567 007a 4FF48032 		mov	r2, #65536
+ 1568 007e A068     		ldr	r0, [r4, #8]
+ 1569 0080 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1570 0082 FFF7FEFF 		bl	dma_set_priority
+ 1571              	.LVL138:
+1190:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1191:arch/stm32/mcu_periph/spi_arch.c **** 
+1192:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable DMA transfer complete interrupts. */
+1193:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_transfer_complete_interrupt(dma->dma, dma->tx_chan);
+ 1572              		.loc 1 1193 0
+ 1573 0086 A068     		ldr	r0, [r4, #8]
+ 1574 0088 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1575 008a FFF7FEFF 		bl	dma_enable_transfer_complete_interrupt
+ 1576              	.LVL139:
+1194:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable DMA channels */
+1195:arch/stm32/mcu_periph/spi_arch.c **** #ifdef STM32F1
+1196:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_channel(dma->dma, dma->tx_chan);
+1197:arch/stm32/mcu_periph/spi_arch.c **** #elif defined STM32F4
+1198:arch/stm32/mcu_periph/spi_arch.c ****     dma_enable_stream(dma->dma, dma->tx_chan);
+ 1577              		.loc 1 1198 0
+ 1578 008e A068     		ldr	r0, [r4, #8]
+ 1579 0090 617C     		ldrb	r1, [r4, #17]	@ zero_extendqisi2
+ 1580 0092 FFF7FEFF 		bl	dma_enable_stream
+ 1581              	.LVL140:
+1199:arch/stm32/mcu_periph/spi_arch.c **** #endif
+1200:arch/stm32/mcu_periph/spi_arch.c ****     /* Enable SPI transfers via DMA */
+1201:arch/stm32/mcu_periph/spi_arch.c ****     spi_enable_tx_dma((uint32_t)periph->reg_addr);
+ 1582              		.loc 1 1201 0
+ 1583 0096 A86A     		ldr	r0, [r5, #40]
+ 1584              	.LBE102:
+ 1585              	.LBE105:
+ 1586              	.LBE108:
+ 997:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1587              		.loc 1 997 0
+ 1588 0098 04B0     		add	sp, sp, #16
+ 1589              		.cfi_remember_state
+ 1590              		.cfi_def_cfa_offset 16
+ 1591              		@ sp needed
+ 1592 009a BDE87040 		pop	{r4, r5, r6, lr}
+ 1593              		.cfi_restore 14
+ 1594              		.cfi_restore 6
+ 1595              		.cfi_restore 5
+ 1596              		.cfi_restore 4
+ 1597              		.cfi_def_cfa_offset 0
+ 1598              	.LVL141:
+ 1599              	.LBB109:
+ 1600              	.LBB106:
+ 1601              	.LBB103:
+ 1602              		.loc 1 1201 0
+ 1603 009e FFF7FEBF 		b	spi_enable_tx_dma
+ 1604              	.LVL142:
+ 1605              	.L94:
+ 1606              		.cfi_restore_state
+ 1607              	.LBE103:
+ 1608              	.LBE106:
+ 1609              	.LBE109:
+ 997:arch/stm32/mcu_periph/spi_arch.c **** 
+ 1610              		.loc 1 997 0
+ 1611 00a2 04B0     		add	sp, sp, #16
+ 1612              		.cfi_def_cfa_offset 16
+ 1613              		@ sp needed
+ 1614 00a4 70BD     		pop	{r4, r5, r6, pc}
+ 1615              	.LVL143:
+ 1616              	.L101:
+ 1617 00a6 00BF     		.align	2
+ 1618              	.L100:
+ 1619 00a8 04640240 		.word	1073898500
+ 1620 00ac 00000000 		.word	spi1
+ 1621 00b0 0C640240 		.word	1073898508
+ 1622              		.cfi_endproc
+ 1623              	.LFE24:
+ 1625              		.section	.bss.spi1_dma,"aw",%nobits
+ 1626              		.align	2
+ 1627              		.set	.LANCHOR0,. + 0
+ 1630              	spi1_dma:
+ 1631 0000 00000000 		.space	64
+ 1631      00000000 
+ 1631      00000000 
+ 1631      00000000 
+ 1631      00000000 
+ 1632              		.text
+ 1633              	.Letext0:
+ 1634              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1635              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1636              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 1637              		.file 5 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 1638              		.file 6 "./mcu_periph/spi.h"
+ 1639              		.file 7 "../ext/libopencm3/include/libopencm3/cm3/nvic.h"
+ 1640              		.file 8 "../ext/libopencm3/include/libopencm3/stm32/common/rcc_common_all.h"
+ 1641              		.file 9 "../ext/libopencm3/include/libopencm3/stm32/common/dma_common_f24.h"
+ 1642              		.file 10 "../ext/libopencm3/include/libopencm3/stm32/common/gpio_common_all.h"
+ 1643              		.file 11 "../ext/libopencm3/include/libopencm3/stm32/common/spi_common_all.h"
+ 1644              		.file 12 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/gpio_arch.h"
+ 1645              		.file 13 "../ext/libopencm3/include/libopencm3/stm32/common/gpio_common_f234.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 spi_arch.c
+     /tmp/ccFJZaUc.s:20     .text.spi_arch_int_disable:00000000 $t
+     /tmp/ccFJZaUc.s:24     .text.spi_arch_int_disable:00000000 spi_arch_int_disable
+     /tmp/ccFJZaUc.s:61     .text.spi_configure_dma:00000000 $t
+     /tmp/ccFJZaUc.s:65     .text.spi_configure_dma:00000000 spi_configure_dma
+     /tmp/ccFJZaUc.s:190    .text.spi_arch_int_enable:00000000 $t
+     /tmp/ccFJZaUc.s:194    .text.spi_arch_int_enable:00000000 spi_arch_int_enable
+     /tmp/ccFJZaUc.s:242    .text.spi_start_dma_transaction:00000000 $t
+     /tmp/ccFJZaUc.s:246    .text.spi_start_dma_transaction:00000000 spi_start_dma_transaction
+     /tmp/ccFJZaUc.s:350    .text.spi_start_dma_transaction:00000060 $d
+     /tmp/ccFJZaUc.s:358    .text.spi_start_dma_transaction:00000068 $t
+     /tmp/ccFJZaUc.s:613    .text.spi_start_dma_transaction:000001d0 $d
+     /tmp/ccFJZaUc.s:618    .text.spi_slave_select:00000000 $t
+     /tmp/ccFJZaUc.s:623    .text.spi_slave_select:00000000 spi_slave_select
+     /tmp/ccFJZaUc.s:655    .text.spi_slave_unselect:00000000 $t
+     /tmp/ccFJZaUc.s:660    .text.spi_slave_unselect:00000000 spi_slave_unselect
+     /tmp/ccFJZaUc.s:692    .text.spi_init_slaves:00000000 $t
+     /tmp/ccFJZaUc.s:697    .text.spi_init_slaves:00000000 spi_init_slaves
+     /tmp/ccFJZaUc.s:736    .text.spi_init_slaves:0000001c $d
+     /tmp/ccFJZaUc.s:744    .text.spi_submit:00000000 $t
+     /tmp/ccFJZaUc.s:749    .text.spi_submit:00000000 spi_submit
+     /tmp/ccFJZaUc.s:832    .text.spi_lock:00000000 $t
+     /tmp/ccFJZaUc.s:837    .text.spi_lock:00000000 spi_lock
+     /tmp/ccFJZaUc.s:889    .text.spi_resume:00000000 $t
+     /tmp/ccFJZaUc.s:894    .text.spi_resume:00000000 spi_resume
+     /tmp/ccFJZaUc.s:957    .text.spi1_arch_init:00000000 $t
+     /tmp/ccFJZaUc.s:962    .text.spi1_arch_init:00000000 spi1_arch_init
+     /tmp/ccFJZaUc.s:1171   .text.spi1_arch_init:00000100 $d
+     /tmp/ccFJZaUc.s:1182   .text.dma2_stream0_isr:00000000 $t
+     /tmp/ccFJZaUc.s:1187   .text.dma2_stream0_isr:00000000 dma2_stream0_isr
+     /tmp/ccFJZaUc.s:1447   .text.dma2_stream0_isr:0000010c $d
+     /tmp/ccFJZaUc.s:1459   .text.dma2_stream5_isr:00000000 $t
+     /tmp/ccFJZaUc.s:1464   .text.dma2_stream5_isr:00000000 dma2_stream5_isr
+     /tmp/ccFJZaUc.s:1619   .text.dma2_stream5_isr:000000a8 $d
+     /tmp/ccFJZaUc.s:1626   .bss.spi1_dma:00000000 $d
+     /tmp/ccFJZaUc.s:1630   .bss.spi1_dma:00000000 spi1_dma
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4._default_types.h.15.933e8edd27a65e0b69af4a865eb623d2
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.common.h.32.d86387944c62748791af32fae2b4e12c
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.nvic.h.48.0ed05fa004613342c24d583329a30686
+                           .group:00000000 wm4.nvic.h.16.68b2cd144a8737a35a31e344912a6e4f
+                           .group:00000000 wm4.memorymap.h.21.c02b8deb04548e5cab747cb6a10accc1
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.exti_common_all.h.29.bb1b6f2d88bdbee656ff41e7a96e7174
+                           .group:00000000 wm4.spi_common_all.h.33.ae2b2cb8290972223a395c92a2f67d15
+                           .group:00000000 wm4.spi_common_l1f124.h.51.59f5b5b3072260c90ea2e6bfb94e5733
+                           .group:00000000 wm4.spi_common_f24.h.50.3c454bc81d61158789a399681e9f2a2d
+                           .group:00000000 wm4.dma_common_f24.h.37.8ac828daf03cb08df22f5bde9b21450b
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.spi.h.163.1dbaacd28ac2df39e8b3e6d025cb4129
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+
+UNDEFINED SYMBOLS
+nvic_disable_irq
+rcc_periph_clock_enable
+dma_stream_reset
+dma_set_peripheral_address
+dma_set_memory_address
+dma_set_number_of_data
+dma_set_peripheral_size
+dma_set_memory_size
+dma_enable_memory_increment_mode
+dma_disable_memory_increment_mode
+nvic_set_priority
+nvic_enable_irq
+spi_disable
+spi_init_master
+spi_enable_software_slave_management
+spi_set_nss_high
+spi_enable
+gpio_clear
+dma_channel_select
+dma_set_transfer_mode
+dma_set_priority
+dma_enable_transfer_complete_interrupt
+dma_enable_stream
+spi_enable_rx_dma
+spi_enable_tx_dma
+gpio_set
+gpio_setup_output
+gpio_setup_pin_af
+gpio_set_output_options
+spi_reset
+spi1
+dma_disable_transfer_complete_interrupt
+spi_disable_rx_dma
+dma_disable_stream
+spi_disable_tx_dma

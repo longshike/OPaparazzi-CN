@@ -1,0 +1,1283 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"uart_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.usart_isr,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	usart_isr:
+  25              	.LFB9:
+  26              		.file 1 "arch/stm32/mcu_periph/uart_arch.c"
+   1:arch/stm32/mcu_periph/uart_arch.c **** /*
+   2:arch/stm32/mcu_periph/uart_arch.c ****  * Copyright (C) 2009 Antoine Drouin <poinix@gmail.com>
+   3:arch/stm32/mcu_periph/uart_arch.c ****  * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
+   4:arch/stm32/mcu_periph/uart_arch.c ****  *
+   5:arch/stm32/mcu_periph/uart_arch.c ****  * This file is part of paparazzi.
+   6:arch/stm32/mcu_periph/uart_arch.c ****  *
+   7:arch/stm32/mcu_periph/uart_arch.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:arch/stm32/mcu_periph/uart_arch.c ****  * it under the terms of the GNU General Public License as published by
+   9:arch/stm32/mcu_periph/uart_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:arch/stm32/mcu_periph/uart_arch.c ****  * any later version.
+  11:arch/stm32/mcu_periph/uart_arch.c ****  *
+  12:arch/stm32/mcu_periph/uart_arch.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:arch/stm32/mcu_periph/uart_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:arch/stm32/mcu_periph/uart_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:arch/stm32/mcu_periph/uart_arch.c ****  * GNU General Public License for more details.
+  16:arch/stm32/mcu_periph/uart_arch.c ****  *
+  17:arch/stm32/mcu_periph/uart_arch.c ****  * You should have received a copy of the GNU General Public License
+  18:arch/stm32/mcu_periph/uart_arch.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:arch/stm32/mcu_periph/uart_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:arch/stm32/mcu_periph/uart_arch.c ****  * Boston, MA 02111-1307, USA.
+  21:arch/stm32/mcu_periph/uart_arch.c ****  */
+  22:arch/stm32/mcu_periph/uart_arch.c **** 
+  23:arch/stm32/mcu_periph/uart_arch.c **** /**
+  24:arch/stm32/mcu_periph/uart_arch.c ****  * @file arch/stm32/mcu_periph/uart_arch.c
+  25:arch/stm32/mcu_periph/uart_arch.c ****  * @ingroup stm32_arch
+  26:arch/stm32/mcu_periph/uart_arch.c ****  *
+  27:arch/stm32/mcu_periph/uart_arch.c ****  * Handling of UART hardware for STM32.
+  28:arch/stm32/mcu_periph/uart_arch.c ****  */
+  29:arch/stm32/mcu_periph/uart_arch.c **** 
+  30:arch/stm32/mcu_periph/uart_arch.c **** #include "mcu_periph/uart.h"
+  31:arch/stm32/mcu_periph/uart_arch.c **** #include "mcu_periph/gpio.h"
+  32:arch/stm32/mcu_periph/uart_arch.c **** 
+  33:arch/stm32/mcu_periph/uart_arch.c **** #include <libopencm3/stm32/gpio.h>
+  34:arch/stm32/mcu_periph/uart_arch.c **** #include <libopencm3/stm32/rcc.h>
+  35:arch/stm32/mcu_periph/uart_arch.c **** #include <libopencm3/stm32/usart.h>
+  36:arch/stm32/mcu_periph/uart_arch.c **** #include <libopencm3/cm3/nvic.h>
+  37:arch/stm32/mcu_periph/uart_arch.c **** 
+  38:arch/stm32/mcu_periph/uart_arch.c **** #include "std.h"
+  39:arch/stm32/mcu_periph/uart_arch.c **** 
+  40:arch/stm32/mcu_periph/uart_arch.c **** #include BOARD_CONFIG
+  41:arch/stm32/mcu_periph/uart_arch.c **** 
+  42:arch/stm32/mcu_periph/uart_arch.c **** void uart_periph_set_baudrate(struct uart_periph *p, uint32_t baud)
+  43:arch/stm32/mcu_periph/uart_arch.c **** {
+  44:arch/stm32/mcu_periph/uart_arch.c ****   p->baudrate = baud;
+  45:arch/stm32/mcu_periph/uart_arch.c **** 
+  46:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART baudrate */
+  47:arch/stm32/mcu_periph/uart_arch.c ****   usart_set_baudrate((uint32_t)p->reg_addr, baud);
+  48:arch/stm32/mcu_periph/uart_arch.c **** 
+  49:arch/stm32/mcu_periph/uart_arch.c ****   /* Disable Idle Line interrupt */
+  50:arch/stm32/mcu_periph/uart_arch.c ****   USART_CR1((uint32_t)p->reg_addr) &= ~USART_CR1_IDLEIE;
+  51:arch/stm32/mcu_periph/uart_arch.c **** 
+  52:arch/stm32/mcu_periph/uart_arch.c ****   /* Disable LIN break detection interrupt */
+  53:arch/stm32/mcu_periph/uart_arch.c ****   USART_CR2((uint32_t)p->reg_addr) &= ~USART_CR2_LBDIE;
+  54:arch/stm32/mcu_periph/uart_arch.c **** 
+  55:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART1 Receive interrupts */
+  56:arch/stm32/mcu_periph/uart_arch.c ****   USART_CR1((uint32_t)p->reg_addr) |= USART_CR1_RXNEIE;
+  57:arch/stm32/mcu_periph/uart_arch.c **** 
+  58:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable the USART */
+  59:arch/stm32/mcu_periph/uart_arch.c ****   usart_enable((uint32_t)p->reg_addr);
+  60:arch/stm32/mcu_periph/uart_arch.c **** 
+  61:arch/stm32/mcu_periph/uart_arch.c **** }
+  62:arch/stm32/mcu_periph/uart_arch.c **** 
+  63:arch/stm32/mcu_periph/uart_arch.c **** void uart_periph_set_bits_stop_parity(struct uart_periph *p, uint8_t bits, uint8_t stop, uint8_t pa
+  64:arch/stm32/mcu_periph/uart_arch.c **** {
+  65:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART parity and data bits */
+  66:arch/stm32/mcu_periph/uart_arch.c ****   if (parity == UPARITY_EVEN) {
+  67:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_EVEN);
+  68:arch/stm32/mcu_periph/uart_arch.c ****     if (bits == UBITS_7) {
+  69:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 8);
+  70:arch/stm32/mcu_periph/uart_arch.c ****     } else { // 8 data bits by default
+  71:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 9);
+  72:arch/stm32/mcu_periph/uart_arch.c ****     }
+  73:arch/stm32/mcu_periph/uart_arch.c ****   } else if (parity == UPARITY_ODD) {
+  74:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_ODD);
+  75:arch/stm32/mcu_periph/uart_arch.c ****     if (bits == UBITS_7) {
+  76:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 8);
+  77:arch/stm32/mcu_periph/uart_arch.c ****     } else { // 8 data bits by default
+  78:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 9);
+  79:arch/stm32/mcu_periph/uart_arch.c ****     }
+  80:arch/stm32/mcu_periph/uart_arch.c ****   } else { // 8 data bist, NO_PARITY by default
+  81:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_NONE);
+  82:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_databits((uint32_t)p->reg_addr, 8); // is 7bits without parity possible ?
+  83:arch/stm32/mcu_periph/uart_arch.c ****   }
+  84:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART stop bits */
+  85:arch/stm32/mcu_periph/uart_arch.c ****   if (stop == USTOP_2) {
+  86:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_stopbits((uint32_t)p->reg_addr, USART_STOPBITS_2);
+  87:arch/stm32/mcu_periph/uart_arch.c ****   } else { // 1 stop bit by default
+  88:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_stopbits((uint32_t)p->reg_addr, USART_STOPBITS_1);
+  89:arch/stm32/mcu_periph/uart_arch.c ****   }
+  90:arch/stm32/mcu_periph/uart_arch.c **** }
+  91:arch/stm32/mcu_periph/uart_arch.c **** 
+  92:arch/stm32/mcu_periph/uart_arch.c **** void uart_periph_set_mode(struct uart_periph *p, bool_t tx_enabled, bool_t rx_enabled, bool_t hw_fl
+  93:arch/stm32/mcu_periph/uart_arch.c **** {
+  94:arch/stm32/mcu_periph/uart_arch.c ****   uint32_t mode = 0;
+  95:arch/stm32/mcu_periph/uart_arch.c ****   if (tx_enabled) {
+  96:arch/stm32/mcu_periph/uart_arch.c ****     mode |= USART_MODE_TX;
+  97:arch/stm32/mcu_periph/uart_arch.c ****   }
+  98:arch/stm32/mcu_periph/uart_arch.c ****   if (rx_enabled) {
+  99:arch/stm32/mcu_periph/uart_arch.c ****     mode |= USART_MODE_RX;
+ 100:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 101:arch/stm32/mcu_periph/uart_arch.c **** 
+ 102:arch/stm32/mcu_periph/uart_arch.c ****   /* set mode to Tx, Rx or TxRx */
+ 103:arch/stm32/mcu_periph/uart_arch.c ****   usart_set_mode((uint32_t)p->reg_addr, mode);
+ 104:arch/stm32/mcu_periph/uart_arch.c **** 
+ 105:arch/stm32/mcu_periph/uart_arch.c ****   if (hw_flow_control) {
+ 106:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_flow_control((uint32_t)p->reg_addr, USART_FLOWCONTROL_RTS_CTS);
+ 107:arch/stm32/mcu_periph/uart_arch.c ****   } else {
+ 108:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_flow_control((uint32_t)p->reg_addr, USART_FLOWCONTROL_NONE);
+ 109:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 110:arch/stm32/mcu_periph/uart_arch.c **** }
+ 111:arch/stm32/mcu_periph/uart_arch.c **** 
+ 112:arch/stm32/mcu_periph/uart_arch.c **** void uart_transmit(struct uart_periph *p, uint8_t data)
+ 113:arch/stm32/mcu_periph/uart_arch.c **** {
+ 114:arch/stm32/mcu_periph/uart_arch.c **** 
+ 115:arch/stm32/mcu_periph/uart_arch.c ****   uint16_t temp = (p->tx_insert_idx + 1) % UART_TX_BUFFER_SIZE;
+ 116:arch/stm32/mcu_periph/uart_arch.c **** 
+ 117:arch/stm32/mcu_periph/uart_arch.c ****   if (temp == p->tx_extract_idx) {
+ 118:arch/stm32/mcu_periph/uart_arch.c ****     return;  // no room
+ 119:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 120:arch/stm32/mcu_periph/uart_arch.c **** 
+ 121:arch/stm32/mcu_periph/uart_arch.c ****   USART_CR1((uint32_t)p->reg_addr) &= ~USART_CR1_TXEIE; // Disable TX interrupt
+ 122:arch/stm32/mcu_periph/uart_arch.c **** 
+ 123:arch/stm32/mcu_periph/uart_arch.c ****   // check if in process of sending data
+ 124:arch/stm32/mcu_periph/uart_arch.c ****   if (p->tx_running) { // yes, add to queue
+ 125:arch/stm32/mcu_periph/uart_arch.c ****     p->tx_buf[p->tx_insert_idx] = data;
+ 126:arch/stm32/mcu_periph/uart_arch.c ****     p->tx_insert_idx = temp;
+ 127:arch/stm32/mcu_periph/uart_arch.c ****   } else { // no, set running flag and write to output register
+ 128:arch/stm32/mcu_periph/uart_arch.c ****     p->tx_running = TRUE;
+ 129:arch/stm32/mcu_periph/uart_arch.c ****     usart_send((uint32_t)p->reg_addr, data);
+ 130:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 131:arch/stm32/mcu_periph/uart_arch.c **** 
+ 132:arch/stm32/mcu_periph/uart_arch.c ****   USART_CR1((uint32_t)p->reg_addr) |= USART_CR1_TXEIE; // Enable TX interrupt
+ 133:arch/stm32/mcu_periph/uart_arch.c **** 
+ 134:arch/stm32/mcu_periph/uart_arch.c **** }
+ 135:arch/stm32/mcu_periph/uart_arch.c **** 
+ 136:arch/stm32/mcu_periph/uart_arch.c **** static inline void usart_isr(struct uart_periph *p)
+ 137:arch/stm32/mcu_periph/uart_arch.c **** {
+  27              		.loc 1 137 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 70B5     		push	{r4, r5, r6, lr}
+  33              		.cfi_def_cfa_offset 16
+  34              		.cfi_offset 4, -16
+  35              		.cfi_offset 5, -12
+  36              		.cfi_offset 6, -8
+  37              		.cfi_offset 14, -4
+  38              		.loc 1 137 0
+  39 0002 0446     		mov	r4, r0
+ 138:arch/stm32/mcu_periph/uart_arch.c **** 
+ 139:arch/stm32/mcu_periph/uart_arch.c ****   if (((USART_CR1((uint32_t)p->reg_addr) & USART_CR1_TXEIE) != 0) &&
+  40              		.loc 1 139 0
+  41 0004 D0F80C01 		ldr	r0, [r0, #268]
+  42              	.LVL1:
+  43 0008 C368     		ldr	r3, [r0, #12]
+  44 000a 1906     		lsls	r1, r3, #24
+  45 000c 1CD5     		bpl	.L2
+ 140:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_TXE) != 0)) {
+  46              		.loc 1 140 0 discriminator 1
+  47 000e 0368     		ldr	r3, [r0]
+ 139:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_TXE) != 0)) {
+  48              		.loc 1 139 0 discriminator 1
+  49 0010 1A06     		lsls	r2, r3, #24
+  50 0012 19D5     		bpl	.L2
+ 141:arch/stm32/mcu_periph/uart_arch.c ****     // check if more data to send
+ 142:arch/stm32/mcu_periph/uart_arch.c ****     if (p->tx_insert_idx != p->tx_extract_idx) {
+  51              		.loc 1 142 0
+  52 0014 B4F80631 		ldrh	r3, [r4, #262]
+  53 0018 B4F80421 		ldrh	r2, [r4, #260]
+  54 001c 9A42     		cmp	r2, r3
+  55 001e 0CD0     		beq	.L3
+ 143:arch/stm32/mcu_periph/uart_arch.c ****       usart_send((uint32_t)p->reg_addr, p->tx_buf[p->tx_extract_idx]);
+  56              		.loc 1 143 0
+  57 0020 2344     		add	r3, r3, r4
+  58 0022 93F88410 		ldrb	r1, [r3, #132]	@ zero_extendqisi2
+  59 0026 FFF7FEFF 		bl	usart_send
+  60              	.LVL2:
+ 144:arch/stm32/mcu_periph/uart_arch.c ****       p->tx_extract_idx++;
+  61              		.loc 1 144 0
+  62 002a B4F80631 		ldrh	r3, [r4, #262]
+  63 002e 0133     		adds	r3, r3, #1
+ 145:arch/stm32/mcu_periph/uart_arch.c ****       p->tx_extract_idx %= UART_TX_BUFFER_SIZE;
+  64              		.loc 1 145 0
+  65 0030 03F07F03 		and	r3, r3, #127
+  66 0034 A4F80631 		strh	r3, [r4, #262]	@ movhi
+  67 0038 06E0     		b	.L2
+  68              	.L3:
+ 146:arch/stm32/mcu_periph/uart_arch.c ****     } else {
+ 147:arch/stm32/mcu_periph/uart_arch.c ****       p->tx_running = FALSE;   // clear running flag
+  69              		.loc 1 147 0
+  70 003a 0023     		movs	r3, #0
+  71 003c 84F80831 		strb	r3, [r4, #264]
+ 148:arch/stm32/mcu_periph/uart_arch.c ****       USART_CR1((uint32_t)p->reg_addr) &= ~USART_CR1_TXEIE; // Disable TX interrupt
+  72              		.loc 1 148 0
+  73 0040 C368     		ldr	r3, [r0, #12]
+  74 0042 23F08003 		bic	r3, r3, #128
+  75 0046 C360     		str	r3, [r0, #12]
+  76              	.L2:
+ 149:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 150:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 151:arch/stm32/mcu_periph/uart_arch.c **** 
+ 152:arch/stm32/mcu_periph/uart_arch.c ****   if (((USART_CR1((uint32_t)p->reg_addr) & USART_CR1_RXNEIE) != 0) &&
+  77              		.loc 1 152 0
+  78 0048 D4F80C01 		ldr	r0, [r4, #268]
+  79 004c C368     		ldr	r3, [r0, #12]
+  80 004e 9B06     		lsls	r3, r3, #26
+  81 0050 1AD5     		bpl	.L4
+ 153:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_RXNE) != 0) &&
+  82              		.loc 1 153 0 discriminator 1
+  83 0052 0368     		ldr	r3, [r0]
+ 152:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_RXNE) != 0) &&
+  84              		.loc 1 152 0 discriminator 1
+  85 0054 9E06     		lsls	r6, r3, #26
+  86 0056 17D5     		bpl	.L4
+ 154:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_ORE) == 0) &&
+  87              		.loc 1 154 0
+  88 0058 0368     		ldr	r3, [r0]
+ 153:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_RXNE) != 0) &&
+  89              		.loc 1 153 0
+  90 005a 1D07     		lsls	r5, r3, #28
+  91 005c 14D4     		bmi	.L4
+ 155:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_NE) == 0) &&
+  92              		.loc 1 155 0
+  93 005e 0368     		ldr	r3, [r0]
+ 154:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_ORE) == 0) &&
+  94              		.loc 1 154 0
+  95 0060 5907     		lsls	r1, r3, #29
+  96 0062 11D4     		bmi	.L4
+ 156:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_FE) == 0)) {
+  97              		.loc 1 156 0
+  98 0064 0368     		ldr	r3, [r0]
+ 155:arch/stm32/mcu_periph/uart_arch.c ****       ((USART_SR((uint32_t)p->reg_addr) & USART_SR_NE) == 0) &&
+  99              		.loc 1 155 0
+ 100 0066 9A07     		lsls	r2, r3, #30
+ 101 0068 0ED4     		bmi	.L4
+ 102              	.LBB6:
+ 157:arch/stm32/mcu_periph/uart_arch.c ****     uint16_t temp = (p->rx_insert_idx + 1) % UART_RX_BUFFER_SIZE;;
+ 103              		.loc 1 157 0
+ 104 006a B4F88060 		ldrh	r6, [r4, #128]
+ 158:arch/stm32/mcu_periph/uart_arch.c ****     p->rx_buf[p->rx_insert_idx] = usart_recv((uint32_t)p->reg_addr);
+ 105              		.loc 1 158 0
+ 106 006e FFF7FEFF 		bl	usart_recv
+ 107              	.LVL3:
+ 157:arch/stm32/mcu_periph/uart_arch.c ****     uint16_t temp = (p->rx_insert_idx + 1) % UART_RX_BUFFER_SIZE;;
+ 108              		.loc 1 157 0
+ 109 0072 751C     		adds	r5, r6, #1
+ 159:arch/stm32/mcu_periph/uart_arch.c ****     // check for more room in queue
+ 160:arch/stm32/mcu_periph/uart_arch.c ****     if (temp != p->rx_extract_idx) {
+ 110              		.loc 1 160 0
+ 111 0074 B4F88230 		ldrh	r3, [r4, #130]
+ 158:arch/stm32/mcu_periph/uart_arch.c ****     p->rx_buf[p->rx_insert_idx] = usart_recv((uint32_t)p->reg_addr);
+ 112              		.loc 1 158 0
+ 113 0078 A055     		strb	r0, [r4, r6]
+ 157:arch/stm32/mcu_periph/uart_arch.c ****     p->rx_buf[p->rx_insert_idx] = usart_recv((uint32_t)p->reg_addr);
+ 114              		.loc 1 157 0
+ 115 007a 05F07F05 		and	r5, r5, #127
+ 116              	.LVL4:
+ 117              		.loc 1 160 0
+ 118 007e AB42     		cmp	r3, r5
+ 119 0080 30D0     		beq	.L1
+ 161:arch/stm32/mcu_periph/uart_arch.c ****       p->rx_insert_idx = temp;  // update insert index
+ 120              		.loc 1 161 0
+ 121 0082 A4F88050 		strh	r5, [r4, #128]	@ movhi
+ 122 0086 70BD     		pop	{r4, r5, r6, pc}
+ 123              	.LVL5:
+ 124              	.L4:
+ 125              	.LBE6:
+ 162:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 163:arch/stm32/mcu_periph/uart_arch.c ****   } else {
+ 164:arch/stm32/mcu_periph/uart_arch.c ****     /* ORE, NE or FE error - read USART_DR reg and log the error */
+ 165:arch/stm32/mcu_periph/uart_arch.c ****     if (((USART_CR1((uint32_t)p->reg_addr) & USART_CR1_RXNEIE) != 0) &&
+ 126              		.loc 1 165 0
+ 127 0088 C368     		ldr	r3, [r0, #12]
+ 128 008a 9B06     		lsls	r3, r3, #26
+ 129 008c 0AD5     		bpl	.L7
+ 166:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_ORE) != 0)) {
+ 130              		.loc 1 166 0 discriminator 1
+ 131 008e 0368     		ldr	r3, [r0]
+ 165:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_ORE) != 0)) {
+ 132              		.loc 1 165 0 discriminator 1
+ 133 0090 1E07     		lsls	r6, r3, #28
+ 134 0092 07D5     		bpl	.L7
+ 167:arch/stm32/mcu_periph/uart_arch.c ****       usart_recv((uint32_t)p->reg_addr);
+ 135              		.loc 1 167 0
+ 136 0094 FFF7FEFF 		bl	usart_recv
+ 137              	.LVL6:
+ 168:arch/stm32/mcu_periph/uart_arch.c ****       p->ore++;
+ 138              		.loc 1 168 0
+ 139 0098 B4F82431 		ldrh	r3, [r4, #292]
+ 140 009c 0133     		adds	r3, r3, #1
+ 141 009e 9BB2     		uxth	r3, r3
+ 142 00a0 A4F82431 		strh	r3, [r4, #292]	@ movhi
+ 143              	.L7:
+ 169:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 170:arch/stm32/mcu_periph/uart_arch.c ****     if (((USART_CR1((uint32_t)p->reg_addr) & USART_CR1_RXNEIE) != 0) &&
+ 144              		.loc 1 170 0
+ 145 00a4 D4F80C01 		ldr	r0, [r4, #268]
+ 146 00a8 C368     		ldr	r3, [r0, #12]
+ 147 00aa 9D06     		lsls	r5, r3, #26
+ 148 00ac 0AD5     		bpl	.L8
+ 171:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_NE) != 0)) {
+ 149              		.loc 1 171 0 discriminator 1
+ 150 00ae 0368     		ldr	r3, [r0]
+ 170:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_NE) != 0)) {
+ 151              		.loc 1 170 0 discriminator 1
+ 152 00b0 5907     		lsls	r1, r3, #29
+ 153 00b2 07D5     		bpl	.L8
+ 172:arch/stm32/mcu_periph/uart_arch.c ****       usart_recv((uint32_t)p->reg_addr);
+ 154              		.loc 1 172 0
+ 155 00b4 FFF7FEFF 		bl	usart_recv
+ 156              	.LVL7:
+ 173:arch/stm32/mcu_periph/uart_arch.c ****       p->ne_err++;
+ 157              		.loc 1 173 0
+ 158 00b8 B4F82631 		ldrh	r3, [r4, #294]
+ 159 00bc 0133     		adds	r3, r3, #1
+ 160 00be 9BB2     		uxth	r3, r3
+ 161 00c0 A4F82631 		strh	r3, [r4, #294]	@ movhi
+ 162              	.L8:
+ 174:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 175:arch/stm32/mcu_periph/uart_arch.c ****     if (((USART_CR1((uint32_t)p->reg_addr) & USART_CR1_RXNEIE) != 0) &&
+ 163              		.loc 1 175 0
+ 164 00c4 D4F80C01 		ldr	r0, [r4, #268]
+ 165 00c8 C368     		ldr	r3, [r0, #12]
+ 166 00ca 9A06     		lsls	r2, r3, #26
+ 167 00cc 0AD5     		bpl	.L1
+ 176:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_FE) != 0)) {
+ 168              		.loc 1 176 0 discriminator 1
+ 169 00ce 0368     		ldr	r3, [r0]
+ 175:arch/stm32/mcu_periph/uart_arch.c ****         ((USART_SR((uint32_t)p->reg_addr) & USART_SR_FE) != 0)) {
+ 170              		.loc 1 175 0 discriminator 1
+ 171 00d0 9B07     		lsls	r3, r3, #30
+ 172 00d2 07D5     		bpl	.L1
+ 177:arch/stm32/mcu_periph/uart_arch.c ****       usart_recv((uint32_t)p->reg_addr);
+ 173              		.loc 1 177 0
+ 174 00d4 FFF7FEFF 		bl	usart_recv
+ 175              	.LVL8:
+ 178:arch/stm32/mcu_periph/uart_arch.c ****       p->fe_err++;
+ 176              		.loc 1 178 0
+ 177 00d8 B4F82831 		ldrh	r3, [r4, #296]
+ 178 00dc 0133     		adds	r3, r3, #1
+ 179 00de 9BB2     		uxth	r3, r3
+ 180 00e0 A4F82831 		strh	r3, [r4, #296]	@ movhi
+ 181              	.L1:
+ 182 00e4 70BD     		pop	{r4, r5, r6, pc}
+ 183              		.cfi_endproc
+ 184              	.LFE9:
+ 186              		.section	.text.uart_periph_set_baudrate,"ax",%progbits
+ 187              		.align	1
+ 188              		.global	uart_periph_set_baudrate
+ 189              		.thumb
+ 190              		.thumb_func
+ 192              	uart_periph_set_baudrate:
+ 193              	.LFB5:
+  43:arch/stm32/mcu_periph/uart_arch.c ****   p->baudrate = baud;
+ 194              		.loc 1 43 0
+ 195              		.cfi_startproc
+ 196              		@ args = 0, pretend = 0, frame = 0
+ 197              		@ frame_needed = 0, uses_anonymous_args = 0
+ 198              	.LVL9:
+ 199 0000 10B5     		push	{r4, lr}
+ 200              		.cfi_def_cfa_offset 8
+ 201              		.cfi_offset 4, -8
+ 202              		.cfi_offset 14, -4
+  43:arch/stm32/mcu_periph/uart_arch.c ****   p->baudrate = baud;
+ 203              		.loc 1 43 0
+ 204 0002 0446     		mov	r4, r0
+  44:arch/stm32/mcu_periph/uart_arch.c **** 
+ 205              		.loc 1 44 0
+ 206 0004 C0F81011 		str	r1, [r0, #272]
+  47:arch/stm32/mcu_periph/uart_arch.c **** 
+ 207              		.loc 1 47 0
+ 208 0008 D0F80C01 		ldr	r0, [r0, #268]
+ 209              	.LVL10:
+ 210 000c FFF7FEFF 		bl	usart_set_baudrate
+ 211              	.LVL11:
+  50:arch/stm32/mcu_periph/uart_arch.c **** 
+ 212              		.loc 1 50 0
+ 213 0010 D4F80C01 		ldr	r0, [r4, #268]
+ 214 0014 C368     		ldr	r3, [r0, #12]
+ 215 0016 23F01003 		bic	r3, r3, #16
+ 216 001a C360     		str	r3, [r0, #12]
+  53:arch/stm32/mcu_periph/uart_arch.c **** 
+ 217              		.loc 1 53 0
+ 218 001c 0369     		ldr	r3, [r0, #16]
+ 219 001e 23F04003 		bic	r3, r3, #64
+ 220 0022 0361     		str	r3, [r0, #16]
+  56:arch/stm32/mcu_periph/uart_arch.c **** 
+ 221              		.loc 1 56 0
+ 222 0024 C368     		ldr	r3, [r0, #12]
+ 223 0026 43F02003 		orr	r3, r3, #32
+ 224 002a C360     		str	r3, [r0, #12]
+  61:arch/stm32/mcu_periph/uart_arch.c **** 
+ 225              		.loc 1 61 0
+ 226 002c BDE81040 		pop	{r4, lr}
+ 227              		.cfi_restore 14
+ 228              		.cfi_restore 4
+ 229              		.cfi_def_cfa_offset 0
+ 230              	.LVL12:
+  59:arch/stm32/mcu_periph/uart_arch.c **** 
+ 231              		.loc 1 59 0
+ 232 0030 FFF7FEBF 		b	usart_enable
+ 233              	.LVL13:
+ 234              		.cfi_endproc
+ 235              	.LFE5:
+ 237              		.section	.text.uart_periph_set_bits_stop_parity,"ax",%progbits
+ 238              		.align	1
+ 239              		.global	uart_periph_set_bits_stop_parity
+ 240              		.thumb
+ 241              		.thumb_func
+ 243              	uart_periph_set_bits_stop_parity:
+ 244              	.LFB6:
+  64:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART parity and data bits */
+ 245              		.loc 1 64 0
+ 246              		.cfi_startproc
+ 247              		@ args = 0, pretend = 0, frame = 0
+ 248              		@ frame_needed = 0, uses_anonymous_args = 0
+ 249              	.LVL14:
+  66:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_EVEN);
+ 250              		.loc 1 66 0
+ 251 0000 022B     		cmp	r3, #2
+  64:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART parity and data bits */
+ 252              		.loc 1 64 0
+ 253 0002 70B5     		push	{r4, r5, r6, lr}
+ 254              		.cfi_def_cfa_offset 16
+ 255              		.cfi_offset 4, -16
+ 256              		.cfi_offset 5, -12
+ 257              		.cfi_offset 6, -8
+ 258              		.cfi_offset 14, -4
+  64:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART parity and data bits */
+ 259              		.loc 1 64 0
+ 260 0004 0446     		mov	r4, r0
+ 261 0006 0D46     		mov	r5, r1
+ 262 0008 1646     		mov	r6, r2
+  67:arch/stm32/mcu_periph/uart_arch.c ****     if (bits == UBITS_7) {
+ 263              		.loc 1 67 0
+ 264 000a D0F80C01 		ldr	r0, [r0, #268]
+ 265              	.LVL15:
+  66:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_EVEN);
+ 266              		.loc 1 66 0
+ 267 000e 02D1     		bne	.L43
+  67:arch/stm32/mcu_periph/uart_arch.c ****     if (bits == UBITS_7) {
+ 268              		.loc 1 67 0
+ 269 0010 4FF48061 		mov	r1, #1024
+ 270              	.LVL16:
+ 271 0014 03E0     		b	.L53
+ 272              	.LVL17:
+ 273              	.L43:
+  73:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_parity((uint32_t)p->reg_addr, USART_PARITY_ODD);
+ 274              		.loc 1 73 0
+ 275 0016 012B     		cmp	r3, #1
+ 276 0018 09D1     		bne	.L46
+  74:arch/stm32/mcu_periph/uart_arch.c ****     if (bits == UBITS_7) {
+ 277              		.loc 1 74 0
+ 278 001a 4FF4C061 		mov	r1, #1536
+ 279              	.LVL18:
+ 280              	.L53:
+ 281 001e FFF7FEFF 		bl	usart_set_parity
+ 282              	.LVL19:
+  75:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 8);
+ 283              		.loc 1 75 0
+ 284 0022 072D     		cmp	r5, #7
+  76:arch/stm32/mcu_periph/uart_arch.c ****     } else { // 8 data bits by default
+ 285              		.loc 1 76 0
+ 286 0024 D4F80C01 		ldr	r0, [r4, #268]
+  75:arch/stm32/mcu_periph/uart_arch.c ****       usart_set_databits((uint32_t)p->reg_addr, 8);
+ 287              		.loc 1 75 0
+ 288 0028 06D0     		beq	.L49
+  78:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 289              		.loc 1 78 0
+ 290 002a 0921     		movs	r1, #9
+ 291 002c 05E0     		b	.L50
+ 292              	.LVL20:
+ 293              	.L46:
+  81:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_databits((uint32_t)p->reg_addr, 8); // is 7bits without parity possible ?
+ 294              		.loc 1 81 0
+ 295 002e 0021     		movs	r1, #0
+ 296              	.LVL21:
+ 297 0030 FFF7FEFF 		bl	usart_set_parity
+ 298              	.LVL22:
+  82:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 299              		.loc 1 82 0
+ 300 0034 D4F80C01 		ldr	r0, [r4, #268]
+ 301              	.L49:
+ 302 0038 0821     		movs	r1, #8
+ 303              	.L50:
+ 304 003a FFF7FEFF 		bl	usart_set_databits
+ 305              	.LVL23:
+  85:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_stopbits((uint32_t)p->reg_addr, USART_STOPBITS_2);
+ 306              		.loc 1 85 0
+ 307 003e 022E     		cmp	r6, #2
+  86:arch/stm32/mcu_periph/uart_arch.c ****   } else { // 1 stop bit by default
+ 308              		.loc 1 86 0
+ 309 0040 D4F80C01 		ldr	r0, [r4, #268]
+ 310 0044 0CBF     		ite	eq
+ 311 0046 4FF40051 		moveq	r1, #8192
+  88:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 312              		.loc 1 88 0
+ 313 004a 0021     		movne	r1, #0
+  90:arch/stm32/mcu_periph/uart_arch.c **** 
+ 314              		.loc 1 90 0
+ 315 004c BDE87040 		pop	{r4, r5, r6, lr}
+ 316              		.cfi_restore 14
+ 317              		.cfi_restore 6
+ 318              		.cfi_restore 5
+ 319              		.cfi_restore 4
+ 320              		.cfi_def_cfa_offset 0
+ 321              	.LVL24:
+  88:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 322              		.loc 1 88 0
+ 323 0050 FFF7FEBF 		b	usart_set_stopbits
+ 324              	.LVL25:
+ 325              		.cfi_endproc
+ 326              	.LFE6:
+ 328              		.section	.text.uart_periph_set_mode,"ax",%progbits
+ 329              		.align	1
+ 330              		.global	uart_periph_set_mode
+ 331              		.thumb
+ 332              		.thumb_func
+ 334              	uart_periph_set_mode:
+ 335              	.LFB7:
+  93:arch/stm32/mcu_periph/uart_arch.c ****   uint32_t mode = 0;
+ 336              		.loc 1 93 0
+ 337              		.cfi_startproc
+ 338              		@ args = 0, pretend = 0, frame = 0
+ 339              		@ frame_needed = 0, uses_anonymous_args = 0
+ 340              	.LVL26:
+  96:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 341              		.loc 1 96 0
+ 342 0000 0029     		cmp	r1, #0
+  93:arch/stm32/mcu_periph/uart_arch.c ****   uint32_t mode = 0;
+ 343              		.loc 1 93 0
+ 344 0002 38B5     		push	{r3, r4, r5, lr}
+ 345              		.cfi_def_cfa_offset 16
+ 346              		.cfi_offset 3, -16
+ 347              		.cfi_offset 4, -12
+ 348              		.cfi_offset 5, -8
+ 349              		.cfi_offset 14, -4
+  96:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 350              		.loc 1 96 0
+ 351 0004 08BF     		it	eq
+ 352 0006 0021     		moveq	r1, #0
+ 353              	.LVL27:
+  93:arch/stm32/mcu_periph/uart_arch.c ****   uint32_t mode = 0;
+ 354              		.loc 1 93 0
+ 355 0008 0446     		mov	r4, r0
+ 356              	.LVL28:
+ 357 000a 1D46     		mov	r5, r3
+  96:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 358              		.loc 1 96 0
+ 359 000c 18BF     		it	ne
+ 360 000e 0821     		movne	r1, #8
+ 361              	.LVL29:
+  98:arch/stm32/mcu_periph/uart_arch.c ****     mode |= USART_MODE_RX;
+ 362              		.loc 1 98 0
+ 363 0010 0AB1     		cbz	r2, .L56
+  99:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 364              		.loc 1 99 0
+ 365 0012 41F00401 		orr	r1, r1, #4
+ 366              	.LVL30:
+ 367              	.L56:
+ 103:arch/stm32/mcu_periph/uart_arch.c **** 
+ 368              		.loc 1 103 0
+ 369 0016 D4F80C01 		ldr	r0, [r4, #268]
+ 370              	.LVL31:
+ 371 001a FFF7FEFF 		bl	usart_set_mode
+ 372              	.LVL32:
+ 373              	.LBB9:
+ 374              	.LBB10:
+ 106:arch/stm32/mcu_periph/uart_arch.c ****   } else {
+ 375              		.loc 1 106 0
+ 376 001e D4F80C01 		ldr	r0, [r4, #268]
+ 377              	.LBE10:
+ 378              	.LBE9:
+ 105:arch/stm32/mcu_periph/uart_arch.c ****     usart_set_flow_control((uint32_t)p->reg_addr, USART_FLOWCONTROL_RTS_CTS);
+ 379              		.loc 1 105 0
+ 380 0022 15B1     		cbz	r5, .L57
+ 381              	.LVL33:
+ 382              	.LBB12:
+ 383              	.LBB11:
+ 106:arch/stm32/mcu_periph/uart_arch.c ****   } else {
+ 384              		.loc 1 106 0
+ 385 0024 4FF44071 		mov	r1, #768
+ 386 0028 00E0     		b	.L62
+ 387              	.LVL34:
+ 388              	.L57:
+ 389              	.LBE11:
+ 390              	.LBE12:
+ 108:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 391              		.loc 1 108 0
+ 392 002a 2946     		mov	r1, r5
+ 393              	.L62:
+ 110:arch/stm32/mcu_periph/uart_arch.c **** 
+ 394              		.loc 1 110 0
+ 395 002c BDE83840 		pop	{r3, r4, r5, lr}
+ 396              		.cfi_restore 14
+ 397              		.cfi_restore 5
+ 398              		.cfi_restore 4
+ 399              		.cfi_restore 3
+ 400              		.cfi_def_cfa_offset 0
+ 401              	.LVL35:
+ 108:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 402              		.loc 1 108 0
+ 403 0030 FFF7FEBF 		b	usart_set_flow_control
+ 404              	.LVL36:
+ 405              		.cfi_endproc
+ 406              	.LFE7:
+ 408              		.section	.text.uart_transmit,"ax",%progbits
+ 409              		.align	1
+ 410              		.global	uart_transmit
+ 411              		.thumb
+ 412              		.thumb_func
+ 414              	uart_transmit:
+ 415              	.LFB8:
+ 113:arch/stm32/mcu_periph/uart_arch.c **** 
+ 416              		.loc 1 113 0
+ 417              		.cfi_startproc
+ 418              		@ args = 0, pretend = 0, frame = 0
+ 419              		@ frame_needed = 0, uses_anonymous_args = 0
+ 420              	.LVL37:
+ 115:arch/stm32/mcu_periph/uart_arch.c **** 
+ 421              		.loc 1 115 0
+ 422 0000 B0F80421 		ldrh	r2, [r0, #260]
+ 113:arch/stm32/mcu_periph/uart_arch.c **** 
+ 423              		.loc 1 113 0
+ 424 0004 38B5     		push	{r3, r4, r5, lr}
+ 425              		.cfi_def_cfa_offset 16
+ 426              		.cfi_offset 3, -16
+ 427              		.cfi_offset 4, -12
+ 428              		.cfi_offset 5, -8
+ 429              		.cfi_offset 14, -4
+ 113:arch/stm32/mcu_periph/uart_arch.c **** 
+ 430              		.loc 1 113 0
+ 431 0006 0446     		mov	r4, r0
+ 115:arch/stm32/mcu_periph/uart_arch.c **** 
+ 432              		.loc 1 115 0
+ 433 0008 531C     		adds	r3, r2, #1
+ 117:arch/stm32/mcu_periph/uart_arch.c ****     return;  // no room
+ 434              		.loc 1 117 0
+ 435 000a B0F80601 		ldrh	r0, [r0, #262]
+ 436              	.LVL38:
+ 115:arch/stm32/mcu_periph/uart_arch.c **** 
+ 437              		.loc 1 115 0
+ 438 000e 03F07F03 		and	r3, r3, #127
+ 439              	.LVL39:
+ 117:arch/stm32/mcu_periph/uart_arch.c ****     return;  // no room
+ 440              		.loc 1 117 0
+ 441 0012 9842     		cmp	r0, r3
+ 442 0014 19D0     		beq	.L63
+ 121:arch/stm32/mcu_periph/uart_arch.c **** 
+ 443              		.loc 1 121 0
+ 444 0016 D4F80C01 		ldr	r0, [r4, #268]
+ 445 001a C568     		ldr	r5, [r0, #12]
+ 446 001c 25F08005 		bic	r5, r5, #128
+ 447 0020 C560     		str	r5, [r0, #12]
+ 124:arch/stm32/mcu_periph/uart_arch.c ****     p->tx_buf[p->tx_insert_idx] = data;
+ 448              		.loc 1 124 0
+ 449 0022 94F80851 		ldrb	r5, [r4, #264]	@ zero_extendqisi2
+ 450 0026 2DB1     		cbz	r5, .L65
+ 125:arch/stm32/mcu_periph/uart_arch.c ****     p->tx_insert_idx = temp;
+ 451              		.loc 1 125 0
+ 452 0028 2244     		add	r2, r2, r4
+ 453 002a 82F88410 		strb	r1, [r2, #132]
+ 126:arch/stm32/mcu_periph/uart_arch.c ****   } else { // no, set running flag and write to output register
+ 454              		.loc 1 126 0
+ 455 002e A4F80431 		strh	r3, [r4, #260]	@ movhi
+ 456 0032 04E0     		b	.L66
+ 457              	.L65:
+ 128:arch/stm32/mcu_periph/uart_arch.c ****     usart_send((uint32_t)p->reg_addr, data);
+ 458              		.loc 1 128 0
+ 459 0034 0123     		movs	r3, #1
+ 460              	.LVL40:
+ 461 0036 84F80831 		strb	r3, [r4, #264]
+ 129:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 462              		.loc 1 129 0
+ 463 003a FFF7FEFF 		bl	usart_send
+ 464              	.LVL41:
+ 465              	.L66:
+ 132:arch/stm32/mcu_periph/uart_arch.c **** 
+ 466              		.loc 1 132 0
+ 467 003e D4F80C21 		ldr	r2, [r4, #268]
+ 468 0042 D368     		ldr	r3, [r2, #12]
+ 469 0044 43F08003 		orr	r3, r3, #128
+ 470 0048 D360     		str	r3, [r2, #12]
+ 471              	.L63:
+ 472 004a 38BD     		pop	{r3, r4, r5, pc}
+ 473              		.cfi_endproc
+ 474              	.LFE8:
+ 476              		.section	.text.uart1_init,"ax",%progbits
+ 477              		.align	1
+ 478              		.global	uart1_init
+ 479              		.thumb
+ 480              		.thumb_func
+ 482              	uart1_init:
+ 483              	.LFB11:
+ 179:arch/stm32/mcu_periph/uart_arch.c ****     }
+ 180:arch/stm32/mcu_periph/uart_arch.c ****   }
+ 181:arch/stm32/mcu_periph/uart_arch.c **** }
+ 182:arch/stm32/mcu_periph/uart_arch.c **** 
+ 183:arch/stm32/mcu_periph/uart_arch.c **** static inline void usart_enable_irq(uint8_t IRQn)
+ 184:arch/stm32/mcu_periph/uart_arch.c **** {
+ 185:arch/stm32/mcu_periph/uart_arch.c ****   /* Note:
+ 186:arch/stm32/mcu_periph/uart_arch.c ****    * In libstm32 times the priority of this interrupt was set to
+ 187:arch/stm32/mcu_periph/uart_arch.c ****    * preemption priority 2 and sub priority 1
+ 188:arch/stm32/mcu_periph/uart_arch.c ****    */
+ 189:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART interrupts */
+ 190:arch/stm32/mcu_periph/uart_arch.c ****   nvic_enable_irq(IRQn);
+ 191:arch/stm32/mcu_periph/uart_arch.c **** }
+ 192:arch/stm32/mcu_periph/uart_arch.c **** 
+ 193:arch/stm32/mcu_periph/uart_arch.c **** 
+ 194:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART1
+ 195:arch/stm32/mcu_periph/uart_arch.c **** 
+ 196:arch/stm32/mcu_periph/uart_arch.c **** /* by default enable UART Tx and Rx */
+ 197:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART1_TX
+ 198:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART1_TX TRUE
+ 199:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 200:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART1_RX
+ 201:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART1_RX TRUE
+ 202:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 203:arch/stm32/mcu_periph/uart_arch.c **** 
+ 204:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART1_HW_FLOW_CONTROL
+ 205:arch/stm32/mcu_periph/uart_arch.c **** #define UART1_HW_FLOW_CONTROL FALSE
+ 206:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 207:arch/stm32/mcu_periph/uart_arch.c **** 
+ 208:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART1_BITS
+ 209:arch/stm32/mcu_periph/uart_arch.c **** #define UART1_BITS UBITS_8
+ 210:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 211:arch/stm32/mcu_periph/uart_arch.c **** 
+ 212:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART1_STOP
+ 213:arch/stm32/mcu_periph/uart_arch.c **** #define UART1_STOP USTOP_1
+ 214:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 215:arch/stm32/mcu_periph/uart_arch.c **** 
+ 216:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART1_PARITY
+ 217:arch/stm32/mcu_periph/uart_arch.c **** #define UART1_PARITY UPARITY_NO
+ 218:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 219:arch/stm32/mcu_periph/uart_arch.c **** 
+ 220:arch/stm32/mcu_periph/uart_arch.c **** void uart1_init(void)
+ 221:arch/stm32/mcu_periph/uart_arch.c **** {
+ 484              		.loc 1 221 0
+ 485              		.cfi_startproc
+ 486              		@ args = 0, pretend = 0, frame = 0
+ 487              		@ frame_needed = 0, uses_anonymous_args = 0
+ 488 0000 10B5     		push	{r4, lr}
+ 489              		.cfi_def_cfa_offset 8
+ 490              		.cfi_offset 4, -8
+ 491              		.cfi_offset 14, -4
+ 222:arch/stm32/mcu_periph/uart_arch.c **** 
+ 223:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_init(&uart1);
+ 492              		.loc 1 223 0
+ 493 0002 174C     		ldr	r4, .L68
+ 494 0004 2046     		mov	r0, r4
+ 495 0006 FFF7FEFF 		bl	uart_periph_init
+ 496              	.LVL42:
+ 224:arch/stm32/mcu_periph/uart_arch.c ****   uart1.reg_addr = (void *)USART1;
+ 497              		.loc 1 224 0
+ 498 000a 164B     		ldr	r3, .L68+4
+ 499 000c C4F80C31 		str	r3, [r4, #268]
+ 225:arch/stm32/mcu_periph/uart_arch.c **** 
+ 226:arch/stm32/mcu_periph/uart_arch.c ****   /* init RCC and GPIOs */
+ 227:arch/stm32/mcu_periph/uart_arch.c ****   rcc_periph_clock_enable(RCC_USART1);
+ 500              		.loc 1 227 0
+ 501 0010 40F68400 		movw	r0, #2180
+ 502 0014 FFF7FEFF 		bl	rcc_periph_clock_enable
+ 503              	.LVL43:
+ 228:arch/stm32/mcu_periph/uart_arch.c **** 
+ 229:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART1_TX
+ 230:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART1_GPIO_PORT_TX, UART1_GPIO_TX, UART1_GPIO_AF, TRUE);
+ 504              		.loc 1 230 0
+ 505 0018 1348     		ldr	r0, .L68+8
+ 506 001a 4021     		movs	r1, #64
+ 507 001c 0722     		movs	r2, #7
+ 508 001e 0123     		movs	r3, #1
+ 509 0020 FFF7FEFF 		bl	gpio_setup_pin_af
+ 510              	.LVL44:
+ 231:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 232:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART1_RX
+ 233:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART1_GPIO_PORT_RX, UART1_GPIO_RX, UART1_GPIO_AF, FALSE);
+ 511              		.loc 1 233 0
+ 512 0024 4FF48061 		mov	r1, #1024
+ 513 0028 0722     		movs	r2, #7
+ 514 002a 0023     		movs	r3, #0
+ 515 002c 0F48     		ldr	r0, .L68+12
+ 516 002e FFF7FEFF 		bl	gpio_setup_pin_af
+ 517              	.LVL45:
+ 518              	.LBB13:
+ 519              	.LBB14:
+ 190:arch/stm32/mcu_periph/uart_arch.c **** }
+ 520              		.loc 1 190 0
+ 521 0032 2520     		movs	r0, #37
+ 522 0034 FFF7FEFF 		bl	nvic_enable_irq
+ 523              	.LVL46:
+ 524              	.LBE14:
+ 525              	.LBE13:
+ 234:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 235:arch/stm32/mcu_periph/uart_arch.c **** 
+ 236:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART interrupts in the interrupt controller */
+ 237:arch/stm32/mcu_periph/uart_arch.c ****   usart_enable_irq(NVIC_USART1_IRQ);
+ 238:arch/stm32/mcu_periph/uart_arch.c **** 
+ 239:arch/stm32/mcu_periph/uart_arch.c **** #if UART1_HW_FLOW_CONTROL
+ 240:arch/stm32/mcu_periph/uart_arch.c **** #warning "USING UART1 FLOW CONTROL. Make sure to pull down CTS if you are not connecting any flow-c
+ 241:arch/stm32/mcu_periph/uart_arch.c ****   /* setup CTS and RTS gpios */
+ 242:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART1_GPIO_PORT_CTS, UART1_GPIO_CTS, UART1_GPIO_AF, FALSE);
+ 243:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART1_GPIO_PORT_RTS, UART1_GPIO_RTS, UART1_GPIO_AF, TRUE);
+ 244:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 245:arch/stm32/mcu_periph/uart_arch.c **** 
+ 246:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART1, enable hardware flow control*/
+ 247:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_mode(&uart1, USE_UART1_TX, USE_UART1_RX, UART1_HW_FLOW_CONTROL);
+ 526              		.loc 1 247 0
+ 527 0038 0121     		movs	r1, #1
+ 528 003a 2046     		mov	r0, r4
+ 529 003c 0A46     		mov	r2, r1
+ 530 003e 0023     		movs	r3, #0
+ 531 0040 FFF7FEFF 		bl	uart_periph_set_mode
+ 532              	.LVL47:
+ 248:arch/stm32/mcu_periph/uart_arch.c **** 
+ 249:arch/stm32/mcu_periph/uart_arch.c ****   /* Set USART1 parameters and enable interrupt */
+ 250:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_bits_stop_parity(&uart1, UART1_BITS, UART1_STOP, UART1_PARITY);
+ 533              		.loc 1 250 0
+ 534 0044 2046     		mov	r0, r4
+ 535 0046 0821     		movs	r1, #8
+ 536 0048 0122     		movs	r2, #1
+ 537 004a 0023     		movs	r3, #0
+ 538 004c FFF7FEFF 		bl	uart_periph_set_bits_stop_parity
+ 539              	.LVL48:
+ 251:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart1, UART1_BAUD);
+ 540              		.loc 1 251 0
+ 541 0050 2046     		mov	r0, r4
+ 542 0052 4FF4E131 		mov	r1, #115200
+ 252:arch/stm32/mcu_periph/uart_arch.c **** }
+ 543              		.loc 1 252 0
+ 544 0056 BDE81040 		pop	{r4, lr}
+ 545              		.cfi_restore 14
+ 546              		.cfi_restore 4
+ 547              		.cfi_def_cfa_offset 0
+ 251:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart1, UART1_BAUD);
+ 548              		.loc 1 251 0
+ 549 005a FFF7FEBF 		b	uart_periph_set_baudrate
+ 550              	.LVL49:
+ 551              	.L69:
+ 552 005e 00BF     		.align	2
+ 553              	.L68:
+ 554 0060 00000000 		.word	uart1
+ 555 0064 00100140 		.word	1073811456
+ 556 0068 00040240 		.word	1073873920
+ 557 006c 00000240 		.word	1073872896
+ 558              		.cfi_endproc
+ 559              	.LFE11:
+ 561              		.section	.text.usart1_isr,"ax",%progbits
+ 562              		.align	1
+ 563              		.weak	usart1_isr
+ 564              		.thumb
+ 565              		.thumb_func
+ 567              	usart1_isr:
+ 568              	.LFB12:
+ 253:arch/stm32/mcu_periph/uart_arch.c **** 
+ 254:arch/stm32/mcu_periph/uart_arch.c **** void usart1_isr(void) { usart_isr(&uart1); }
+ 569              		.loc 1 254 0
+ 570              		.cfi_startproc
+ 571              		@ args = 0, pretend = 0, frame = 0
+ 572              		@ frame_needed = 0, uses_anonymous_args = 0
+ 573              		@ link register save eliminated.
+ 574              		.loc 1 254 0
+ 575 0000 0148     		ldr	r0, .L71
+ 576 0002 FFF7FEBF 		b	usart_isr
+ 577              	.LVL50:
+ 578              	.L72:
+ 579 0006 00BF     		.align	2
+ 580              	.L71:
+ 581 0008 00000000 		.word	uart1
+ 582              		.cfi_endproc
+ 583              	.LFE12:
+ 585              		.section	.text.uart4_init,"ax",%progbits
+ 586              		.align	1
+ 587              		.global	uart4_init
+ 588              		.thumb
+ 589              		.thumb_func
+ 591              	uart4_init:
+ 592              	.LFB13:
+ 255:arch/stm32/mcu_periph/uart_arch.c **** 
+ 256:arch/stm32/mcu_periph/uart_arch.c **** #endif /* USE_UART1 */
+ 257:arch/stm32/mcu_periph/uart_arch.c **** 
+ 258:arch/stm32/mcu_periph/uart_arch.c **** 
+ 259:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART2
+ 260:arch/stm32/mcu_periph/uart_arch.c **** 
+ 261:arch/stm32/mcu_periph/uart_arch.c **** /* by default enable UART Tx and Rx */
+ 262:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART2_TX
+ 263:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART2_TX TRUE
+ 264:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 265:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART2_RX
+ 266:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART2_RX TRUE
+ 267:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 268:arch/stm32/mcu_periph/uart_arch.c **** 
+ 269:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART2_HW_FLOW_CONTROL
+ 270:arch/stm32/mcu_periph/uart_arch.c **** #define UART2_HW_FLOW_CONTROL FALSE
+ 271:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 272:arch/stm32/mcu_periph/uart_arch.c **** 
+ 273:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART2_BITS
+ 274:arch/stm32/mcu_periph/uart_arch.c **** #define UART2_BITS UBITS_8
+ 275:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 276:arch/stm32/mcu_periph/uart_arch.c **** 
+ 277:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART2_STOP
+ 278:arch/stm32/mcu_periph/uart_arch.c **** #define UART2_STOP USTOP_1
+ 279:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 280:arch/stm32/mcu_periph/uart_arch.c **** 
+ 281:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART2_PARITY
+ 282:arch/stm32/mcu_periph/uart_arch.c **** #define UART2_PARITY UPARITY_NO
+ 283:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 284:arch/stm32/mcu_periph/uart_arch.c **** 
+ 285:arch/stm32/mcu_periph/uart_arch.c **** void uart2_init(void)
+ 286:arch/stm32/mcu_periph/uart_arch.c **** {
+ 287:arch/stm32/mcu_periph/uart_arch.c **** 
+ 288:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_init(&uart2);
+ 289:arch/stm32/mcu_periph/uart_arch.c ****   uart2.reg_addr = (void *)USART2;
+ 290:arch/stm32/mcu_periph/uart_arch.c **** 
+ 291:arch/stm32/mcu_periph/uart_arch.c ****   /* init RCC and GPIOs */
+ 292:arch/stm32/mcu_periph/uart_arch.c ****   rcc_periph_clock_enable(RCC_USART2);
+ 293:arch/stm32/mcu_periph/uart_arch.c **** 
+ 294:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART2_TX
+ 295:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART2_GPIO_PORT_TX, UART2_GPIO_TX, UART2_GPIO_AF, TRUE);
+ 296:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 297:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART2_RX
+ 298:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART2_GPIO_PORT_RX, UART2_GPIO_RX, UART2_GPIO_AF, FALSE);
+ 299:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 300:arch/stm32/mcu_periph/uart_arch.c **** 
+ 301:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART interrupts in the interrupt controller */
+ 302:arch/stm32/mcu_periph/uart_arch.c ****   usart_enable_irq(NVIC_USART2_IRQ);
+ 303:arch/stm32/mcu_periph/uart_arch.c **** 
+ 304:arch/stm32/mcu_periph/uart_arch.c **** #if UART2_HW_FLOW_CONTROL && defined(STM32F4)
+ 305:arch/stm32/mcu_periph/uart_arch.c **** #warning "USING UART2 FLOW CONTROL. Make sure to pull down CTS if you are not connecting any flow-c
+ 306:arch/stm32/mcu_periph/uart_arch.c ****   /* setup CTS and RTS pins */
+ 307:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART2_GPIO_PORT_CTS, UART2_GPIO_CTS, UART2_GPIO_AF, FALSE);
+ 308:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART2_GPIO_PORT_RTS, UART2_GPIO_RTS, UART2_GPIO_AF, TRUE);
+ 309:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 310:arch/stm32/mcu_periph/uart_arch.c **** 
+ 311:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART Tx,Rx, and hardware flow control*/
+ 312:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_mode(&uart2, USE_UART2_TX, USE_UART2_RX, UART2_HW_FLOW_CONTROL);
+ 313:arch/stm32/mcu_periph/uart_arch.c **** 
+ 314:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART */
+ 315:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_bits_stop_parity(&uart2, UART2_BITS, UART2_STOP, UART2_PARITY);
+ 316:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart2, UART2_BAUD);
+ 317:arch/stm32/mcu_periph/uart_arch.c **** }
+ 318:arch/stm32/mcu_periph/uart_arch.c **** 
+ 319:arch/stm32/mcu_periph/uart_arch.c **** void usart2_isr(void) { usart_isr(&uart2); }
+ 320:arch/stm32/mcu_periph/uart_arch.c **** 
+ 321:arch/stm32/mcu_periph/uart_arch.c **** #endif /* USE_UART2 */
+ 322:arch/stm32/mcu_periph/uart_arch.c **** 
+ 323:arch/stm32/mcu_periph/uart_arch.c **** 
+ 324:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART3
+ 325:arch/stm32/mcu_periph/uart_arch.c **** 
+ 326:arch/stm32/mcu_periph/uart_arch.c **** /* by default enable UART Tx and Rx */
+ 327:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART3_TX
+ 328:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART3_TX TRUE
+ 329:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 330:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART3_RX
+ 331:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART3_RX TRUE
+ 332:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 333:arch/stm32/mcu_periph/uart_arch.c **** 
+ 334:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART3_HW_FLOW_CONTROL
+ 335:arch/stm32/mcu_periph/uart_arch.c **** #define UART3_HW_FLOW_CONTROL FALSE
+ 336:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 337:arch/stm32/mcu_periph/uart_arch.c **** 
+ 338:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART3_BITS
+ 339:arch/stm32/mcu_periph/uart_arch.c **** #define UART3_BITS UBITS_8
+ 340:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 341:arch/stm32/mcu_periph/uart_arch.c **** 
+ 342:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART3_STOP
+ 343:arch/stm32/mcu_periph/uart_arch.c **** #define UART3_STOP USTOP_1
+ 344:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 345:arch/stm32/mcu_periph/uart_arch.c **** 
+ 346:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART3_PARITY
+ 347:arch/stm32/mcu_periph/uart_arch.c **** #define UART3_PARITY UPARITY_NO
+ 348:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 349:arch/stm32/mcu_periph/uart_arch.c **** 
+ 350:arch/stm32/mcu_periph/uart_arch.c **** void uart3_init(void)
+ 351:arch/stm32/mcu_periph/uart_arch.c **** {
+ 352:arch/stm32/mcu_periph/uart_arch.c **** 
+ 353:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_init(&uart3);
+ 354:arch/stm32/mcu_periph/uart_arch.c ****   uart3.reg_addr = (void *)USART3;
+ 355:arch/stm32/mcu_periph/uart_arch.c **** 
+ 356:arch/stm32/mcu_periph/uart_arch.c ****   /* init RCC */
+ 357:arch/stm32/mcu_periph/uart_arch.c ****   rcc_periph_clock_enable(RCC_USART3);
+ 358:arch/stm32/mcu_periph/uart_arch.c **** 
+ 359:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART3_TX
+ 360:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART3_GPIO_PORT_TX, UART3_GPIO_TX, UART3_GPIO_AF, TRUE);
+ 361:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 362:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART3_RX
+ 363:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART3_GPIO_PORT_RX, UART3_GPIO_RX, UART3_GPIO_AF, FALSE);
+ 364:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 365:arch/stm32/mcu_periph/uart_arch.c **** 
+ 366:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART interrupts in the interrupt controller */
+ 367:arch/stm32/mcu_periph/uart_arch.c ****   usart_enable_irq(NVIC_USART3_IRQ);
+ 368:arch/stm32/mcu_periph/uart_arch.c **** 
+ 369:arch/stm32/mcu_periph/uart_arch.c **** #if UART3_HW_FLOW_CONTROL && defined(STM32F4)
+ 370:arch/stm32/mcu_periph/uart_arch.c **** #warning "USING UART3 FLOW CONTROL. Make sure to pull down CTS if you are not connecting any flow-c
+ 371:arch/stm32/mcu_periph/uart_arch.c ****   /* setup CTS and RTS pins */
+ 372:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART3_GPIO_PORT_CTS, UART3_GPIO_CTS, UART3_GPIO_AF, FALSE);
+ 373:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART3_GPIO_PORT_RTS, UART3_GPIO_RTS, UART3_GPIO_AF, TRUE);
+ 374:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 375:arch/stm32/mcu_periph/uart_arch.c **** 
+ 376:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART Tx,Rx, and hardware flow control*/
+ 377:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_mode(&uart3, USE_UART3_TX, USE_UART3_RX, UART3_HW_FLOW_CONTROL);
+ 378:arch/stm32/mcu_periph/uart_arch.c **** 
+ 379:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART */
+ 380:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_bits_stop_parity(&uart3, UART3_BITS, UART3_STOP, UART3_PARITY);
+ 381:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart3, UART3_BAUD);
+ 382:arch/stm32/mcu_periph/uart_arch.c **** }
+ 383:arch/stm32/mcu_periph/uart_arch.c **** 
+ 384:arch/stm32/mcu_periph/uart_arch.c **** void usart3_isr(void) { usart_isr(&uart3); }
+ 385:arch/stm32/mcu_periph/uart_arch.c **** 
+ 386:arch/stm32/mcu_periph/uart_arch.c **** #endif /* USE_UART3 */
+ 387:arch/stm32/mcu_periph/uart_arch.c **** 
+ 388:arch/stm32/mcu_periph/uart_arch.c **** 
+ 389:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART4 && defined STM32F4
+ 390:arch/stm32/mcu_periph/uart_arch.c **** 
+ 391:arch/stm32/mcu_periph/uart_arch.c **** /* by default enable UART Tx and Rx */
+ 392:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART4_TX
+ 393:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART4_TX TRUE
+ 394:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 395:arch/stm32/mcu_periph/uart_arch.c **** #ifndef USE_UART4_RX
+ 396:arch/stm32/mcu_periph/uart_arch.c **** #define USE_UART4_RX TRUE
+ 397:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 398:arch/stm32/mcu_periph/uart_arch.c **** 
+ 399:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART4_BITS
+ 400:arch/stm32/mcu_periph/uart_arch.c **** #define UART4_BITS UBITS_8
+ 401:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 402:arch/stm32/mcu_periph/uart_arch.c **** 
+ 403:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART4_STOP
+ 404:arch/stm32/mcu_periph/uart_arch.c **** #define UART4_STOP USTOP_1
+ 405:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 406:arch/stm32/mcu_periph/uart_arch.c **** 
+ 407:arch/stm32/mcu_periph/uart_arch.c **** #ifndef UART4_PARITY
+ 408:arch/stm32/mcu_periph/uart_arch.c **** #define UART4_PARITY UPARITY_NO
+ 409:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 410:arch/stm32/mcu_periph/uart_arch.c **** 
+ 411:arch/stm32/mcu_periph/uart_arch.c **** void uart4_init(void)
+ 412:arch/stm32/mcu_periph/uart_arch.c **** {
+ 593              		.loc 1 412 0
+ 594              		.cfi_startproc
+ 595              		@ args = 0, pretend = 0, frame = 0
+ 596              		@ frame_needed = 0, uses_anonymous_args = 0
+ 597 0000 38B5     		push	{r3, r4, r5, lr}
+ 598              		.cfi_def_cfa_offset 16
+ 599              		.cfi_offset 3, -16
+ 600              		.cfi_offset 4, -12
+ 601              		.cfi_offset 5, -8
+ 602              		.cfi_offset 14, -4
+ 413:arch/stm32/mcu_periph/uart_arch.c **** 
+ 414:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_init(&uart4);
+ 603              		.loc 1 414 0
+ 604 0002 174C     		ldr	r4, .L74
+ 415:arch/stm32/mcu_periph/uart_arch.c ****   uart4.reg_addr = (void *)UART4;
+ 416:arch/stm32/mcu_periph/uart_arch.c **** 
+ 417:arch/stm32/mcu_periph/uart_arch.c ****   /* init RCC and GPIOs */
+ 418:arch/stm32/mcu_periph/uart_arch.c ****   rcc_periph_clock_enable(RCC_UART4);
+ 419:arch/stm32/mcu_periph/uart_arch.c **** 
+ 420:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART4_TX
+ 421:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART4_GPIO_PORT_TX, UART4_GPIO_TX, UART4_GPIO_AF, TRUE);
+ 605              		.loc 1 421 0
+ 606 0004 174D     		ldr	r5, .L74+4
+ 414:arch/stm32/mcu_periph/uart_arch.c ****   uart4.reg_addr = (void *)UART4;
+ 607              		.loc 1 414 0
+ 608 0006 2046     		mov	r0, r4
+ 609 0008 FFF7FEFF 		bl	uart_periph_init
+ 610              	.LVL51:
+ 415:arch/stm32/mcu_periph/uart_arch.c ****   uart4.reg_addr = (void *)UART4;
+ 611              		.loc 1 415 0
+ 612 000c 164B     		ldr	r3, .L74+8
+ 613 000e C4F80C31 		str	r3, [r4, #268]
+ 418:arch/stm32/mcu_periph/uart_arch.c **** 
+ 614              		.loc 1 418 0
+ 615 0012 40F61300 		movw	r0, #2067
+ 616 0016 FFF7FEFF 		bl	rcc_periph_clock_enable
+ 617              	.LVL52:
+ 618              		.loc 1 421 0
+ 619 001a 0121     		movs	r1, #1
+ 620 001c 2846     		mov	r0, r5
+ 621 001e 0B46     		mov	r3, r1
+ 622 0020 0822     		movs	r2, #8
+ 623 0022 FFF7FEFF 		bl	gpio_setup_pin_af
+ 624              	.LVL53:
+ 422:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 423:arch/stm32/mcu_periph/uart_arch.c **** #if USE_UART4_RX
+ 424:arch/stm32/mcu_periph/uart_arch.c ****   gpio_setup_pin_af(UART4_GPIO_PORT_RX, UART4_GPIO_RX, UART4_GPIO_AF, FALSE);
+ 625              		.loc 1 424 0
+ 626 0026 2846     		mov	r0, r5
+ 627 0028 0221     		movs	r1, #2
+ 628 002a 0822     		movs	r2, #8
+ 629 002c 0023     		movs	r3, #0
+ 630 002e FFF7FEFF 		bl	gpio_setup_pin_af
+ 631              	.LVL54:
+ 632              	.LBB15:
+ 633              	.LBB16:
+ 190:arch/stm32/mcu_periph/uart_arch.c **** }
+ 634              		.loc 1 190 0
+ 635 0032 3420     		movs	r0, #52
+ 636 0034 FFF7FEFF 		bl	nvic_enable_irq
+ 637              	.LVL55:
+ 638              	.LBE16:
+ 639              	.LBE15:
+ 425:arch/stm32/mcu_periph/uart_arch.c **** #endif
+ 426:arch/stm32/mcu_periph/uart_arch.c **** 
+ 427:arch/stm32/mcu_periph/uart_arch.c ****   /* Enable USART interrupts in the interrupt controller */
+ 428:arch/stm32/mcu_periph/uart_arch.c ****   usart_enable_irq(NVIC_UART4_IRQ);
+ 429:arch/stm32/mcu_periph/uart_arch.c **** 
+ 430:arch/stm32/mcu_periph/uart_arch.c ****   /* Configure USART */
+ 431:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_mode(&uart4, USE_UART4_TX, USE_UART4_RX, FALSE);
+ 640              		.loc 1 431 0
+ 641 0038 0121     		movs	r1, #1
+ 642 003a 2046     		mov	r0, r4
+ 643 003c 0A46     		mov	r2, r1
+ 644 003e 0023     		movs	r3, #0
+ 645 0040 FFF7FEFF 		bl	uart_periph_set_mode
+ 646              	.LVL56:
+ 432:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_bits_stop_parity(&uart4, UART4_BITS, UART4_STOP, UART4_PARITY);
+ 647              		.loc 1 432 0
+ 648 0044 2046     		mov	r0, r4
+ 649 0046 0821     		movs	r1, #8
+ 650 0048 0023     		movs	r3, #0
+ 651 004a 0122     		movs	r2, #1
+ 652 004c FFF7FEFF 		bl	uart_periph_set_bits_stop_parity
+ 653              	.LVL57:
+ 433:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart4, UART4_BAUD);
+ 654              		.loc 1 433 0
+ 655 0050 2046     		mov	r0, r4
+ 656 0052 4FF41641 		mov	r1, #38400
+ 434:arch/stm32/mcu_periph/uart_arch.c **** }
+ 657              		.loc 1 434 0
+ 658 0056 BDE83840 		pop	{r3, r4, r5, lr}
+ 659              		.cfi_restore 14
+ 660              		.cfi_restore 5
+ 661              		.cfi_restore 4
+ 662              		.cfi_restore 3
+ 663              		.cfi_def_cfa_offset 0
+ 433:arch/stm32/mcu_periph/uart_arch.c ****   uart_periph_set_baudrate(&uart4, UART4_BAUD);
+ 664              		.loc 1 433 0
+ 665 005a FFF7FEBF 		b	uart_periph_set_baudrate
+ 666              	.LVL58:
+ 667              	.L75:
+ 668 005e 00BF     		.align	2
+ 669              	.L74:
+ 670 0060 00000000 		.word	uart4
+ 671 0064 00000240 		.word	1073872896
+ 672 0068 004C0040 		.word	1073761280
+ 673              		.cfi_endproc
+ 674              	.LFE13:
+ 676              		.section	.text.uart4_isr,"ax",%progbits
+ 677              		.align	1
+ 678              		.weak	uart4_isr
+ 679              		.thumb
+ 680              		.thumb_func
+ 682              	uart4_isr:
+ 683              	.LFB14:
+ 435:arch/stm32/mcu_periph/uart_arch.c **** 
+ 436:arch/stm32/mcu_periph/uart_arch.c **** void uart4_isr(void) { usart_isr(&uart4); }
+ 684              		.loc 1 436 0
+ 685              		.cfi_startproc
+ 686              		@ args = 0, pretend = 0, frame = 0
+ 687              		@ frame_needed = 0, uses_anonymous_args = 0
+ 688              		@ link register save eliminated.
+ 689              		.loc 1 436 0
+ 690 0000 0148     		ldr	r0, .L77
+ 691 0002 FFF7FEBF 		b	usart_isr
+ 692              	.LVL59:
+ 693              	.L78:
+ 694 0006 00BF     		.align	2
+ 695              	.L77:
+ 696 0008 00000000 		.word	uart4
+ 697              		.cfi_endproc
+ 698              	.LFE14:
+ 700              		.text
+ 701              	.Letext0:
+ 702              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 703              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 704              		.file 4 "./mcu_periph/link_device.h"
+ 705              		.file 5 "/home/dino/paparazzi/sw/include/std.h"
+ 706              		.file 6 "./mcu_periph/uart.h"
+ 707              		.file 7 "../ext/libopencm3/include/libopencm3/stm32/common/usart_common_all.h"
+ 708              		.file 8 "../ext/libopencm3/include/libopencm3/cm3/nvic.h"
+ 709              		.file 9 "../ext/libopencm3/include/libopencm3/stm32/common/rcc_common_all.h"
+ 710              		.file 10 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 711              		.file 11 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/gpio_arch.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 uart_arch.c
+     /tmp/ccWPHjxi.s:20     .text.usart_isr:00000000 $t
+     /tmp/ccWPHjxi.s:24     .text.usart_isr:00000000 usart_isr
+     /tmp/ccWPHjxi.s:187    .text.uart_periph_set_baudrate:00000000 $t
+     /tmp/ccWPHjxi.s:192    .text.uart_periph_set_baudrate:00000000 uart_periph_set_baudrate
+     /tmp/ccWPHjxi.s:238    .text.uart_periph_set_bits_stop_parity:00000000 $t
+     /tmp/ccWPHjxi.s:243    .text.uart_periph_set_bits_stop_parity:00000000 uart_periph_set_bits_stop_parity
+     /tmp/ccWPHjxi.s:329    .text.uart_periph_set_mode:00000000 $t
+     /tmp/ccWPHjxi.s:334    .text.uart_periph_set_mode:00000000 uart_periph_set_mode
+     /tmp/ccWPHjxi.s:409    .text.uart_transmit:00000000 $t
+     /tmp/ccWPHjxi.s:414    .text.uart_transmit:00000000 uart_transmit
+     /tmp/ccWPHjxi.s:477    .text.uart1_init:00000000 $t
+     /tmp/ccWPHjxi.s:482    .text.uart1_init:00000000 uart1_init
+     /tmp/ccWPHjxi.s:554    .text.uart1_init:00000060 $d
+     /tmp/ccWPHjxi.s:562    .text.usart1_isr:00000000 $t
+     /tmp/ccWPHjxi.s:567    .text.usart1_isr:00000000 usart1_isr
+     /tmp/ccWPHjxi.s:581    .text.usart1_isr:00000008 $d
+     /tmp/ccWPHjxi.s:586    .text.uart4_init:00000000 $t
+     /tmp/ccWPHjxi.s:591    .text.uart4_init:00000000 uart4_init
+     /tmp/ccWPHjxi.s:670    .text.uart4_init:00000060 $d
+     /tmp/ccWPHjxi.s:677    .text.uart4_isr:00000000 $t
+     /tmp/ccWPHjxi.s:682    .text.uart4_isr:00000000 uart4_isr
+     /tmp/ccWPHjxi.s:696    .text.uart4_isr:00000008 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.usart_common_all.h.35.789b654075ca28c0377654b2734e24c6
+                           .group:00000000 wm4.usart_common_f124.h.43.43f081933c245a7e1b8fdf5f7234ab0c
+                           .group:00000000 wm4.usart_common_f24.h.41.27a2bc3dc2af2e838bcc51d9f2ea8c06
+                           .group:00000000 wm4.nvic.h.38.b26077e701ba065ebce4922ce89b9357
+                           .group:00000000 wm4.nvic.h.16.68b2cd144a8737a35a31e344912a6e4f
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+
+UNDEFINED SYMBOLS
+usart_send
+usart_recv
+usart_set_baudrate
+usart_enable
+usart_set_parity
+usart_set_databits
+usart_set_stopbits
+usart_set_mode
+usart_set_flow_control
+uart_periph_init
+rcc_periph_clock_enable
+gpio_setup_pin_af
+nvic_enable_irq
+uart1
+uart4

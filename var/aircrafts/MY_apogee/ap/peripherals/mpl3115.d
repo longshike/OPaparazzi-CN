@@ -1,0 +1,15 @@
+/home/dino/paparazzi/var/aircrafts/MY_apogee/ap/peripherals/mpl3115.o: \
+ peripherals/mpl3115.c peripherals/mpl3115.h \
+ /home/dino/paparazzi/sw/include/std.h \
+ /home/dino/paparazzi/sw/include/message_pragmas.h \
+ math/pprz_algebra_int.h math/pprz_algebra.h math/pprz_trig_int.h \
+ mcu_periph/i2c.h \
+ /home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/i2c_arch.h \
+ ../ext/libopencm3/include/libopencm3/stm32/i2c.h \
+ ../ext/libopencm3/include/libopencm3/cm3/common.h \
+ ../ext/libopencm3/include/libopencm3/stm32/memorymap.h \
+ ../ext/libopencm3/include/libopencm3/stm32/f4/memorymap.h \
+ ../ext/libopencm3/include/libopencm3/cm3/memorymap.h \
+ ../ext/libopencm3/include/libopencm3/stm32/f4/i2c.h \
+ ../ext/libopencm3/include/libopencm3/stm32/common/i2c_common_f24.h \
+ ../ext/libopencm3/include/libopencm3/stm32/common/i2c_common_all.h

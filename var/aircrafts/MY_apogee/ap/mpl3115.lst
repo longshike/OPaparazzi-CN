@@ -1,0 +1,700 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"mpl3115.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.mpl3115_send_config,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	mpl3115_send_config:
+  25              	.LFB10:
+  26              		.file 1 "peripherals/mpl3115.c"
+   1:peripherals/mpl3115.c **** /*
+   2:peripherals/mpl3115.c ****  *
+   3:peripherals/mpl3115.c ****  * Copyright (C) 2011 Gautier Hattenberger
+   4:peripherals/mpl3115.c ****  *
+   5:peripherals/mpl3115.c ****  * This file is part of paparazzi.
+   6:peripherals/mpl3115.c ****  *
+   7:peripherals/mpl3115.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:peripherals/mpl3115.c ****  * it under the terms of the GNU General Public License as published by
+   9:peripherals/mpl3115.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:peripherals/mpl3115.c ****  * any later version.
+  11:peripherals/mpl3115.c ****  *
+  12:peripherals/mpl3115.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:peripherals/mpl3115.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:peripherals/mpl3115.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:peripherals/mpl3115.c ****  * GNU General Public License for more details.
+  16:peripherals/mpl3115.c ****  *
+  17:peripherals/mpl3115.c ****  * You should have received a copy of the GNU General Public License
+  18:peripherals/mpl3115.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:peripherals/mpl3115.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:peripherals/mpl3115.c ****  * Boston, MA 02111-1307, USA.
+  21:peripherals/mpl3115.c ****  */
+  22:peripherals/mpl3115.c **** 
+  23:peripherals/mpl3115.c **** /** @file peripherals/mpl3115.c
+  24:peripherals/mpl3115.c ****  *  Driver for MPL3115A2 baro sensor.
+  25:peripherals/mpl3115.c ****  */
+  26:peripherals/mpl3115.c **** 
+  27:peripherals/mpl3115.c **** #include "peripherals/mpl3115.h"
+  28:peripherals/mpl3115.c **** #include "std.h"
+  29:peripherals/mpl3115.c **** 
+  30:peripherals/mpl3115.c **** 
+  31:peripherals/mpl3115.c **** void mpl3115_init(struct Mpl3115 *mpl, struct i2c_periph *i2c_p, uint8_t addr)
+  32:peripherals/mpl3115.c **** {
+  33:peripherals/mpl3115.c **** 
+  34:peripherals/mpl3115.c ****   /* set i2c_peripheral */
+  35:peripherals/mpl3115.c ****   mpl->i2c_p = i2c_p;
+  36:peripherals/mpl3115.c **** 
+  37:peripherals/mpl3115.c ****   /* slave address */
+  38:peripherals/mpl3115.c ****   mpl->trans.slave_addr = addr;
+  39:peripherals/mpl3115.c **** 
+  40:peripherals/mpl3115.c ****   mpl->trans.status = I2CTransDone;
+  41:peripherals/mpl3115.c ****   mpl->req_trans.status = I2CTransDone;
+  42:peripherals/mpl3115.c ****   mpl->initialized = FALSE;
+  43:peripherals/mpl3115.c ****   mpl->init_status = MPL_CONF_UNINIT;
+  44:peripherals/mpl3115.c **** 
+  45:peripherals/mpl3115.c ****   /* by default disable raw mode and set pressure mode */
+  46:peripherals/mpl3115.c ****   mpl->raw_mode = FALSE;
+  47:peripherals/mpl3115.c ****   mpl->alt_mode = FALSE;
+  48:peripherals/mpl3115.c **** 
+  49:peripherals/mpl3115.c ****   mpl->pressure = 0;
+  50:peripherals/mpl3115.c ****   mpl->temperature = 0;
+  51:peripherals/mpl3115.c ****   mpl->altitude = 0.;
+  52:peripherals/mpl3115.c **** }
+  53:peripherals/mpl3115.c **** 
+  54:peripherals/mpl3115.c **** // Configuration function called once before normal use
+  55:peripherals/mpl3115.c **** static void mpl3115_send_config(struct Mpl3115 *mpl)
+  56:peripherals/mpl3115.c **** {
+  27              		.loc 1 56 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  57:peripherals/mpl3115.c ****   switch (mpl->init_status) {
+  32              		.loc 1 57 0
+  33 0000 90F85030 		ldrb	r3, [r0, #80]	@ zero_extendqisi2
+  34 0004 022B     		cmp	r3, #2
+  56:peripherals/mpl3115.c ****   switch (mpl->init_status) {
+  35              		.loc 1 56 0
+  36 0006 10B5     		push	{r4, lr}
+  37              		.cfi_def_cfa_offset 8
+  38              		.cfi_offset 4, -8
+  39              		.cfi_offset 14, -4
+  56:peripherals/mpl3115.c ****   switch (mpl->init_status) {
+  40              		.loc 1 56 0
+  41 0008 0446     		mov	r4, r0
+  42              		.loc 1 57 0
+  43 000a 08D0     		beq	.L3
+  44 000c 032B     		cmp	r3, #3
+  45 000e 1ED0     		beq	.L4
+  46 0010 012B     		cmp	r3, #1
+  47 0012 22D1     		bne	.L1
+  58:peripherals/mpl3115.c ****     case MPL_CONF_PT_DATA:
+  59:peripherals/mpl3115.c ****       mpl->trans.buf[0] = MPL3115_REG_PT_DATA_CFG;
+  48              		.loc 1 59 0
+  49 0014 1323     		movs	r3, #19
+  50 0016 4372     		strb	r3, [r0, #9]
+  60:peripherals/mpl3115.c ****       mpl->trans.buf[1] = MPL3115_PT_DATA_CFG;
+  51              		.loc 1 60 0
+  52 0018 0223     		movs	r3, #2
+  53 001a 8372     		strb	r3, [r0, #10]
+  54 001c 0CE0     		b	.L6
+  55              	.L3:
+  56              	.LVL1:
+  57              	.LBB4:
+  58              	.LBB5:
+  61:peripherals/mpl3115.c ****       i2c_transmit(mpl->i2c_p, &mpl->trans, mpl->trans.slave_addr, 2);
+  62:peripherals/mpl3115.c ****       mpl->init_status++;
+  63:peripherals/mpl3115.c ****       break;
+  64:peripherals/mpl3115.c ****     case MPL_CONF_CTRL1:
+  65:peripherals/mpl3115.c ****       mpl->trans.buf[0] = MPL3115_REG_CTRL_REG1;
+  59              		.loc 1 65 0
+  60 001e 2622     		movs	r2, #38
+  61 0020 4272     		strb	r2, [r0, #9]
+  66:peripherals/mpl3115.c ****       mpl->trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+  67:peripherals/mpl3115.c ****                            (mpl->alt_mode << 7));
+  62              		.loc 1 67 0
+  63 0022 90F85420 		ldrb	r2, [r0, #84]	@ zero_extendqisi2
+  66:peripherals/mpl3115.c ****       mpl->trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+  64              		.loc 1 66 0
+  65 0026 90F85310 		ldrb	r1, [r0, #83]	@ zero_extendqisi2
+  66              		.loc 1 67 0
+  67 002a D201     		lsls	r2, r2, #7
+  68 002c 42EA8112 		orr	r2, r2, r1, lsl #6
+  66:peripherals/mpl3115.c ****       mpl->trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+  69              		.loc 1 66 0
+  70 0030 42F02802 		orr	r2, r2, #40
+  71 0034 D2B2     		uxtb	r2, r2
+  72 0036 8272     		strb	r2, [r0, #10]
+  73              	.LVL2:
+  74              	.L6:
+  68:peripherals/mpl3115.c ****       i2c_transmit(mpl->i2c_p, &mpl->trans, mpl->trans.slave_addr, 2);
+  75              		.loc 1 68 0
+  76 0038 2068     		ldr	r0, [r4]
+  77              	.LVL3:
+  78 003a 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+  79 003c 211D     		adds	r1, r4, #4
+  80 003e FFF7FEFF 		bl	i2c_transmit
+  81              	.LVL4:
+  69:peripherals/mpl3115.c ****       mpl->init_status++;
+  82              		.loc 1 69 0
+  83 0042 94F85030 		ldrb	r3, [r4, #80]	@ zero_extendqisi2
+  84 0046 0133     		adds	r3, r3, #1
+  85 0048 84F85030 		strb	r3, [r4, #80]
+  86 004c 10BD     		pop	{r4, pc}
+  87              	.LVL5:
+  88              	.L4:
+  89              	.LBE5:
+  90              	.LBE4:
+  70:peripherals/mpl3115.c ****       break;
+  71:peripherals/mpl3115.c ****     case MPL_CONF_DONE:
+  72:peripherals/mpl3115.c ****       mpl->initialized = TRUE;
+  91              		.loc 1 72 0
+  92 004e 0123     		movs	r3, #1
+  93 0050 80F85130 		strb	r3, [r0, #81]
+  73:peripherals/mpl3115.c ****       mpl->trans.status = I2CTransDone;
+  94              		.loc 1 73 0
+  95 0054 0423     		movs	r3, #4
+  96 0056 80F82930 		strb	r3, [r0, #41]
+  97              	.L1:
+  98 005a 10BD     		pop	{r4, pc}
+  99              		.cfi_endproc
+ 100              	.LFE10:
+ 102              		.section	.text.mpl3115_init,"ax",%progbits
+ 103              		.align	1
+ 104              		.global	mpl3115_init
+ 105              		.thumb
+ 106              		.thumb_func
+ 108              	mpl3115_init:
+ 109              	.LFB9:
+  32:peripherals/mpl3115.c **** 
+ 110              		.loc 1 32 0
+ 111              		.cfi_startproc
+ 112              		@ args = 0, pretend = 0, frame = 0
+ 113              		@ frame_needed = 0, uses_anonymous_args = 0
+ 114              		@ link register save eliminated.
+ 115              	.LVL6:
+  40:peripherals/mpl3115.c ****   mpl->req_trans.status = I2CTransDone;
+ 116              		.loc 1 40 0
+ 117 0000 0423     		movs	r3, #4
+ 118 0002 80F82930 		strb	r3, [r0, #41]
+  41:peripherals/mpl3115.c ****   mpl->initialized = FALSE;
+ 119              		.loc 1 41 0
+ 120 0006 80F84F30 		strb	r3, [r0, #79]
+  42:peripherals/mpl3115.c ****   mpl->init_status = MPL_CONF_UNINIT;
+ 121              		.loc 1 42 0
+ 122 000a 0023     		movs	r3, #0
+ 123 000c 80F85130 		strb	r3, [r0, #81]
+  43:peripherals/mpl3115.c **** 
+ 124              		.loc 1 43 0
+ 125 0010 80F85030 		strb	r3, [r0, #80]
+  46:peripherals/mpl3115.c ****   mpl->alt_mode = FALSE;
+ 126              		.loc 1 46 0
+ 127 0014 80F85330 		strb	r3, [r0, #83]
+  47:peripherals/mpl3115.c **** 
+ 128              		.loc 1 47 0
+ 129 0018 80F85430 		strb	r3, [r0, #84]
+  49:peripherals/mpl3115.c ****   mpl->temperature = 0;
+ 130              		.loc 1 49 0
+ 131 001c 8365     		str	r3, [r0, #88]
+  50:peripherals/mpl3115.c ****   mpl->altitude = 0.;
+ 132              		.loc 1 50 0
+ 133 001e A0F85630 		strh	r3, [r0, #86]	@ movhi
+  51:peripherals/mpl3115.c **** }
+ 134              		.loc 1 51 0
+ 135 0022 0023     		movs	r3, #0
+  35:peripherals/mpl3115.c **** 
+ 136              		.loc 1 35 0
+ 137 0024 0160     		str	r1, [r0]
+  38:peripherals/mpl3115.c **** 
+ 138              		.loc 1 38 0
+ 139 0026 4271     		strb	r2, [r0, #5]
+  51:peripherals/mpl3115.c **** }
+ 140              		.loc 1 51 0
+ 141 0028 C365     		str	r3, [r0, #92]	@ float
+ 142 002a 7047     		bx	lr
+ 143              		.cfi_endproc
+ 144              	.LFE9:
+ 146              		.section	.text.mpl3115_configure,"ax",%progbits
+ 147              		.align	1
+ 148              		.global	mpl3115_configure
+ 149              		.thumb
+ 150              		.thumb_func
+ 152              	mpl3115_configure:
+ 153              	.LFB11:
+  74:peripherals/mpl3115.c ****       break;
+  75:peripherals/mpl3115.c ****     default:
+  76:peripherals/mpl3115.c ****       break;
+  77:peripherals/mpl3115.c ****   }
+  78:peripherals/mpl3115.c **** }
+  79:peripherals/mpl3115.c **** 
+  80:peripherals/mpl3115.c **** // Configure
+  81:peripherals/mpl3115.c **** void mpl3115_configure(struct Mpl3115 *mpl)
+  82:peripherals/mpl3115.c **** {
+ 154              		.loc 1 82 0
+ 155              		.cfi_startproc
+ 156              		@ args = 0, pretend = 0, frame = 0
+ 157              		@ frame_needed = 0, uses_anonymous_args = 0
+ 158              		@ link register save eliminated.
+ 159              	.LVL7:
+  83:peripherals/mpl3115.c ****   if (mpl->init_status == MPL_CONF_UNINIT) {
+ 160              		.loc 1 83 0
+ 161 0000 90F85030 		ldrb	r3, [r0, #80]	@ zero_extendqisi2
+ 162 0004 63B9     		cbnz	r3, .L9
+  84:peripherals/mpl3115.c ****     mpl->init_status++;
+ 163              		.loc 1 84 0
+ 164 0006 0123     		movs	r3, #1
+ 165 0008 80F85030 		strb	r3, [r0, #80]
+  85:peripherals/mpl3115.c ****     if (mpl->trans.status == I2CTransSuccess || mpl->trans.status == I2CTransDone) {
+ 166              		.loc 1 85 0
+ 167 000c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 168 0010 022B     		cmp	r3, #2
+ 169 0012 03D0     		beq	.L12
+ 170              		.loc 1 85 0 is_stmt 0 discriminator 1
+ 171 0014 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 172 0018 042B     		cmp	r3, #4
+ 173 001a 01D1     		bne	.L9
+ 174              	.L12:
+  86:peripherals/mpl3115.c ****       mpl3115_send_config(mpl);
+ 175              		.loc 1 86 0 is_stmt 1
+ 176 001c FFF7FEBF 		b	mpl3115_send_config
+ 177              	.LVL8:
+ 178              	.L9:
+ 179 0020 7047     		bx	lr
+ 180              		.cfi_endproc
+ 181              	.LFE11:
+ 183              		.section	.text.mpl3115_read,"ax",%progbits
+ 184              		.align	1
+ 185              		.global	mpl3115_read
+ 186              		.thumb
+ 187              		.thumb_func
+ 189              	mpl3115_read:
+ 190              	.LFB12:
+  87:peripherals/mpl3115.c ****     }
+  88:peripherals/mpl3115.c ****   }
+  89:peripherals/mpl3115.c **** }
+  90:peripherals/mpl3115.c **** 
+  91:peripherals/mpl3115.c **** // Normal reading
+  92:peripherals/mpl3115.c **** void mpl3115_read(struct Mpl3115 *mpl)
+  93:peripherals/mpl3115.c **** {
+ 191              		.loc 1 93 0
+ 192              		.cfi_startproc
+ 193              		@ args = 0, pretend = 0, frame = 0
+ 194              		@ frame_needed = 0, uses_anonymous_args = 0
+ 195              	.LVL9:
+ 196 0000 13B5     		push	{r0, r1, r4, lr}
+ 197              		.cfi_def_cfa_offset 16
+ 198              		.cfi_offset 4, -8
+ 199              		.cfi_offset 14, -4
+  94:peripherals/mpl3115.c ****   // ask for a reading and then prepare next conversion
+  95:peripherals/mpl3115.c ****   if (mpl->initialized && mpl->trans.status == I2CTransDone) {
+ 200              		.loc 1 95 0
+ 201 0002 90F85130 		ldrb	r3, [r0, #81]	@ zero_extendqisi2
+  93:peripherals/mpl3115.c ****   // ask for a reading and then prepare next conversion
+ 202              		.loc 1 93 0
+ 203 0006 0446     		mov	r4, r0
+ 204              		.loc 1 95 0
+ 205 0008 53B3     		cbz	r3, .L17
+ 206              		.loc 1 95 0 is_stmt 0 discriminator 1
+ 207 000a 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 208 000e 042B     		cmp	r3, #4
+ 209 0010 26D1     		bne	.L17
+  96:peripherals/mpl3115.c ****     mpl->trans.buf[0] = MPL3115_REG_STATUS;
+ 210              		.loc 1 96 0 is_stmt 1
+ 211 0012 0023     		movs	r3, #0
+ 212 0014 4372     		strb	r3, [r0, #9]
+  97:peripherals/mpl3115.c ****     i2c_transceive(mpl->i2c_p, &mpl->trans, mpl->trans.slave_addr, 1, 6);
+ 213              		.loc 1 97 0
+ 214 0016 0623     		movs	r3, #6
+ 215 0018 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 216 001a 0093     		str	r3, [sp]
+ 217 001c 0068     		ldr	r0, [r0]
+ 218              	.LVL10:
+ 219 001e 0123     		movs	r3, #1
+ 220 0020 211D     		adds	r1, r4, #4
+ 221 0022 FFF7FEFF 		bl	i2c_transceive
+ 222              	.LVL11:
+  98:peripherals/mpl3115.c ****     if (mpl->req_trans.status == I2CTransDone) {
+ 223              		.loc 1 98 0
+ 224 0026 94F84F30 		ldrb	r3, [r4, #79]	@ zero_extendqisi2
+ 225 002a 042B     		cmp	r3, #4
+ 226 002c 18D1     		bne	.L17
+ 227              	.LVL12:
+ 228              	.LBB8:
+ 229              	.LBB9:
+  99:peripherals/mpl3115.c ****       mpl->req_trans.buf[0] = MPL3115_REG_CTRL_REG1;
+ 230              		.loc 1 99 0
+ 231 002e 2623     		movs	r3, #38
+ 232 0030 84F82F30 		strb	r3, [r4, #47]
+ 100:peripherals/mpl3115.c ****       mpl->req_trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+ 101:peripherals/mpl3115.c ****                                (mpl->alt_mode << 7) | MPL3115_OST_BIT);
+ 233              		.loc 1 101 0
+ 234 0034 94F85430 		ldrb	r3, [r4, #84]	@ zero_extendqisi2
+ 100:peripherals/mpl3115.c ****       mpl->req_trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+ 235              		.loc 1 100 0
+ 236 0038 94F85320 		ldrb	r2, [r4, #83]	@ zero_extendqisi2
+ 102:peripherals/mpl3115.c ****       i2c_transmit(mpl->i2c_p, &mpl->req_trans, mpl->trans.slave_addr, 2);
+ 237              		.loc 1 102 0
+ 238 003c 2068     		ldr	r0, [r4]
+ 101:peripherals/mpl3115.c ****       i2c_transmit(mpl->i2c_p, &mpl->req_trans, mpl->trans.slave_addr, 2);
+ 239              		.loc 1 101 0
+ 240 003e DB01     		lsls	r3, r3, #7
+ 241 0040 43EA8213 		orr	r3, r3, r2, lsl #6
+ 100:peripherals/mpl3115.c ****       mpl->req_trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+ 242              		.loc 1 100 0
+ 243 0044 43F02A03 		orr	r3, r3, #42
+ 244 0048 DBB2     		uxtb	r3, r3
+ 245              		.loc 1 102 0
+ 246 004a 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+ 100:peripherals/mpl3115.c ****       mpl->req_trans.buf[1] = ((MPL3115_OVERSAMPLING << 3) | (mpl->raw_mode << 6) |
+ 247              		.loc 1 100 0
+ 248 004c 84F83030 		strb	r3, [r4, #48]
+ 249              		.loc 1 102 0
+ 250 0050 04F12A01 		add	r1, r4, #42
+ 251 0054 0223     		movs	r3, #2
+ 252              	.LBE9:
+ 253              	.LBE8:
+ 103:peripherals/mpl3115.c ****     }
+ 104:peripherals/mpl3115.c ****   }
+ 105:peripherals/mpl3115.c **** }
+ 254              		.loc 1 105 0
+ 255 0056 02B0     		add	sp, sp, #8
+ 256              		.cfi_remember_state
+ 257              		.cfi_def_cfa_offset 8
+ 258              		@ sp needed
+ 259 0058 BDE81040 		pop	{r4, lr}
+ 260              		.cfi_restore 14
+ 261              		.cfi_restore 4
+ 262              		.cfi_def_cfa_offset 0
+ 263              	.LVL13:
+ 264              	.LBB11:
+ 265              	.LBB10:
+ 102:peripherals/mpl3115.c ****     }
+ 266              		.loc 1 102 0
+ 267 005c FFF7FEBF 		b	i2c_transmit
+ 268              	.LVL14:
+ 269              	.L17:
+ 270              		.cfi_restore_state
+ 271              	.LBE10:
+ 272              	.LBE11:
+ 273              		.loc 1 105 0
+ 274 0060 02B0     		add	sp, sp, #8
+ 275              		.cfi_def_cfa_offset 8
+ 276              		@ sp needed
+ 277 0062 10BD     		pop	{r4, pc}
+ 278              		.cfi_endproc
+ 279              	.LFE12:
+ 281              		.section	.text.mpl3115_event,"ax",%progbits
+ 282              		.align	1
+ 283              		.global	mpl3115_event
+ 284              		.thumb
+ 285              		.thumb_func
+ 287              	mpl3115_event:
+ 288              	.LFB13:
+ 106:peripherals/mpl3115.c **** 
+ 107:peripherals/mpl3115.c **** void mpl3115_event(struct Mpl3115 *mpl)
+ 108:peripherals/mpl3115.c **** {
+ 289              		.loc 1 108 0
+ 290              		.cfi_startproc
+ 291              		@ args = 0, pretend = 0, frame = 0
+ 292              		@ frame_needed = 0, uses_anonymous_args = 0
+ 293              	.LVL15:
+ 294 0000 10B5     		push	{r4, lr}
+ 295              		.cfi_def_cfa_offset 8
+ 296              		.cfi_offset 4, -8
+ 297              		.cfi_offset 14, -4
+ 109:peripherals/mpl3115.c ****   if (mpl->initialized) {
+ 298              		.loc 1 109 0
+ 299 0002 90F85130 		ldrb	r3, [r0, #81]	@ zero_extendqisi2
+ 108:peripherals/mpl3115.c ****   if (mpl->initialized) {
+ 300              		.loc 1 108 0
+ 301 0006 0446     		mov	r4, r0
+ 302              		.loc 1 109 0
+ 303 0008 002B     		cmp	r3, #0
+ 304 000a 3BD0     		beq	.L22
+ 110:peripherals/mpl3115.c ****     if (mpl->trans.status == I2CTransFailed) {
+ 305              		.loc 1 110 0
+ 306 000c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 307 0010 032B     		cmp	r3, #3
+ 308 0012 33D0     		beq	.L26
+ 111:peripherals/mpl3115.c ****       mpl->trans.status = I2CTransDone;
+ 112:peripherals/mpl3115.c ****     } else if (mpl->trans.status == I2CTransSuccess) {
+ 309              		.loc 1 112 0
+ 310 0014 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 311 0018 022B     		cmp	r3, #2
+ 312 001a 53D1     		bne	.L24
+ 113:peripherals/mpl3115.c ****       // Successfull reading and new pressure data available
+ 114:peripherals/mpl3115.c ****       if (mpl->trans.buf[0] & (1 << 2)) {
+ 313              		.loc 1 114 0
+ 314 001c 437A     		ldrb	r3, [r0, #9]	@ zero_extendqisi2
+ 315 001e 5B07     		lsls	r3, r3, #29
+ 316 0020 2CD5     		bpl	.L26
+ 115:peripherals/mpl3115.c ****         if (mpl->raw_mode) {
+ 317              		.loc 1 115 0
+ 318 0022 90F85330 		ldrb	r3, [r0, #83]	@ zero_extendqisi2
+ 319 0026 63B1     		cbz	r3, .L27
+ 116:peripherals/mpl3115.c ****           // New data available
+ 117:peripherals/mpl3115.c ****           mpl->pressure = (((uint32_t)mpl->trans.buf[1] << 16) |
+ 320              		.loc 1 117 0
+ 321 0028 837A     		ldrb	r3, [r0, #10]	@ zero_extendqisi2
+ 118:peripherals/mpl3115.c ****                            ((uint16_t)mpl->trans.buf[2] << 8) |
+ 322              		.loc 1 118 0
+ 323 002a C17A     		ldrb	r1, [r0, #11]	@ zero_extendqisi2
+ 119:peripherals/mpl3115.c ****                            mpl->trans.buf[3]);
+ 324              		.loc 1 119 0
+ 325 002c 027B     		ldrb	r2, [r0, #12]	@ zero_extendqisi2
+ 326 002e 42EA0343 		orr	r3, r2, r3, lsl #16
+ 118:peripherals/mpl3115.c ****                            ((uint16_t)mpl->trans.buf[2] << 8) |
+ 327              		.loc 1 118 0
+ 328 0032 43EA0123 		orr	r3, r3, r1, lsl #8
+ 120:peripherals/mpl3115.c ****           mpl->temperature = ((int16_t)mpl->trans.buf[4] << 8) | mpl->trans.buf[5];
+ 329              		.loc 1 120 0
+ 330 0036 427B     		ldrb	r2, [r0, #13]	@ zero_extendqisi2
+ 117:peripherals/mpl3115.c ****                            ((uint16_t)mpl->trans.buf[2] << 8) |
+ 331              		.loc 1 117 0
+ 332 0038 8365     		str	r3, [r0, #88]
+ 333              		.loc 1 120 0
+ 334 003a 837B     		ldrb	r3, [r0, #14]	@ zero_extendqisi2
+ 335 003c 43EA0223 		orr	r3, r3, r2, lsl #8
+ 336 0040 17E0     		b	.L48
+ 337              	.L27:
+ 338              	.LBB12:
+ 121:peripherals/mpl3115.c ****         } else { // not in raw mode
+ 122:peripherals/mpl3115.c ****           uint32_t tmp = (((uint32_t)mpl->trans.buf[1] << 16) |
+ 339              		.loc 1 122 0
+ 340 0042 837A     		ldrb	r3, [r0, #10]	@ zero_extendqisi2
+ 123:peripherals/mpl3115.c ****                           ((uint16_t)mpl->trans.buf[2] << 8) |
+ 341              		.loc 1 123 0
+ 342 0044 C17A     		ldrb	r1, [r0, #11]	@ zero_extendqisi2
+ 124:peripherals/mpl3115.c ****                           mpl->trans.buf[3]);
+ 343              		.loc 1 124 0
+ 344 0046 027B     		ldrb	r2, [r0, #12]	@ zero_extendqisi2
+ 345 0048 42EA0343 		orr	r3, r2, r3, lsl #16
+ 125:peripherals/mpl3115.c ****           if (mpl->alt_mode) {
+ 346              		.loc 1 125 0
+ 347 004c 90F85420 		ldrb	r2, [r0, #84]	@ zero_extendqisi2
+ 122:peripherals/mpl3115.c ****                           ((uint16_t)mpl->trans.buf[2] << 8) |
+ 348              		.loc 1 122 0
+ 349 0050 43EA0123 		orr	r3, r3, r1, lsl #8
+ 350              	.LVL16:
+ 351 0054 1B09     		lsrs	r3, r3, #4
+ 352              	.LVL17:
+ 353              		.loc 1 125 0
+ 354 0056 32B1     		cbz	r2, .L29
+ 126:peripherals/mpl3115.c ****             mpl->altitude = (float)(tmp >> 4) / (1 << 4);
+ 355              		.loc 1 126 0
+ 356 0058 07EE903A 		fmsr	s15, r3	@ int
+ 357 005c FAEECE7A 		vcvt.f32.s32	s15, s15, #4
+ 358 0060 C0ED177A 		fsts	s15, [r0, #92]
+ 359 0064 00E0     		b	.L30
+ 360              	.L29:
+ 127:peripherals/mpl3115.c ****           } else { // Pressure mode
+ 128:peripherals/mpl3115.c ****             mpl->pressure = (tmp >> 4);
+ 361              		.loc 1 128 0
+ 362 0066 8365     		str	r3, [r0, #88]
+ 363              	.L30:
+ 129:peripherals/mpl3115.c ****           }
+ 130:peripherals/mpl3115.c ****           tmp = ((int16_t)mpl->trans.buf[4] << 8) | mpl->trans.buf[5];
+ 364              		.loc 1 130 0
+ 365 0068 627B     		ldrb	r2, [r4, #13]	@ zero_extendqisi2
+ 366 006a A37B     		ldrb	r3, [r4, #14]	@ zero_extendqisi2
+ 367              	.LVL18:
+ 368 006c 43EA0223 		orr	r3, r3, r2, lsl #8
+ 369              	.LVL19:
+ 131:peripherals/mpl3115.c ****           mpl->temperature = (tmp >> 4);
+ 370              		.loc 1 131 0
+ 371 0070 1B09     		lsrs	r3, r3, #4
+ 372              	.LVL20:
+ 373              	.L48:
+ 374 0072 A4F85630 		strh	r3, [r4, #86]	@ movhi
+ 375              	.LBE12:
+ 132:peripherals/mpl3115.c ****         }
+ 133:peripherals/mpl3115.c ****         mpl->data_available = TRUE;
+ 376              		.loc 1 133 0
+ 377 0076 0123     		movs	r3, #1
+ 378 0078 84F85230 		strb	r3, [r4, #82]
+ 379              	.L26:
+ 134:peripherals/mpl3115.c ****       }
+ 135:peripherals/mpl3115.c ****       mpl->trans.status = I2CTransDone;
+ 380              		.loc 1 135 0
+ 381 007c 0423     		movs	r3, #4
+ 382 007e 84F82930 		strb	r3, [r4, #41]
+ 383 0082 1FE0     		b	.L24
+ 384              	.L22:
+ 136:peripherals/mpl3115.c ****     }
+ 137:peripherals/mpl3115.c ****   } else if (!mpl->initialized && mpl->init_status != MPL_CONF_UNINIT) { // Configuring
+ 385              		.loc 1 137 0 discriminator 1
+ 386 0084 90F85030 		ldrb	r3, [r0, #80]	@ zero_extendqisi2
+ 387 0088 E3B1     		cbz	r3, .L24
+ 138:peripherals/mpl3115.c ****     if (mpl->trans.status == I2CTransSuccess || mpl->trans.status == I2CTransDone) {
+ 388              		.loc 1 138 0
+ 389 008a 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 390 008e 022B     		cmp	r3, #2
+ 391 0090 03D0     		beq	.L32
+ 392              		.loc 1 138 0 is_stmt 0 discriminator 1
+ 393 0092 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 394 0096 042B     		cmp	r3, #4
+ 395 0098 05D1     		bne	.L33
+ 396              	.L32:
+ 139:peripherals/mpl3115.c ****       mpl->trans.status = I2CTransDone;
+ 397              		.loc 1 139 0 is_stmt 1
+ 398 009a 0423     		movs	r3, #4
+ 399 009c 84F82930 		strb	r3, [r4, #41]
+ 140:peripherals/mpl3115.c ****       mpl3115_send_config(mpl);
+ 400              		.loc 1 140 0
+ 401 00a0 2046     		mov	r0, r4
+ 402              	.LVL21:
+ 403 00a2 FFF7FEFF 		bl	mpl3115_send_config
+ 404              	.LVL22:
+ 405              	.L33:
+ 141:peripherals/mpl3115.c ****     }
+ 142:peripherals/mpl3115.c ****     if (mpl->trans.status == I2CTransFailed) {
+ 406              		.loc 1 142 0
+ 407 00a6 94F82930 		ldrb	r3, [r4, #41]	@ zero_extendqisi2
+ 408 00aa 032B     		cmp	r3, #3
+ 409 00ac 0AD1     		bne	.L24
+ 143:peripherals/mpl3115.c ****       mpl->init_status--;
+ 410              		.loc 1 143 0
+ 411 00ae 94F85030 		ldrb	r3, [r4, #80]	@ zero_extendqisi2
+ 412 00b2 013B     		subs	r3, r3, #1
+ 413 00b4 84F85030 		strb	r3, [r4, #80]
+ 144:peripherals/mpl3115.c ****       mpl->trans.status = I2CTransDone;
+ 414              		.loc 1 144 0
+ 415 00b8 0423     		movs	r3, #4
+ 416 00ba 84F82930 		strb	r3, [r4, #41]
+ 145:peripherals/mpl3115.c ****       mpl3115_send_config(mpl); // Retry config (TODO max retry)
+ 417              		.loc 1 145 0
+ 418 00be 2046     		mov	r0, r4
+ 419 00c0 FFF7FEFF 		bl	mpl3115_send_config
+ 420              	.LVL23:
+ 421              	.L24:
+ 146:peripherals/mpl3115.c ****     }
+ 147:peripherals/mpl3115.c ****   }
+ 148:peripherals/mpl3115.c ****   if (mpl->req_trans.status == I2CTransSuccess || mpl->req_trans.status == I2CTransFailed) {
+ 422              		.loc 1 148 0
+ 423 00c4 94F84F30 		ldrb	r3, [r4, #79]	@ zero_extendqisi2
+ 424 00c8 022B     		cmp	r3, #2
+ 425 00ca 03D0     		beq	.L34
+ 426              		.loc 1 148 0 is_stmt 0 discriminator 1
+ 427 00cc 94F84F30 		ldrb	r3, [r4, #79]	@ zero_extendqisi2
+ 428 00d0 032B     		cmp	r3, #3
+ 429 00d2 02D1     		bne	.L21
+ 430              	.L34:
+ 149:peripherals/mpl3115.c ****     mpl->req_trans.status = I2CTransDone;
+ 431              		.loc 1 149 0 is_stmt 1
+ 432 00d4 0423     		movs	r3, #4
+ 433 00d6 84F84F30 		strb	r3, [r4, #79]
+ 434              	.L21:
+ 435 00da 10BD     		pop	{r4, pc}
+ 436              		.cfi_endproc
+ 437              	.LFE13:
+ 439              		.section	.text.mpl3115_periodic,"ax",%progbits
+ 440              		.align	1
+ 441              		.global	mpl3115_periodic
+ 442              		.thumb
+ 443              		.thumb_func
+ 445              	mpl3115_periodic:
+ 446              	.LFB14:
+ 150:peripherals/mpl3115.c ****   }
+ 151:peripherals/mpl3115.c **** }
+ 152:peripherals/mpl3115.c **** 
+ 153:peripherals/mpl3115.c **** void mpl3115_periodic(struct Mpl3115 *mpl)
+ 154:peripherals/mpl3115.c **** {
+ 447              		.loc 1 154 0
+ 448              		.cfi_startproc
+ 449              		@ args = 0, pretend = 0, frame = 0
+ 450              		@ frame_needed = 0, uses_anonymous_args = 0
+ 451              		@ link register save eliminated.
+ 452              	.LVL24:
+ 155:peripherals/mpl3115.c ****   if (mpl->initialized) {
+ 453              		.loc 1 155 0
+ 454 0000 90F85130 		ldrb	r3, [r0, #81]	@ zero_extendqisi2
+ 455 0004 0BB1     		cbz	r3, .L50
+ 156:peripherals/mpl3115.c ****     mpl3115_read(mpl);
+ 456              		.loc 1 156 0
+ 457 0006 FFF7FEBF 		b	mpl3115_read
+ 458              	.LVL25:
+ 459              	.L50:
+ 157:peripherals/mpl3115.c ****   } else {
+ 158:peripherals/mpl3115.c ****     mpl3115_configure(mpl);
+ 460              		.loc 1 158 0
+ 461 000a FFF7FEBF 		b	mpl3115_configure
+ 462              	.LVL26:
+ 463              		.cfi_endproc
+ 464              	.LFE14:
+ 466              		.text
+ 467              	.Letext0:
+ 468              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 469              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 470              		.file 4 "/home/dino/paparazzi/sw/include/std.h"
+ 471              		.file 5 "./mcu_periph/i2c.h"
+ 472              		.file 6 "./peripherals/mpl3115.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 mpl3115.c
+     /tmp/ccoIdVFV.s:20     .text.mpl3115_send_config:00000000 $t
+     /tmp/ccoIdVFV.s:24     .text.mpl3115_send_config:00000000 mpl3115_send_config
+     /tmp/ccoIdVFV.s:103    .text.mpl3115_init:00000000 $t
+     /tmp/ccoIdVFV.s:108    .text.mpl3115_init:00000000 mpl3115_init
+     /tmp/ccoIdVFV.s:147    .text.mpl3115_configure:00000000 $t
+     /tmp/ccoIdVFV.s:152    .text.mpl3115_configure:00000000 mpl3115_configure
+     /tmp/ccoIdVFV.s:184    .text.mpl3115_read:00000000 $t
+     /tmp/ccoIdVFV.s:189    .text.mpl3115_read:00000000 mpl3115_read
+     /tmp/ccoIdVFV.s:282    .text.mpl3115_event:00000000 $t
+     /tmp/ccoIdVFV.s:287    .text.mpl3115_event:00000000 mpl3115_event
+     /tmp/ccoIdVFV.s:440    .text.mpl3115_periodic:00000000 $t
+     /tmp/ccoIdVFV.s:445    .text.mpl3115_periodic:00000000 mpl3115_periodic
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.d7c95ef3b7385a54cace86b9fe5b1585
+                           .group:00000000 wm4.mpl3115.h.35.354c4a4aaeaaf0c4eb2827b3400c4b8f
+
+UNDEFINED SYMBOLS
+i2c_transmit
+i2c_transceive

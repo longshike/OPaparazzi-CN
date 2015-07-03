@@ -1,0 +1,78 @@
+gen_abi.cmo: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_abi.cmx: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_aircraft.cmo: /home/dino/paparazzi/sw/lib/ocaml/pprz.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmi
+gen_aircraft.cmx: /home/dino/paparazzi/sw/lib/ocaml/pprz.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmx
+gen_airframe.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/pprz.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_airframe.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/pprz.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_autopilot.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmi
+gen_autopilot.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmx
+gen_flight_plan.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/latlong.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/geometry_2d.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/fp_proc.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/expr_syntax.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/egm96.cmi
+gen_flight_plan.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/latlong.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/geometry_2d.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/fp_proc.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/expr_syntax.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/egm96.cmx
+gen_messages.cmo: /home/dino/paparazzi/sw/lib/ocaml/pprz.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_messages.cmx: /home/dino/paparazzi/sw/lib/ocaml/pprz.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_modules.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_modules.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_mtk.cmo: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_mtk.cmx: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_periodic.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_periodic.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/gen_common.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_radio.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_radio.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_settings.cmo: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmi
+gen_settings.cmx: /home/dino/paparazzi/sw/lib/ocaml/xml2h.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmx
+gen_srtm.cmo: /home/dino/paparazzi/sw/lib/ocaml/srtm.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/http.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmi
+gen_srtm.cmx: /home/dino/paparazzi/sw/lib/ocaml/srtm.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/http.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx \
+    /home/dino/paparazzi/sw/lib/ocaml/env.cmx
+gen_ubx.cmo: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_ubx.cmx: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx
+gen_xsens.cmo: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmi
+gen_xsens.cmx: /home/dino/paparazzi/sw/lib/ocaml/extXml.cmx

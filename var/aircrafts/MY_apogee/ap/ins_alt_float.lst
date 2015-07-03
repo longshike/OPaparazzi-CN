@@ -1,0 +1,3557 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 1
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"ins_alt_float.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	__aeabi_f2d
+  20              		.global	__aeabi_dcmpgt
+  21              		.section	.text.alt_kalman,"ax",%progbits
+  22              		.align	1
+  23              		.thumb
+  24              		.thumb_func
+  26              	alt_kalman:
+  27              	.LFB193:
+  28              		.file 1 "subsystems/ins/ins_alt_float.c"
+   1:subsystems/ins/ins_alt_float.c **** /*
+   2:subsystems/ins/ins_alt_float.c ****  * Copyright (C) 2004-2012 The Paparazzi Team
+   3:subsystems/ins/ins_alt_float.c ****  *
+   4:subsystems/ins/ins_alt_float.c ****  * This file is part of paparazzi.
+   5:subsystems/ins/ins_alt_float.c ****  *
+   6:subsystems/ins/ins_alt_float.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/ins/ins_alt_float.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/ins/ins_alt_float.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/ins/ins_alt_float.c ****  * any later version.
+  10:subsystems/ins/ins_alt_float.c ****  *
+  11:subsystems/ins/ins_alt_float.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/ins/ins_alt_float.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/ins/ins_alt_float.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/ins/ins_alt_float.c ****  * GNU General Public License for more details.
+  15:subsystems/ins/ins_alt_float.c ****  *
+  16:subsystems/ins/ins_alt_float.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/ins/ins_alt_float.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/ins/ins_alt_float.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/ins/ins_alt_float.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/ins/ins_alt_float.c ****  */
+  21:subsystems/ins/ins_alt_float.c **** 
+  22:subsystems/ins/ins_alt_float.c **** /**
+  23:subsystems/ins/ins_alt_float.c ****  * @file subsystems/ins/ins_alt_float.c
+  24:subsystems/ins/ins_alt_float.c ****  * Filters altitude and climb rate for fixedwings.
+  25:subsystems/ins/ins_alt_float.c ****  */
+  26:subsystems/ins/ins_alt_float.c **** 
+  27:subsystems/ins/ins_alt_float.c **** #include "subsystems/ins/ins_alt_float.h"
+  28:subsystems/ins/ins_alt_float.c **** 
+  29:subsystems/ins/ins_alt_float.c **** #include "subsystems/abi.h"
+  30:subsystems/ins/ins_alt_float.c **** #include "state.h"
+  31:subsystems/ins/ins_alt_float.c **** 
+  32:subsystems/ins/ins_alt_float.c **** #include <inttypes.h>
+  33:subsystems/ins/ins_alt_float.c **** #include <math.h>
+  34:subsystems/ins/ins_alt_float.c **** 
+  35:subsystems/ins/ins_alt_float.c **** #include "state.h"
+  36:subsystems/ins/ins_alt_float.c **** #include "mcu_periph/sys_time.h"
+  37:subsystems/ins/ins_alt_float.c **** #include "subsystems/gps.h"
+  38:subsystems/ins/ins_alt_float.c **** #include "firmwares/fixedwing/nav.h"
+  39:subsystems/ins/ins_alt_float.c **** 
+  40:subsystems/ins/ins_alt_float.c **** #include "generated/airframe.h"
+  41:subsystems/ins/ins_alt_float.c **** #include "generated/modules.h"
+  42:subsystems/ins/ins_alt_float.c **** 
+  43:subsystems/ins/ins_alt_float.c **** #ifdef DEBUG_ALT_KALMAN
+  44:subsystems/ins/ins_alt_float.c **** #include "mcu_periph/uart.h"
+  45:subsystems/ins/ins_alt_float.c **** #include "subsystems/datalink/downlink.h"
+  46:subsystems/ins/ins_alt_float.c **** #endif
+  47:subsystems/ins/ins_alt_float.c **** 
+  48:subsystems/ins/ins_alt_float.c **** #if defined ALT_KALMAN || defined ALT_KALMAN_ENABLED
+  49:subsystems/ins/ins_alt_float.c **** #warning Please remove the obsolete ALT_KALMAN and ALT_KALMAN_ENABLED defines from your airframe fi
+  50:subsystems/ins/ins_alt_float.c **** #endif
+  51:subsystems/ins/ins_alt_float.c **** 
+  52:subsystems/ins/ins_alt_float.c **** 
+  53:subsystems/ins/ins_alt_float.c **** struct InsAltFloat ins_altf;
+  54:subsystems/ins/ins_alt_float.c **** 
+  55:subsystems/ins/ins_alt_float.c **** #if USE_BAROMETER
+  56:subsystems/ins/ins_alt_float.c **** #include "subsystems/sensors/baro.h"
+  57:subsystems/ins/ins_alt_float.c **** #include "math/pprz_isa.h"
+  58:subsystems/ins/ins_alt_float.c **** 
+  59:subsystems/ins/ins_alt_float.c **** PRINT_CONFIG_MSG("USE_BAROMETER is TRUE: Using baro for altitude estimation.")
+  60:subsystems/ins/ins_alt_float.c **** 
+  61:subsystems/ins/ins_alt_float.c **** // Baro event on ABI
+  62:subsystems/ins/ins_alt_float.c **** #ifndef INS_BARO_ID
+  63:subsystems/ins/ins_alt_float.c **** #if USE_BARO_BOARD
+  64:subsystems/ins/ins_alt_float.c **** #define INS_BARO_ID BARO_BOARD_SENDER_ID
+  65:subsystems/ins/ins_alt_float.c **** #else
+  66:subsystems/ins/ins_alt_float.c **** #define INS_BARO_ID ABI_BROADCAST
+  67:subsystems/ins/ins_alt_float.c **** #endif
+  68:subsystems/ins/ins_alt_float.c **** #endif
+  69:subsystems/ins/ins_alt_float.c **** PRINT_CONFIG_VAR(INS_BARO_ID)
+  70:subsystems/ins/ins_alt_float.c **** abi_event baro_ev;
+  71:subsystems/ins/ins_alt_float.c **** static void baro_cb(uint8_t sender_id, float pressure);
+  72:subsystems/ins/ins_alt_float.c **** #endif /* USE_BAROMETER */
+  73:subsystems/ins/ins_alt_float.c **** 
+  74:subsystems/ins/ins_alt_float.c **** static abi_event gps_ev;
+  75:subsystems/ins/ins_alt_float.c **** static abi_event accel_ev;
+  76:subsystems/ins/ins_alt_float.c **** static abi_event body_to_imu_ev;
+  77:subsystems/ins/ins_alt_float.c **** static struct OrientationReps body_to_imu;
+  78:subsystems/ins/ins_alt_float.c **** #ifndef INS_ALT_IMU_ID
+  79:subsystems/ins/ins_alt_float.c **** #define INS_ALT_IMU_ID ABI_BROADCAST
+  80:subsystems/ins/ins_alt_float.c **** #endif
+  81:subsystems/ins/ins_alt_float.c **** 
+  82:subsystems/ins/ins_alt_float.c **** static void alt_kalman_reset(void);
+  83:subsystems/ins/ins_alt_float.c **** static void alt_kalman_init(void);
+  84:subsystems/ins/ins_alt_float.c **** static void alt_kalman(float z_meas, float dt);
+  85:subsystems/ins/ins_alt_float.c **** 
+  86:subsystems/ins/ins_alt_float.c **** void ins_alt_float_update_gps(struct GpsState *gps_s);
+  87:subsystems/ins/ins_alt_float.c **** 
+  88:subsystems/ins/ins_alt_float.c **** void ins_alt_float_init(void)
+  89:subsystems/ins/ins_alt_float.c **** {
+  90:subsystems/ins/ins_alt_float.c **** 
+  91:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm0 = { nav_utm_north0, nav_utm_east0, ground_alt, nav_utm_zone0 };
+  92:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm0);
+  93:subsystems/ins/ins_alt_float.c **** 
+  94:subsystems/ins/ins_alt_float.c ****   stateSetPositionUtm_f(&utm0);
+  95:subsystems/ins/ins_alt_float.c **** 
+  96:subsystems/ins/ins_alt_float.c ****   // set initial body to imu to 0
+  97:subsystems/ins/ins_alt_float.c ****   struct Int32Eulers b2i0 = { 0, 0, 0 };
+  98:subsystems/ins/ins_alt_float.c ****   orientationSetEulers_i(&body_to_imu, &b2i0);
+  99:subsystems/ins/ins_alt_float.c **** 
+ 100:subsystems/ins/ins_alt_float.c ****   alt_kalman_init();
+ 101:subsystems/ins/ins_alt_float.c **** 
+ 102:subsystems/ins/ins_alt_float.c **** #if USE_BAROMETER
+ 103:subsystems/ins/ins_alt_float.c ****   ins_altf.qfe = 0.0f;
+ 104:subsystems/ins/ins_alt_float.c ****   ins_altf.baro_initialized = FALSE;
+ 105:subsystems/ins/ins_alt_float.c ****   ins_altf.baro_alt = 0.0f;
+ 106:subsystems/ins/ins_alt_float.c **** #endif
+ 107:subsystems/ins/ins_alt_float.c ****   ins_altf.reset_alt_ref = FALSE;
+ 108:subsystems/ins/ins_alt_float.c **** 
+ 109:subsystems/ins/ins_alt_float.c ****   // why do we have this here?
+ 110:subsystems/ins/ins_alt_float.c ****   alt_kalman(0.0f, 0.1);
+ 111:subsystems/ins/ins_alt_float.c **** }
+ 112:subsystems/ins/ins_alt_float.c **** 
+ 113:subsystems/ins/ins_alt_float.c **** /** Reset the geographic reference to the current GPS fix */
+ 114:subsystems/ins/ins_alt_float.c **** void ins_reset_local_origin(void)
+ 115:subsystems/ins/ins_alt_float.c **** {
+ 116:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm;
+ 117:subsystems/ins/ins_alt_float.c **** #ifdef GPS_USE_LATLONG
+ 118:subsystems/ins/ins_alt_float.c ****   /* Recompute UTM coordinates in this zone */
+ 119:subsystems/ins/ins_alt_float.c ****   struct LlaCoor_f lla;
+ 120:subsystems/ins/ins_alt_float.c ****   LLA_FLOAT_OF_BFP(lla, gps.lla_pos);
+ 121:subsystems/ins/ins_alt_float.c ****   utm.zone = (gps.lla_pos.lon / 1e7 + 180) / 6 + 1;
+ 122:subsystems/ins/ins_alt_float.c ****   utm_of_lla_f(&utm, &lla);
+ 123:subsystems/ins/ins_alt_float.c **** #else
+ 124:subsystems/ins/ins_alt_float.c ****   utm.zone = gps.utm_pos.zone;
+ 125:subsystems/ins/ins_alt_float.c ****   utm.east = gps.utm_pos.east / 100.0f;
+ 126:subsystems/ins/ins_alt_float.c ****   utm.north = gps.utm_pos.north / 100.0f;
+ 127:subsystems/ins/ins_alt_float.c **** #endif
+ 128:subsystems/ins/ins_alt_float.c ****   // ground_alt
+ 129:subsystems/ins/ins_alt_float.c ****   utm.alt = gps.hmsl  / 1000.0f;
+ 130:subsystems/ins/ins_alt_float.c **** 
+ 131:subsystems/ins/ins_alt_float.c ****   // reset state UTM ref
+ 132:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm);
+ 133:subsystems/ins/ins_alt_float.c **** 
+ 134:subsystems/ins/ins_alt_float.c ****   // reset filter flag
+ 135:subsystems/ins/ins_alt_float.c ****   ins_altf.reset_alt_ref = TRUE;
+ 136:subsystems/ins/ins_alt_float.c **** }
+ 137:subsystems/ins/ins_alt_float.c **** 
+ 138:subsystems/ins/ins_alt_float.c **** void ins_reset_altitude_ref(void)
+ 139:subsystems/ins/ins_alt_float.c **** {
+ 140:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm = state.utm_origin_f;
+ 141:subsystems/ins/ins_alt_float.c ****   // ground_alt
+ 142:subsystems/ins/ins_alt_float.c ****   utm.alt = gps.hmsl / 1000.0f;
+ 143:subsystems/ins/ins_alt_float.c ****   // reset state UTM ref
+ 144:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm);
+ 145:subsystems/ins/ins_alt_float.c ****   // reset filter flag
+ 146:subsystems/ins/ins_alt_float.c ****   ins_altf.reset_alt_ref = TRUE;
+ 147:subsystems/ins/ins_alt_float.c **** }
+ 148:subsystems/ins/ins_alt_float.c **** 
+ 149:subsystems/ins/ins_alt_float.c **** #if USE_BAROMETER
+ 150:subsystems/ins/ins_alt_float.c **** void ins_alt_float_update_baro(float pressure)
+ 151:subsystems/ins/ins_alt_float.c **** {
+ 152:subsystems/ins/ins_alt_float.c ****   // timestamp in usec when last callback was received
+ 153:subsystems/ins/ins_alt_float.c ****   static uint32_t last_ts = 0;
+ 154:subsystems/ins/ins_alt_float.c ****   // current timestamp
+ 155:subsystems/ins/ins_alt_float.c ****   uint32_t now_ts = get_sys_time_usec();
+ 156:subsystems/ins/ins_alt_float.c ****   // dt between this and last callback in seconds
+ 157:subsystems/ins/ins_alt_float.c ****   float dt = (float)(now_ts - last_ts) / 1e6;
+ 158:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 159:subsystems/ins/ins_alt_float.c **** 
+ 160:subsystems/ins/ins_alt_float.c ****   // bound dt (assume baro freq 1Hz-500Hz
+ 161:subsystems/ins/ins_alt_float.c ****   Bound(dt, 0.002, 1.0)
+ 162:subsystems/ins/ins_alt_float.c **** 
+ 163:subsystems/ins/ins_alt_float.c ****   if (!ins_altf.baro_initialized) {
+ 164:subsystems/ins/ins_alt_float.c ****     ins_altf.qfe = pressure;
+ 165:subsystems/ins/ins_alt_float.c ****     ins_altf.baro_initialized = TRUE;
+ 166:subsystems/ins/ins_alt_float.c ****   }
+ 167:subsystems/ins/ins_alt_float.c ****   if (ins_altf.reset_alt_ref) {
+ 168:subsystems/ins/ins_alt_float.c ****     ins_altf.reset_alt_ref = FALSE;
+ 169:subsystems/ins/ins_alt_float.c ****     ins_altf.alt = ground_alt;
+ 170:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot = 0.0f;
+ 171:subsystems/ins/ins_alt_float.c ****     ins_altf.qfe = pressure;
+ 172:subsystems/ins/ins_alt_float.c ****     alt_kalman_reset();
+ 173:subsystems/ins/ins_alt_float.c ****   } else { /* not realigning, so normal update with baro measurement */
+ 174:subsystems/ins/ins_alt_float.c ****     ins_altf.baro_alt = ground_alt + pprz_isa_height_of_pressure(pressure, ins_altf.qfe);
+ 175:subsystems/ins/ins_alt_float.c ****     /* run the filter */
+ 176:subsystems/ins/ins_alt_float.c ****     alt_kalman(ins_altf.baro_alt, dt);
+ 177:subsystems/ins/ins_alt_float.c ****     /* set new altitude, just copy old horizontal position */
+ 178:subsystems/ins/ins_alt_float.c ****     struct UtmCoor_f utm;
+ 179:subsystems/ins/ins_alt_float.c ****     UTM_COPY(utm, *stateGetPositionUtm_f());
+ 180:subsystems/ins/ins_alt_float.c ****     utm.alt = ins_altf.alt;
+ 181:subsystems/ins/ins_alt_float.c ****     stateSetPositionUtm_f(&utm);
+ 182:subsystems/ins/ins_alt_float.c ****     struct NedCoor_f ned_vel;
+ 183:subsystems/ins/ins_alt_float.c ****     memcpy(&ned_vel, stateGetSpeedNed_f(), sizeof(struct NedCoor_f));
+ 184:subsystems/ins/ins_alt_float.c ****     ned_vel.z = -ins_altf.alt_dot;
+ 185:subsystems/ins/ins_alt_float.c ****     stateSetSpeedNed_f(&ned_vel);
+ 186:subsystems/ins/ins_alt_float.c ****   }
+ 187:subsystems/ins/ins_alt_float.c **** }
+ 188:subsystems/ins/ins_alt_float.c **** #else
+ 189:subsystems/ins/ins_alt_float.c **** void ins_alt_float_update_baro(float pressure __attribute__((unused)))
+ 190:subsystems/ins/ins_alt_float.c **** {
+ 191:subsystems/ins/ins_alt_float.c **** }
+ 192:subsystems/ins/ins_alt_float.c **** #endif
+ 193:subsystems/ins/ins_alt_float.c **** 
+ 194:subsystems/ins/ins_alt_float.c **** 
+ 195:subsystems/ins/ins_alt_float.c **** void ins_alt_float_update_gps(struct GpsState *gps_s)
+ 196:subsystems/ins/ins_alt_float.c **** {
+ 197:subsystems/ins/ins_alt_float.c **** #if USE_GPS
+ 198:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm;
+ 199:subsystems/ins/ins_alt_float.c ****   utm.east = gps_s->utm_pos.east / 100.0f;
+ 200:subsystems/ins/ins_alt_float.c ****   utm.north = gps_s->utm_pos.north / 100.0f;
+ 201:subsystems/ins/ins_alt_float.c ****   utm.zone = nav_utm_zone0;
+ 202:subsystems/ins/ins_alt_float.c **** 
+ 203:subsystems/ins/ins_alt_float.c **** #if !USE_BAROMETER
+ 204:subsystems/ins/ins_alt_float.c **** #ifdef GPS_DT
+ 205:subsystems/ins/ins_alt_float.c ****   const float dt = GPS_DT;
+ 206:subsystems/ins/ins_alt_float.c **** #else
+ 207:subsystems/ins/ins_alt_float.c ****   // timestamp in usec when last callback was received
+ 208:subsystems/ins/ins_alt_float.c ****   static uint32_t last_ts = 0;
+ 209:subsystems/ins/ins_alt_float.c ****   // current timestamp
+ 210:subsystems/ins/ins_alt_float.c ****   uint32_t now_ts = get_sys_time_usec();
+ 211:subsystems/ins/ins_alt_float.c ****   // dt between this and last callback in seconds
+ 212:subsystems/ins/ins_alt_float.c ****   float dt = (float)(now_ts - last_ts) / 1e6;
+ 213:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 214:subsystems/ins/ins_alt_float.c **** 
+ 215:subsystems/ins/ins_alt_float.c ****   // bound dt (assume GPS freq between 0.5Hz and 50Hz)
+ 216:subsystems/ins/ins_alt_float.c ****   Bound(dt, 0.02, 2)
+ 217:subsystems/ins/ins_alt_float.c **** #endif
+ 218:subsystems/ins/ins_alt_float.c **** 
+ 219:subsystems/ins/ins_alt_float.c ****   float falt = gps_s->hmsl / 1000.0f;
+ 220:subsystems/ins/ins_alt_float.c ****   if (ins_altf.reset_alt_ref) {
+ 221:subsystems/ins/ins_alt_float.c ****     ins_altf.reset_alt_ref = FALSE;
+ 222:subsystems/ins/ins_alt_float.c ****     ins_altf.alt = falt;
+ 223:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot = 0.0f;
+ 224:subsystems/ins/ins_alt_float.c ****     alt_kalman_reset();
+ 225:subsystems/ins/ins_alt_float.c ****   } else {
+ 226:subsystems/ins/ins_alt_float.c ****     alt_kalman(falt, dt);
+ 227:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot = -gps_s->ned_vel.z / 100.0f;
+ 228:subsystems/ins/ins_alt_float.c ****   }
+ 229:subsystems/ins/ins_alt_float.c **** #endif
+ 230:subsystems/ins/ins_alt_float.c ****   utm.alt = ins_altf.alt;
+ 231:subsystems/ins/ins_alt_float.c ****   // set position
+ 232:subsystems/ins/ins_alt_float.c ****   stateSetPositionUtm_f(&utm);
+ 233:subsystems/ins/ins_alt_float.c **** 
+ 234:subsystems/ins/ins_alt_float.c ****   struct NedCoor_f ned_vel = {
+ 235:subsystems/ins/ins_alt_float.c ****     gps_s->ned_vel.x / 100.0f,
+ 236:subsystems/ins/ins_alt_float.c ****     gps_s->ned_vel.y / 100.0f,
+ 237:subsystems/ins/ins_alt_float.c ****     -ins_altf.alt_dot
+ 238:subsystems/ins/ins_alt_float.c ****   };
+ 239:subsystems/ins/ins_alt_float.c ****   // set velocity
+ 240:subsystems/ins/ins_alt_float.c ****   stateSetSpeedNed_f(&ned_vel);
+ 241:subsystems/ins/ins_alt_float.c **** 
+ 242:subsystems/ins/ins_alt_float.c **** #endif
+ 243:subsystems/ins/ins_alt_float.c **** }
+ 244:subsystems/ins/ins_alt_float.c **** 
+ 245:subsystems/ins/ins_alt_float.c **** 
+ 246:subsystems/ins/ins_alt_float.c **** #define GPS_SIGMA2 1.
+ 247:subsystems/ins/ins_alt_float.c **** #define GPS_R 2.
+ 248:subsystems/ins/ins_alt_float.c **** 
+ 249:subsystems/ins/ins_alt_float.c **** static float p[2][2];
+ 250:subsystems/ins/ins_alt_float.c **** 
+ 251:subsystems/ins/ins_alt_float.c **** static void alt_kalman_reset(void)
+ 252:subsystems/ins/ins_alt_float.c **** {
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][0] = 1.0f;
+ 254:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 255:subsystems/ins/ins_alt_float.c ****   p[1][0] = 0.0f;
+ 256:subsystems/ins/ins_alt_float.c ****   p[1][1] = 1.0f;
+ 257:subsystems/ins/ins_alt_float.c **** }
+ 258:subsystems/ins/ins_alt_float.c **** 
+ 259:subsystems/ins/ins_alt_float.c **** static void alt_kalman_init(void)
+ 260:subsystems/ins/ins_alt_float.c **** {
+ 261:subsystems/ins/ins_alt_float.c ****   alt_kalman_reset();
+ 262:subsystems/ins/ins_alt_float.c **** }
+ 263:subsystems/ins/ins_alt_float.c **** 
+ 264:subsystems/ins/ins_alt_float.c **** static void alt_kalman(float z_meas, float dt)
+ 265:subsystems/ins/ins_alt_float.c **** {
+  29              		.loc 1 265 0
+  30              		.cfi_startproc
+  31              		@ args = 0, pretend = 0, frame = 0
+  32              		@ frame_needed = 0, uses_anonymous_args = 0
+  33              	.LVL0:
+  34 0000 38B5     		push	{r3, r4, r5, lr}
+  35              		.cfi_def_cfa_offset 16
+  36              		.cfi_offset 3, -16
+  37              		.cfi_offset 4, -12
+  38              		.cfi_offset 5, -8
+  39              		.cfi_offset 14, -4
+ 266:subsystems/ins/ins_alt_float.c ****   float R = GPS_R;
+ 267:subsystems/ins/ins_alt_float.c ****   float SIGMA2 = GPS_SIGMA2;
+ 268:subsystems/ins/ins_alt_float.c **** 
+ 269:subsystems/ins/ins_alt_float.c **** #if USE_BAROMETER
+ 270:subsystems/ins/ins_alt_float.c **** #ifdef SITL
+ 271:subsystems/ins/ins_alt_float.c ****   R = 0.5;
+ 272:subsystems/ins/ins_alt_float.c ****   SIGMA2 = 0.1;
+ 273:subsystems/ins/ins_alt_float.c **** #elif USE_BARO_MS5534A
+ 274:subsystems/ins/ins_alt_float.c ****   if (alt_baro_enabled) {
+ 275:subsystems/ins/ins_alt_float.c ****     R = baro_MS5534A_r;
+ 276:subsystems/ins/ins_alt_float.c ****     SIGMA2 = baro_MS5534A_sigma2;
+ 277:subsystems/ins/ins_alt_float.c ****   }
+ 278:subsystems/ins/ins_alt_float.c **** #elif USE_BARO_ETS
+ 279:subsystems/ins/ins_alt_float.c ****   if (baro_ets_enabled) {
+ 280:subsystems/ins/ins_alt_float.c ****     R = baro_ets_r;
+ 281:subsystems/ins/ins_alt_float.c ****     SIGMA2 = baro_ets_sigma2;
+ 282:subsystems/ins/ins_alt_float.c ****   }
+ 283:subsystems/ins/ins_alt_float.c **** #elif USE_BARO_MS5611
+ 284:subsystems/ins/ins_alt_float.c ****   if (baro_ms5611_enabled) {
+ 285:subsystems/ins/ins_alt_float.c ****     R = baro_ms5611_r;
+ 286:subsystems/ins/ins_alt_float.c ****     SIGMA2 = baro_ms5611_sigma2;
+ 287:subsystems/ins/ins_alt_float.c ****   }
+ 288:subsystems/ins/ins_alt_float.c **** #elif USE_BARO_AMSYS
+ 289:subsystems/ins/ins_alt_float.c ****   if (baro_amsys_enabled) {
+ 290:subsystems/ins/ins_alt_float.c ****     R = baro_amsys_r;
+ 291:subsystems/ins/ins_alt_float.c ****     SIGMA2 = baro_amsys_sigma2;
+ 292:subsystems/ins/ins_alt_float.c ****   }
+ 293:subsystems/ins/ins_alt_float.c **** #elif USE_BARO_BMP
+ 294:subsystems/ins/ins_alt_float.c ****   if (baro_bmp_enabled) {
+ 295:subsystems/ins/ins_alt_float.c ****     R = baro_bmp_r;
+ 296:subsystems/ins/ins_alt_float.c ****     SIGMA2 = baro_bmp_sigma2;
+ 297:subsystems/ins/ins_alt_float.c ****   }
+ 298:subsystems/ins/ins_alt_float.c **** #endif
+ 299:subsystems/ins/ins_alt_float.c **** #endif // USE_BAROMETER
+ 300:subsystems/ins/ins_alt_float.c **** 
+ 301:subsystems/ins/ins_alt_float.c ****   float q[2][2];
+ 302:subsystems/ins/ins_alt_float.c ****   q[0][0] = dt * dt * dt * dt / 4.;
+ 303:subsystems/ins/ins_alt_float.c ****   q[0][1] = dt * dt * dt / 2.;
+ 304:subsystems/ins/ins_alt_float.c ****   q[1][0] = dt * dt * dt / 2.;
+ 305:subsystems/ins/ins_alt_float.c ****   q[1][1] = dt * dt;
+ 306:subsystems/ins/ins_alt_float.c **** 
+ 307:subsystems/ins/ins_alt_float.c **** 
+ 308:subsystems/ins/ins_alt_float.c ****   /* predict */
+ 309:subsystems/ins/ins_alt_float.c ****   ins_altf.alt += ins_altf.alt_dot * dt;
+ 310:subsystems/ins/ins_alt_float.c ****   p[0][0] = p[0][0] + p[1][0] * dt + dt * (p[0][1] + p[1][1] * dt) + SIGMA2 * q[0][0];
+  40              		.loc 1 310 0
+  41 0002 394C     		ldr	r4, .L6+8
+ 309:subsystems/ins/ins_alt_float.c ****   p[0][0] = p[0][0] + p[1][0] * dt + dt * (p[0][1] + p[1][1] * dt) + SIGMA2 * q[0][0];
+  42              		.loc 1 309 0
+  43 0004 394D     		ldr	r5, .L6+12
+  44              		.loc 1 310 0
+  45 0006 D4ED037A 		flds	s15, [r4, #12]
+ 265:subsystems/ins/ins_alt_float.c ****   float R = GPS_R;
+  46              		.loc 1 265 0
+  47 000a 2DED088B 		fstmfdd	sp!, {d8, d9, d10, d11}
+  48              		.cfi_def_cfa_offset 48
+  49              		.cfi_offset 80, -48
+  50              		.cfi_offset 81, -44
+  51              		.cfi_offset 82, -40
+  52              		.cfi_offset 83, -36
+  53              		.cfi_offset 84, -32
+  54              		.cfi_offset 85, -28
+  55              		.cfi_offset 86, -24
+  56              		.cfi_offset 87, -20
+  57              		.loc 1 310 0
+  58 000e D4ED028A 		flds	s17, [r4, #8]
+  59 0012 D4ED01AA 		flds	s21, [r4, #4]
+  60 0016 94ED008A 		flds	s16, [r4]
+ 309:subsystems/ins/ins_alt_float.c ****   p[0][0] = p[0][0] + p[1][0] * dt + dt * (p[0][1] + p[1][1] * dt) + SIGMA2 * q[0][0];
+  61              		.loc 1 309 0
+  62 001a 95ED00AA 		flds	s20, [r5]
+  63 001e 95ED01BA 		flds	s22, [r5, #4]
+  64              		.loc 1 310 0
+  65 0022 E7EEA0AA 		vfma.f32	s21, s15, s1
+  66 0026 A8EEA08A 		vfma.f32	s16, s17, s1
+ 302:subsystems/ins/ins_alt_float.c ****   q[0][1] = dt * dt * dt / 2.;
+  67              		.loc 1 302 0
+  68 002a 60EEA09A 		fmuls	s19, s1, s1
+  69              		.loc 1 310 0
+  70 002e A0EEAA8A 		vfma.f32	s16, s1, s21
+ 302:subsystems/ins/ins_alt_float.c ****   q[0][1] = dt * dt * dt / 2.;
+  71              		.loc 1 302 0
+  72 0032 29EEA07A 		fmuls	s14, s19, s1
+  73              	.LVL1:
+  74              		.loc 1 310 0
+  75 0036 F5EE006A 		fconsts	s13, #80
+ 302:subsystems/ins/ins_alt_float.c ****   q[0][1] = dt * dt * dt / 2.;
+  76              		.loc 1 302 0
+  77 003a 27EE206A 		fmuls	s12, s14, s1
+ 311:subsystems/ins/ins_alt_float.c ****   p[0][1] = p[0][1] + p[1][1] * dt + SIGMA2 * q[0][1];
+ 312:subsystems/ins/ins_alt_float.c ****   p[1][0] = p[1][0] + p[1][1] * dt + SIGMA2 * q[1][0];
+  78              		.loc 1 312 0
+  79 003e E7EEA08A 		vfma.f32	s17, s15, s1
+ 310:subsystems/ins/ins_alt_float.c ****   p[0][1] = p[0][1] + p[1][1] * dt + SIGMA2 * q[0][1];
+  80              		.loc 1 310 0
+  81 0042 A6EE268A 		vfma.f32	s16, s12, s13
+ 313:subsystems/ins/ins_alt_float.c ****   p[1][1] = p[1][1] + SIGMA2 * q[1][1];
+ 314:subsystems/ins/ins_alt_float.c **** 
+ 315:subsystems/ins/ins_alt_float.c ****   /* error estimate */
+ 316:subsystems/ins/ins_alt_float.c ****   float e = p[0][0] + R;
+  82              		.loc 1 316 0
+  83 0046 B0EE009A 		fconsts	s18, #0
+ 311:subsystems/ins/ins_alt_float.c ****   p[1][0] = p[1][0] + p[1][1] * dt + SIGMA2 * q[1][0];
+  84              		.loc 1 311 0
+  85 004a F6EE006A 		fconsts	s13, #96
+ 309:subsystems/ins/ins_alt_float.c ****   p[0][0] = p[0][0] + p[1][0] * dt + dt * (p[0][1] + p[1][1] * dt) + SIGMA2 * q[0][0];
+  86              		.loc 1 309 0
+  87 004e ABEE20AA 		vfma.f32	s20, s22, s1
+ 311:subsystems/ins/ins_alt_float.c ****   p[1][0] = p[1][0] + p[1][1] * dt + SIGMA2 * q[1][0];
+  88              		.loc 1 311 0
+  89 0052 E7EE26AA 		vfma.f32	s21, s14, s13
+ 312:subsystems/ins/ins_alt_float.c ****   p[1][1] = p[1][1] + SIGMA2 * q[1][1];
+  90              		.loc 1 312 0
+  91 0056 E7EE268A 		vfma.f32	s17, s14, s13
+  92              		.loc 1 316 0
+  93 005a 38EE099A 		fadds	s18, s16, s18
+  94              	.LVL2:
+ 313:subsystems/ins/ins_alt_float.c **** 
+  95              		.loc 1 313 0
+  96 005e 77EEA99A 		fadds	s19, s15, s19
+  97              	.LVL3:
+ 317:subsystems/ins/ins_alt_float.c **** 
+ 318:subsystems/ins/ins_alt_float.c ****   if (fabs(e) > 1e-5) {
+  98              		.loc 1 318 0
+  99 0062 F0EEC97A 		fabss	s15, s18
+ 100 0066 17EE900A 		fmrs	r0, s15
+ 265:subsystems/ins/ins_alt_float.c ****   float R = GPS_R;
+ 101              		.loc 1 265 0
+ 102 006a F0EE40BA 		fcpys	s23, s0
+ 309:subsystems/ins/ins_alt_float.c ****   p[0][0] = p[0][0] + p[1][0] * dt + dt * (p[0][1] + p[1][1] * dt) + SIGMA2 * q[0][0];
+ 103              		.loc 1 309 0
+ 104 006e 85ED00AA 		fsts	s20, [r5]
+ 310:subsystems/ins/ins_alt_float.c ****   p[0][1] = p[0][1] + p[1][1] * dt + SIGMA2 * q[0][1];
+ 105              		.loc 1 310 0
+ 106 0072 84ED008A 		fsts	s16, [r4]
+ 311:subsystems/ins/ins_alt_float.c ****   p[1][0] = p[1][0] + p[1][1] * dt + SIGMA2 * q[1][0];
+ 107              		.loc 1 311 0
+ 108 0076 C4ED01AA 		fsts	s21, [r4, #4]
+ 312:subsystems/ins/ins_alt_float.c ****   p[1][1] = p[1][1] + SIGMA2 * q[1][1];
+ 109              		.loc 1 312 0
+ 110 007a C4ED028A 		fsts	s17, [r4, #8]
+ 313:subsystems/ins/ins_alt_float.c **** 
+ 111              		.loc 1 313 0
+ 112 007e C4ED039A 		fsts	s19, [r4, #12]
+ 113              		.loc 1 318 0
+ 114 0082 FFF7FEFF 		bl	__aeabi_f2d
+ 115              	.LVL4:
+ 116 0086 16A3     		adr	r3, .L6
+ 117 0088 D3E90023 		ldrd	r2, [r3]
+ 118 008c FFF7FEFF 		bl	__aeabi_dcmpgt
+ 119              	.LVL5:
+ 120 0090 18B3     		cbz	r0, .L1
+ 121              	.LBB14:
+ 319:subsystems/ins/ins_alt_float.c ****     float k_0 = p[0][0] / e;
+ 122              		.loc 1 319 0
+ 123 0092 88EE097A 		fdivs	s14, s16, s18
+ 124              	.LVL6:
+ 320:subsystems/ins/ins_alt_float.c ****     float k_1 =  p[1][0] / e;
+ 125              		.loc 1 320 0
+ 126 0096 88EE899A 		fdivs	s18, s17, s18
+ 127              	.LVL7:
+ 321:subsystems/ins/ins_alt_float.c ****     e = z_meas - ins_altf.alt;
+ 322:subsystems/ins/ins_alt_float.c **** 
+ 323:subsystems/ins/ins_alt_float.c ****     /* correction */
+ 324:subsystems/ins/ins_alt_float.c ****     ins_altf.alt += k_0 * e;
+ 325:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot += k_1 * e;
+ 326:subsystems/ins/ins_alt_float.c **** 
+ 327:subsystems/ins/ins_alt_float.c ****     p[1][0] = -p[0][0] * k_1 + p[1][0];
+ 328:subsystems/ins/ins_alt_float.c ****     p[1][1] = -p[0][1] * k_1 + p[1][1];
+ 128              		.loc 1 328 0
+ 129 009a F0EE697A 		fcpys	s15, s19
+ 130 009e EAEEC97A 		vfms.f32	s15, s21, s18
+ 321:subsystems/ins/ins_alt_float.c ****     e = z_meas - ins_altf.alt;
+ 131              		.loc 1 321 0
+ 132 00a2 7BEECABA 		fsubs	s23, s23, s20
+ 133              	.LVL8:
+ 134              		.loc 1 328 0
+ 135 00a6 C4ED037A 		fsts	s15, [r4, #12]
+ 329:subsystems/ins/ins_alt_float.c ****     p[0][0] = p[0][0] * (1 - k_0);
+ 136              		.loc 1 329 0
+ 137 00aa F7EE007A 		fconsts	s15, #112
+ 327:subsystems/ins/ins_alt_float.c ****     p[1][1] = -p[0][1] * k_1 + p[1][1];
+ 138              		.loc 1 327 0
+ 139 00ae E8EE498A 		vfms.f32	s17, s16, s18
+ 140              		.loc 1 329 0
+ 141 00b2 77EEC77A 		fsubs	s15, s15, s14
+ 324:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot += k_1 * e;
+ 142              		.loc 1 324 0
+ 143 00b6 A7EE2BAA 		vfma.f32	s20, s14, s23
+ 325:subsystems/ins/ins_alt_float.c **** 
+ 144              		.loc 1 325 0
+ 145 00ba A9EE2BBA 		vfma.f32	s22, s18, s23
+ 146              		.loc 1 329 0
+ 147 00be 28EE278A 		fmuls	s16, s16, s15
+ 330:subsystems/ins/ins_alt_float.c ****     p[0][1] = p[0][1] * (1 - k_0);
+ 148              		.loc 1 330 0
+ 149 00c2 6AEEA77A 		fmuls	s15, s21, s15
+ 324:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot += k_1 * e;
+ 150              		.loc 1 324 0
+ 151 00c6 85ED00AA 		fsts	s20, [r5]
+ 325:subsystems/ins/ins_alt_float.c **** 
+ 152              		.loc 1 325 0
+ 153 00ca 85ED01BA 		fsts	s22, [r5, #4]
+ 327:subsystems/ins/ins_alt_float.c ****     p[1][1] = -p[0][1] * k_1 + p[1][1];
+ 154              		.loc 1 327 0
+ 155 00ce C4ED028A 		fsts	s17, [r4, #8]
+ 329:subsystems/ins/ins_alt_float.c ****     p[0][1] = p[0][1] * (1 - k_0);
+ 156              		.loc 1 329 0
+ 157 00d2 84ED008A 		fsts	s16, [r4]
+ 158              		.loc 1 330 0
+ 159 00d6 C4ED017A 		fsts	s15, [r4, #4]
+ 160              	.LVL9:
+ 161              	.L1:
+ 162              	.LBE14:
+ 331:subsystems/ins/ins_alt_float.c ****   }
+ 332:subsystems/ins/ins_alt_float.c **** 
+ 333:subsystems/ins/ins_alt_float.c **** #ifdef DEBUG_ALT_KALMAN
+ 334:subsystems/ins/ins_alt_float.c ****   DOWNLINK_SEND_ALT_KALMAN(DefaultChannel, DefaultDevice, &(p[0][0]), &(p[0][1]), &(p[1][0]), &(p[1
+ 335:subsystems/ins/ins_alt_float.c **** #endif
+ 336:subsystems/ins/ins_alt_float.c **** }
+ 163              		.loc 1 336 0
+ 164 00da BDEC088B 		fldmfdd	sp!, {d8-d11}
+ 165              		.cfi_restore 86
+ 166              		.cfi_restore 87
+ 167              		.cfi_restore 84
+ 168              		.cfi_restore 85
+ 169              		.cfi_restore 82
+ 170              		.cfi_restore 83
+ 171              		.cfi_restore 80
+ 172              		.cfi_restore 81
+ 173              		.cfi_def_cfa_offset 16
+ 174 00de 38BD     		pop	{r3, r4, r5, pc}
+ 175              	.L7:
+ 176              		.align	3
+ 177              	.L6:
+ 178 00e0 F168E388 		.word	-1998362383
+ 179 00e4 B5F8E43E 		.word	1055193269
+ 180 00e8 00000000 		.word	.LANCHOR1
+ 181 00ec 00000000 		.word	.LANCHOR0
+ 182              		.cfi_endproc
+ 183              	.LFE193:
+ 185              		.section	.text.stateSetLocalUtmOrigin_f,"ax",%progbits
+ 186              		.align	1
+ 187              		.thumb
+ 188              		.thumb_func
+ 190              	stateSetLocalUtmOrigin_f:
+ 191              	.LFB55:
+ 192              		.file 2 "./state.h"
+   1:./state.h     **** /*
+   2:./state.h     ****  * Copyright (C) 2011-2012 Felix Ruess <felix.ruess@gmail.com>
+   3:./state.h     ****  *
+   4:./state.h     ****  * This file is part of paparazzi.
+   5:./state.h     ****  *
+   6:./state.h     ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:./state.h     ****  * it under the terms of the GNU General Public License as published by
+   8:./state.h     ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:./state.h     ****  * any later version.
+  10:./state.h     ****  *
+  11:./state.h     ****  * paparazzi is distributed in the hope that it will be useful,
+  12:./state.h     ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:./state.h     ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:./state.h     ****  * GNU General Public License for more details.
+  15:./state.h     ****  *
+  16:./state.h     ****  * You should have received a copy of the GNU General Public License
+  17:./state.h     ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:./state.h     ****  * <http://www.gnu.org/licenses/>.
+  19:./state.h     ****  */
+  20:./state.h     **** 
+  21:./state.h     **** /**
+  22:./state.h     ****  * @file state.h
+  23:./state.h     ****  *
+  24:./state.h     ****  * API to get/set the generic vehicle states.
+  25:./state.h     ****  *
+  26:./state.h     ****  * Also see the @ref state_interface "State Interface" page.
+  27:./state.h     ****  *
+  28:./state.h     ****  * @author Felix Ruess <felix.ruess@gmail.com>
+  29:./state.h     ****  */
+  30:./state.h     **** 
+  31:./state.h     **** #ifndef STATE_H
+  32:./state.h     **** #define STATE_H
+  33:./state.h     **** 
+  34:./state.h     **** #include "math/pprz_algebra_int.h"
+  35:./state.h     **** #include "math/pprz_algebra_float.h"
+  36:./state.h     **** #include "math/pprz_geodetic_int.h"
+  37:./state.h     **** #include "math/pprz_geodetic_float.h"
+  38:./state.h     **** #include "math/pprz_orientation_conversion.h"
+  39:./state.h     **** 
+  40:./state.h     **** #include "std.h"
+  41:./state.h     **** #include <string.h>
+  42:./state.h     **** 
+  43:./state.h     **** /**
+  44:./state.h     ****  * This general state interface holds all the most important vehicle states like
+  45:./state.h     ****  * position, velocity, attitude, etc. It handles coordinate system and
+  46:./state.h     ****  * fixed-/floating-point conversion on the fly when needed.
+  47:./state.h     ****  *
+  48:./state.h     ****  * You can set e.g. the position in any coordinate system you wish:
+  49:./state.h     ****  * stateSetPositionNed_i() to set the position in fixed-point NED coordinates.
+  50:./state.h     ****  * If you need to read the position somewhere else in a different representation,
+  51:./state.h     ****  * call: stateGetPositionLla_f() and only then the LLA float position representation
+  52:./state.h     ****  * is calculated on the fly and returned. It's also only calculated once,
+  53:./state.h     ****  * until a new position is set which invalidates all the other representations again.
+  54:./state.h     ****  */
+  55:./state.h     **** 
+  56:./state.h     **** /**
+  57:./state.h     ****  * @defgroup state_interface State interface
+  58:./state.h     ****  * @{
+  59:./state.h     ****  */
+  60:./state.h     **** 
+  61:./state.h     **** /**
+  62:./state.h     ****  * @defgroup state_position Position representations
+  63:./state.h     ****  * @{
+  64:./state.h     ****  */
+  65:./state.h     **** #define POS_ECEF_I 0
+  66:./state.h     **** #define POS_NED_I  1
+  67:./state.h     **** #define POS_ENU_I  2
+  68:./state.h     **** #define POS_LLA_I  3
+  69:./state.h     **** #define POS_UTM_I  4
+  70:./state.h     **** #define POS_ECEF_F 5
+  71:./state.h     **** #define POS_NED_F  6
+  72:./state.h     **** #define POS_ENU_F  7
+  73:./state.h     **** #define POS_LLA_F  8
+  74:./state.h     **** #define POS_UTM_F  9
+  75:./state.h     **** #define POS_LOCAL_COORD ((1<<POS_NED_I)|(1<<POS_NED_F)|(1<<POS_ENU_I)|(1<<POS_ENU_F))
+  76:./state.h     **** #define POS_GLOBAL_COORD ((1<<POS_ECEF_I)|(1<<POS_ECEF_F)|(1<<POS_LLA_I)|(1<<POS_LLA_F)|(1<<POS_UTM
+  77:./state.h     **** /**@}*/
+  78:./state.h     **** 
+  79:./state.h     **** /**
+  80:./state.h     ****  * @defgroup state_velocity Speed representations
+  81:./state.h     ****  * @{
+  82:./state.h     ****  */
+  83:./state.h     **** #define SPEED_ECEF_I  0
+  84:./state.h     **** #define SPEED_NED_I   1
+  85:./state.h     **** #define SPEED_ENU_I   2
+  86:./state.h     **** #define SPEED_HNORM_I 3
+  87:./state.h     **** #define SPEED_HDIR_I  4
+  88:./state.h     **** #define SPEED_ECEF_F  5
+  89:./state.h     **** #define SPEED_NED_F   6
+  90:./state.h     **** #define SPEED_ENU_F   7
+  91:./state.h     **** #define SPEED_HNORM_F 8
+  92:./state.h     **** #define SPEED_HDIR_F  9
+  93:./state.h     **** #define SPEED_LOCAL_COORD ((1<<SPEED_NED_I)|(1<<SPEED_ENU_I)|(1<<SPEED_NED_F)|(1<<SPEED_ENU_F))
+  94:./state.h     **** /**@}*/
+  95:./state.h     **** 
+  96:./state.h     **** /**
+  97:./state.h     ****  * @defgroup state_acceleration Acceleration representations
+  98:./state.h     ****  * @{
+  99:./state.h     ****  */
+ 100:./state.h     **** #define ACCEL_ECEF_I 0
+ 101:./state.h     **** #define ACCEL_NED_I  1
+ 102:./state.h     **** #define ACCEL_ECEF_F 2
+ 103:./state.h     **** #define ACCEL_NED_F  3
+ 104:./state.h     **** /**@}*/
+ 105:./state.h     **** 
+ 106:./state.h     **** /**
+ 107:./state.h     ****  * @defgroup state_rate Angular rate representations
+ 108:./state.h     ****  * @{
+ 109:./state.h     ****  */
+ 110:./state.h     **** #define RATE_I 0
+ 111:./state.h     **** #define RATE_F 1
+ 112:./state.h     **** /**@}*/
+ 113:./state.h     **** 
+ 114:./state.h     **** /**
+ 115:./state.h     ****  * @defgroup state_wind_airspeed Wind- and airspeed representations
+ 116:./state.h     ****  * @{
+ 117:./state.h     ****  */
+ 118:./state.h     **** #define WINDSPEED_I 0
+ 119:./state.h     **** #define AIRSPEED_I  1
+ 120:./state.h     **** #define WINDSPEED_F 2
+ 121:./state.h     **** #define AIRSPEED_F  3
+ 122:./state.h     **** #define AOA_F       4
+ 123:./state.h     **** #define SIDESLIP_F  5
+ 124:./state.h     **** /**@}*/
+ 125:./state.h     **** 
+ 126:./state.h     **** 
+ 127:./state.h     **** /**
+ 128:./state.h     ****  * Structure holding vehicle state data.
+ 129:./state.h     ****  */
+ 130:./state.h     **** struct State {
+ 131:./state.h     **** 
+ 132:./state.h     ****   /** @addtogroup state_position
+ 133:./state.h     ****    *  @{ */
+ 134:./state.h     **** 
+ 135:./state.h     ****   /**
+ 136:./state.h     ****    * Holds the status bits for all position representations.
+ 137:./state.h     ****    * When the corresponding bit is set the representation
+ 138:./state.h     ****    * is already computed.
+ 139:./state.h     ****    */
+ 140:./state.h     ****   uint16_t pos_status;
+ 141:./state.h     **** 
+ 142:./state.h     ****   /**
+ 143:./state.h     ****    * Position in EarthCenteredEarthFixed coordinates.
+ 144:./state.h     ****    * Units: centimeters
+ 145:./state.h     ****    */
+ 146:./state.h     ****   struct EcefCoor_i ecef_pos_i;
+ 147:./state.h     **** 
+ 148:./state.h     ****   /**
+ 149:./state.h     ****    * Position in Latitude, Longitude and Altitude.
+ 150:./state.h     ****    * Units lat,lon: degrees*1e7
+ 151:./state.h     ****    * Units alt: milimeters above reference ellipsoid
+ 152:./state.h     ****    */
+ 153:./state.h     ****   struct LlaCoor_i lla_pos_i;
+ 154:./state.h     **** 
+ 155:./state.h     ****   /**
+ 156:./state.h     ****    * Definition of the local (flat earth) coordinate system.
+ 157:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 158:./state.h     ****    * in ECEF (EarthCenteredEarthFixed) and LLA (LatitudeLongitudeAlt)
+ 159:./state.h     ****    * coordinates and the roation matrix from ECEF to local frame.
+ 160:./state.h     ****    * (int version)
+ 161:./state.h     ****    */
+ 162:./state.h     ****   struct LtpDef_i ned_origin_i;
+ 163:./state.h     **** 
+ 164:./state.h     ****   /**
+ 165:./state.h     ****    * true if local int coordinate frame is initialsed
+ 166:./state.h     ****    */
+ 167:./state.h     ****   bool_t ned_initialized_i;
+ 168:./state.h     **** 
+ 169:./state.h     ****   /**
+ 170:./state.h     ****    * Position in North East Down coordinates.
+ 171:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 172:./state.h     ****    * Units: m in BFP with INT32_POS_FRAC
+ 173:./state.h     ****    */
+ 174:./state.h     ****   struct NedCoor_i ned_pos_i;
+ 175:./state.h     **** 
+ 176:./state.h     ****   /**
+ 177:./state.h     ****    * Position in East North Up coordinates.
+ 178:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 179:./state.h     ****    * Units: m in BFP with INT32_POS_FRAC
+ 180:./state.h     ****    */
+ 181:./state.h     ****   struct EnuCoor_i enu_pos_i;
+ 182:./state.h     **** 
+ 183:./state.h     ****   /**
+ 184:./state.h     ****    * Position in UTM coordinates.
+ 185:./state.h     ****    * Units x,y: meters.
+ 186:./state.h     ****    * Units z: meters above MSL
+ 187:./state.h     ****    */
+ 188:./state.h     ****   struct UtmCoor_f utm_pos_f;
+ 189:./state.h     **** 
+ 190:./state.h     ****   /**
+ 191:./state.h     ****    * Altitude above ground level.
+ 192:./state.h     ****    * Unit: meters
+ 193:./state.h     ****    */
+ 194:./state.h     ****   float alt_agl_f;
+ 195:./state.h     **** 
+ 196:./state.h     ****   /**
+ 197:./state.h     ****    * Position in Latitude, Longitude and Altitude.
+ 198:./state.h     ****    * Units lat,lon: radians
+ 199:./state.h     ****    * Units alt: meters above reference ellipsoid
+ 200:./state.h     ****    */
+ 201:./state.h     ****   struct LlaCoor_f lla_pos_f;
+ 202:./state.h     **** 
+ 203:./state.h     ****   /**
+ 204:./state.h     ****    * Position in EarthCenteredEarthFixed coordinates.
+ 205:./state.h     ****    * Units: meters
+ 206:./state.h     ****    */
+ 207:./state.h     ****   struct EcefCoor_f ecef_pos_f;
+ 208:./state.h     **** 
+ 209:./state.h     ****   /**
+ 210:./state.h     ****    * Definition of the local (flat earth) coordinate system.
+ 211:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 212:./state.h     ****    * in ECEF (EarthCenteredEarthFixed) and LLA (LatitudeLongitudeAlt)
+ 213:./state.h     ****    * coordinates and the roation matrix from ECEF to local frame.
+ 214:./state.h     ****    * (float version)
+ 215:./state.h     ****    */
+ 216:./state.h     ****   struct LtpDef_f ned_origin_f;
+ 217:./state.h     **** 
+ 218:./state.h     ****   /// True if local float coordinate frame is initialsed
+ 219:./state.h     ****   bool_t ned_initialized_f;
+ 220:./state.h     **** 
+ 221:./state.h     ****   /**
+ 222:./state.h     ****    * Definition of the origin of Utm coordinate system.
+ 223:./state.h     ****    * Defines the origin of the local NorthEastDown coordinate system
+ 224:./state.h     ****    * in UTM coordinates, used as a reference when ned_origin is not
+ 225:./state.h     ****    * initialized.
+ 226:./state.h     ****    * (float version)
+ 227:./state.h     ****    */
+ 228:./state.h     ****   struct UtmCoor_f utm_origin_f;
+ 229:./state.h     **** 
+ 230:./state.h     ****   /// True if utm origin (float) coordinate frame is initialsed
+ 231:./state.h     ****   bool_t utm_initialized_f;
+ 232:./state.h     **** 
+ 233:./state.h     ****   /**
+ 234:./state.h     ****    * Position in North East Down coordinates.
+ 235:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 236:./state.h     ****    * Units: meters
+ 237:./state.h     ****    */
+ 238:./state.h     ****   struct NedCoor_f ned_pos_f;
+ 239:./state.h     **** 
+ 240:./state.h     ****   /**
+ 241:./state.h     ****    * Position in East North Up coordinates.
+ 242:./state.h     ****    * with respect to ned_origin_i (flat earth)
+ 243:./state.h     ****    * Units: meters
+ 244:./state.h     ****    */
+ 245:./state.h     ****   struct EnuCoor_f enu_pos_f;
+ 246:./state.h     ****   /** @}*/
+ 247:./state.h     **** 
+ 248:./state.h     **** 
+ 249:./state.h     ****   /** @addtogroup state_velocity
+ 250:./state.h     ****    *  @{ */
+ 251:./state.h     ****   /**
+ 252:./state.h     ****    * Holds the status bits for all ground speed representations.
+ 253:./state.h     ****    * When the corresponding bit is one the representation
+ 254:./state.h     ****    * is already computed.
+ 255:./state.h     ****    */
+ 256:./state.h     ****   uint16_t speed_status;
+ 257:./state.h     **** 
+ 258:./state.h     ****   /**
+ 259:./state.h     ****    * Velocity in EarthCenteredEarthFixed coordinates.
+ 260:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 261:./state.h     ****    */
+ 262:./state.h     ****   struct EcefCoor_i ecef_speed_i;
+ 263:./state.h     **** 
+ 264:./state.h     ****   /**
+ 265:./state.h     ****    * Velocity in North East Down coordinates.
+ 266:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 267:./state.h     ****    */
+ 268:./state.h     ****   struct NedCoor_i ned_speed_i;
+ 269:./state.h     **** 
+ 270:./state.h     ****   /**
+ 271:./state.h     ****    * Velocity in East North Up coordinates.
+ 272:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 273:./state.h     ****    */
+ 274:./state.h     ****   struct EnuCoor_i enu_speed_i;
+ 275:./state.h     **** 
+ 276:./state.h     ****   /**
+ 277:./state.h     ****    * Norm of horizontal ground speed.
+ 278:./state.h     ****    * Unit: m/s in BFP with #INT32_SPEED_FRAC
+ 279:./state.h     ****    */
+ 280:./state.h     ****   uint32_t h_speed_norm_i;
+ 281:./state.h     **** 
+ 282:./state.h     ****   /**
+ 283:./state.h     ****    * Direction of horizontal ground speed.
+ 284:./state.h     ****    * Unit: rad in BFP with #INT32_ANGLE_FRAC
+ 285:./state.h     ****    * (clockwise, zero=north)
+ 286:./state.h     ****    */
+ 287:./state.h     ****   int32_t h_speed_dir_i;
+ 288:./state.h     **** 
+ 289:./state.h     ****   /**
+ 290:./state.h     ****    * Velocity in EarthCenteredEarthFixed coordinates.
+ 291:./state.h     ****    * Units: m/s
+ 292:./state.h     ****    */
+ 293:./state.h     ****   struct EcefCoor_f ecef_speed_f;
+ 294:./state.h     **** 
+ 295:./state.h     ****   /**
+ 296:./state.h     ****    * @brief speed in North East Down coordinates
+ 297:./state.h     ****    * @details Units: m/s */
+ 298:./state.h     ****   struct NedCoor_f ned_speed_f;
+ 299:./state.h     **** 
+ 300:./state.h     ****   /**
+ 301:./state.h     ****    * Velocity in East North Up coordinates.
+ 302:./state.h     ****    * Units: m/s
+ 303:./state.h     ****    */
+ 304:./state.h     ****   struct EnuCoor_f enu_speed_f;
+ 305:./state.h     **** 
+ 306:./state.h     ****   /**
+ 307:./state.h     ****    * Norm of horizontal ground speed.
+ 308:./state.h     ****    * Unit: m/s
+ 309:./state.h     ****    */
+ 310:./state.h     ****   float h_speed_norm_f;
+ 311:./state.h     **** 
+ 312:./state.h     ****   /**
+ 313:./state.h     ****    * Direction of horizontal ground speed.
+ 314:./state.h     ****    * Unit: rad (clockwise, zero=north)
+ 315:./state.h     ****    */
+ 316:./state.h     ****   float h_speed_dir_f;
+ 317:./state.h     ****   /** @}*/
+ 318:./state.h     **** 
+ 319:./state.h     **** 
+ 320:./state.h     ****   /** @addtogroup state_acceleration
+ 321:./state.h     ****    *  @{ */
+ 322:./state.h     ****   /**
+ 323:./state.h     ****    * Holds the status bits for all acceleration representations.
+ 324:./state.h     ****    * When the corresponding bit is one the representation
+ 325:./state.h     ****    * is already computed.
+ 326:./state.h     ****    */
+ 327:./state.h     ****   uint8_t accel_status;
+ 328:./state.h     **** 
+ 329:./state.h     ****   /**
+ 330:./state.h     ****    * Acceleration in North East Down coordinates.
+ 331:./state.h     ****    * Units: m/s^2 in BFP with #INT32_ACCEL_FRAC
+ 332:./state.h     ****    */
+ 333:./state.h     ****   struct NedCoor_i ned_accel_i;
+ 334:./state.h     **** 
+ 335:./state.h     ****   /**
+ 336:./state.h     ****    * Acceleration in EarthCenteredEarthFixed coordinates.
+ 337:./state.h     ****    * Units: m/s^2 in BFP with INT32_ACCEL_FRAC
+ 338:./state.h     ****    */
+ 339:./state.h     ****   struct EcefCoor_i ecef_accel_i;
+ 340:./state.h     **** 
+ 341:./state.h     ****   /**
+ 342:./state.h     ****    * Acceleration in North East Down coordinates.
+ 343:./state.h     ****    * Units: m/s^2
+ 344:./state.h     ****    */
+ 345:./state.h     ****   struct NedCoor_f ned_accel_f;
+ 346:./state.h     **** 
+ 347:./state.h     ****   /**
+ 348:./state.h     ****    * Acceleration in EarthCenteredEarthFixed coordinates.
+ 349:./state.h     ****    * Units: m/s^2
+ 350:./state.h     ****    */
+ 351:./state.h     ****   struct EcefCoor_f ecef_accel_f;
+ 352:./state.h     ****   /** @}*/
+ 353:./state.h     **** 
+ 354:./state.h     **** 
+ 355:./state.h     ****   /** @defgroup state_attitude Attitude representations
+ 356:./state.h     ****    */
+ 357:./state.h     ****   struct OrientationReps ned_to_body_orientation;
+ 358:./state.h     **** 
+ 359:./state.h     **** 
+ 360:./state.h     ****   /** @addtogroup state_rate
+ 361:./state.h     ****    *  @{ */
+ 362:./state.h     ****   /**
+ 363:./state.h     ****    * Holds the status bits for all angular rate representations.
+ 364:./state.h     ****    * When the corresponding bit is one the representation
+ 365:./state.h     ****    * is already computed.
+ 366:./state.h     ****    */
+ 367:./state.h     ****   uint8_t rate_status;
+ 368:./state.h     **** 
+ 369:./state.h     ****   /**
+ 370:./state.h     ****    * Angular rates in body frame.
+ 371:./state.h     ****    * Units: rad/s in BFP with #INT32_RATE_FRAC
+ 372:./state.h     ****    */
+ 373:./state.h     ****   struct Int32Rates  body_rates_i;
+ 374:./state.h     **** 
+ 375:./state.h     ****   /**
+ 376:./state.h     ****    * Angular rates in body frame.
+ 377:./state.h     ****    * Units: rad/s
+ 378:./state.h     ****    */
+ 379:./state.h     ****   struct FloatRates  body_rates_f;
+ 380:./state.h     ****   /** @}*/
+ 381:./state.h     **** 
+ 382:./state.h     **** 
+ 383:./state.h     ****   /** @addtogroup state_wind_airspeed
+ 384:./state.h     ****    *  @{ */
+ 385:./state.h     ****   /**
+ 386:./state.h     ****    * Holds the status bits for all wind- and airspeed representations.
+ 387:./state.h     ****    * When the corresponding bit is one the representation
+ 388:./state.h     ****    * is already computed.
+ 389:./state.h     ****    */
+ 390:./state.h     ****   uint8_t wind_air_status;
+ 391:./state.h     **** 
+ 392:./state.h     ****   /**
+ 393:./state.h     ****    * Horizontal windspeed in north/east.
+ 394:./state.h     ****    * Units: m/s in BFP with #INT32_SPEED_FRAC
+ 395:./state.h     ****    */
+ 396:./state.h     ****   struct Int32Vect2 h_windspeed_i;
+ 397:./state.h     **** 
+ 398:./state.h     ****   /**
+ 399:./state.h     ****    * Norm of horizontal ground speed.
+ 400:./state.h     ****    * @details Unit: m/s in BFP with #INT32_SPEED_FRAC
+ 401:./state.h     ****    */
+ 402:./state.h     ****   int32_t airspeed_i;
+ 403:./state.h     **** 
+ 404:./state.h     ****   /**
+ 405:./state.h     ****    * Horizontal windspeed.
+ 406:./state.h     ****    * Units: m/s with x=north, y=east
+ 407:./state.h     ****    */
+ 408:./state.h     ****   struct FloatVect2 h_windspeed_f;
+ 409:./state.h     **** 
+ 410:./state.h     ****   /**
+ 411:./state.h     ****    * Norm of relative air speed.
+ 412:./state.h     ****    * Unit: m/s
+ 413:./state.h     ****    */
+ 414:./state.h     ****   float airspeed_f;
+ 415:./state.h     **** 
+ 416:./state.h     ****   /**
+ 417:./state.h     ****    * Angle of attack
+ 418:./state.h     ****    * Unit: rad
+ 419:./state.h     ****    */
+ 420:./state.h     ****   float angle_of_attack_f;
+ 421:./state.h     **** 
+ 422:./state.h     ****   /**
+ 423:./state.h     ****    * Sideslip angle
+ 424:./state.h     ****    * Unit: rad
+ 425:./state.h     ****    */
+ 426:./state.h     ****   float sideslip_f;
+ 427:./state.h     **** 
+ 428:./state.h     ****   /** @}*/
+ 429:./state.h     **** 
+ 430:./state.h     **** };
+ 431:./state.h     **** 
+ 432:./state.h     **** extern struct State state;
+ 433:./state.h     **** 
+ 434:./state.h     **** extern void stateInit(void);
+ 435:./state.h     **** 
+ 436:./state.h     **** /** @addtogroup state_position
+ 437:./state.h     ****  *  @{ */
+ 438:./state.h     **** 
+ 439:./state.h     **** /// Set the local (flat earth) coordinate frame origin (int).
+ 440:./state.h     **** static inline void stateSetLocalOrigin_i(struct LtpDef_i *ltp_def)
+ 441:./state.h     **** {
+ 442:./state.h     ****   memcpy(&state.ned_origin_i, ltp_def, sizeof(struct LtpDef_i));
+ 443:./state.h     ****   /* convert to float */
+ 444:./state.h     ****   ECEF_FLOAT_OF_BFP(state.ned_origin_f.ecef, state.ned_origin_i.ecef);
+ 445:./state.h     ****   LLA_FLOAT_OF_BFP(state.ned_origin_f.lla, state.ned_origin_i.lla);
+ 446:./state.h     ****   HIGH_RES_RMAT_FLOAT_OF_BFP(state.ned_origin_f.ltp_of_ecef, state.ned_origin_i.ltp_of_ecef);
+ 447:./state.h     ****   state.ned_origin_f.hmsl = M_OF_MM(state.ned_origin_i.hmsl);
+ 448:./state.h     **** 
+ 449:./state.h     ****   /* clear bits for all local frame representations */
+ 450:./state.h     ****   state.pos_status &= ~(POS_LOCAL_COORD);
+ 451:./state.h     ****   state.speed_status &= ~(SPEED_LOCAL_COORD);
+ 452:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_I);
+ 453:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_F);
+ 454:./state.h     **** 
+ 455:./state.h     ****   state.ned_initialized_i = TRUE;
+ 456:./state.h     ****   state.ned_initialized_f = TRUE;
+ 457:./state.h     **** }
+ 458:./state.h     **** 
+ 459:./state.h     **** /// Set the local (flat earth) coordinate frame origin from UTM (float).
+ 460:./state.h     **** static inline void stateSetLocalUtmOrigin_f(struct UtmCoor_f *utm_def)
+ 461:./state.h     **** {
+ 193              		.loc 2 461 0
+ 194              		.cfi_startproc
+ 195              		@ args = 0, pretend = 0, frame = 0
+ 196              		@ frame_needed = 0, uses_anonymous_args = 0
+ 197              	.LVL10:
+ 198 0000 30B5     		push	{r4, r5, lr}
+ 199              		.cfi_def_cfa_offset 12
+ 200              		.cfi_offset 4, -12
+ 201              		.cfi_offset 5, -8
+ 202              		.cfi_offset 14, -4
+ 462:./state.h     ****   memcpy(&state.utm_origin_f, utm_def, sizeof(struct UtmCoor_f));
+ 203              		.loc 2 462 0
+ 204 0002 104C     		ldr	r4, .L11
+ 461:./state.h     ****   memcpy(&state.utm_origin_f, utm_def, sizeof(struct UtmCoor_f));
+ 205              		.loc 2 461 0
+ 206 0004 0346     		mov	r3, r0
+ 207              		.loc 2 462 0
+ 208 0006 00F11005 		add	r5, r0, #16
+ 209              	.LVL11:
+ 210              	.L9:
+ 211 000a 1868     		ldr	r0, [r3]	@ unaligned
+ 212 000c 5968     		ldr	r1, [r3, #4]	@ unaligned
+ 213 000e 2246     		mov	r2, r4
+ 214 0010 03C2     		stmia	r2!, {r0, r1}
+ 215 0012 0833     		adds	r3, r3, #8
+ 216 0014 AB42     		cmp	r3, r5
+ 217 0016 1446     		mov	r4, r2
+ 218 0018 F7D1     		bne	.L9
+ 463:./state.h     ****   state.utm_initialized_f = TRUE;
+ 219              		.loc 2 463 0
+ 220 001a 0B4B     		ldr	r3, .L11+4
+ 221 001c 0122     		movs	r2, #1
+ 222 001e 83F8F820 		strb	r2, [r3, #248]
+ 464:./state.h     **** 
+ 465:./state.h     ****   /* clear bits for all local frame representations */
+ 466:./state.h     ****   state.pos_status &= ~(POS_LOCAL_COORD);
+ 223              		.loc 2 466 0
+ 224 0022 1A88     		ldrh	r2, [r3]
+ 225 0024 22F0C602 		bic	r2, r2, #198
+ 226 0028 1A80     		strh	r2, [r3]	@ movhi
+ 467:./state.h     ****   state.speed_status &= ~(SPEED_LOCAL_COORD);
+ 227              		.loc 2 467 0
+ 228 002a B3F81421 		ldrh	r2, [r3, #276]
+ 229 002e 22F0C602 		bic	r2, r2, #198
+ 230 0032 A3F81421 		strh	r2, [r3, #276]	@ movhi
+ 468:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_I);
+ 469:./state.h     ****   ClearBit(state.accel_status, ACCEL_NED_F);
+ 231              		.loc 2 469 0
+ 232 0036 93F87021 		ldrb	r2, [r3, #368]	@ zero_extendqisi2
+ 233 003a 22F00A02 		bic	r2, r2, #10
+ 234 003e 83F87021 		strb	r2, [r3, #368]
+ 235 0042 30BD     		pop	{r4, r5, pc}
+ 236              	.LVL12:
+ 237              	.L12:
+ 238              		.align	2
+ 239              	.L11:
+ 240 0044 E8000000 		.word	state+232
+ 241 0048 00000000 		.word	state
+ 242              		.cfi_endproc
+ 243              	.LFE55:
+ 245              		.section	.text.body_to_imu_cb,"ax",%progbits
+ 246              		.align	1
+ 247              		.thumb
+ 248              		.thumb_func
+ 250              	body_to_imu_cb:
+ 251              	.LFB196:
+ 337:subsystems/ins/ins_alt_float.c **** 
+ 338:subsystems/ins/ins_alt_float.c **** #if USE_BAROMETER
+ 339:subsystems/ins/ins_alt_float.c **** static void baro_cb(uint8_t __attribute__((unused)) sender_id, float pressure)
+ 340:subsystems/ins/ins_alt_float.c **** {
+ 341:subsystems/ins/ins_alt_float.c ****   ins_alt_float_update_baro(pressure);
+ 342:subsystems/ins/ins_alt_float.c **** }
+ 343:subsystems/ins/ins_alt_float.c **** #endif
+ 344:subsystems/ins/ins_alt_float.c **** 
+ 345:subsystems/ins/ins_alt_float.c **** static void gps_cb(uint8_t sender_id __attribute__((unused)),
+ 346:subsystems/ins/ins_alt_float.c ****                    uint32_t stamp __attribute__((unused)),
+ 347:subsystems/ins/ins_alt_float.c ****                    struct GpsState *gps_s)
+ 348:subsystems/ins/ins_alt_float.c **** {
+ 349:subsystems/ins/ins_alt_float.c ****   ins_alt_float_update_gps(gps_s);
+ 350:subsystems/ins/ins_alt_float.c **** }
+ 351:subsystems/ins/ins_alt_float.c **** 
+ 352:subsystems/ins/ins_alt_float.c **** static void accel_cb(uint8_t sender_id __attribute__((unused)),
+ 353:subsystems/ins/ins_alt_float.c ****                      uint32_t stamp __attribute__((unused)),
+ 354:subsystems/ins/ins_alt_float.c ****                      struct Int32Vect3 *accel)
+ 355:subsystems/ins/ins_alt_float.c **** {
+ 356:subsystems/ins/ins_alt_float.c ****   // untilt accel and remove gravity
+ 357:subsystems/ins/ins_alt_float.c ****   struct Int32Vect3 accel_body, accel_ned;
+ 358:subsystems/ins/ins_alt_float.c ****   struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&body_to_imu);
+ 359:subsystems/ins/ins_alt_float.c ****   int32_rmat_transp_vmult(&accel_body, body_to_imu_rmat, accel);
+ 360:subsystems/ins/ins_alt_float.c ****   struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
+ 361:subsystems/ins/ins_alt_float.c ****   int32_rmat_transp_vmult(&accel_ned, ned_to_body_rmat, &accel_body);
+ 362:subsystems/ins/ins_alt_float.c ****   accel_ned.z += ACCEL_BFP_OF_REAL(9.81);
+ 363:subsystems/ins/ins_alt_float.c ****   stateSetAccelNed_i((struct NedCoor_i *)&accel_ned);
+ 364:subsystems/ins/ins_alt_float.c **** }
+ 365:subsystems/ins/ins_alt_float.c **** 
+ 366:subsystems/ins/ins_alt_float.c **** static void body_to_imu_cb(uint8_t sender_id __attribute__((unused)),
+ 367:subsystems/ins/ins_alt_float.c ****                            struct FloatQuat *q_b2i_f)
+ 368:subsystems/ins/ins_alt_float.c **** {
+ 252              		.loc 1 368 0
+ 253              		.cfi_startproc
+ 254              		@ args = 0, pretend = 0, frame = 0
+ 255              		@ frame_needed = 0, uses_anonymous_args = 0
+ 256              		@ link register save eliminated.
+ 257              	.LVL13:
+ 258              	.LBB17:
+ 259              	.LBB18:
+ 260              		.file 3 "./math/pprz_orientation_conversion.h"
+   1:./math/pprz_orientation_conversion.h **** /*
+   2:./math/pprz_orientation_conversion.h ****  * Copyright (C) 2011-2012 The Paparazzi Team
+   3:./math/pprz_orientation_conversion.h ****  *
+   4:./math/pprz_orientation_conversion.h ****  * This file is part of paparazzi.
+   5:./math/pprz_orientation_conversion.h ****  *
+   6:./math/pprz_orientation_conversion.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:./math/pprz_orientation_conversion.h ****  * it under the terms of the GNU General Public License as published by
+   8:./math/pprz_orientation_conversion.h ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:./math/pprz_orientation_conversion.h ****  * any later version.
+  10:./math/pprz_orientation_conversion.h ****  *
+  11:./math/pprz_orientation_conversion.h ****  * paparazzi is distributed in the hope that it will be useful,
+  12:./math/pprz_orientation_conversion.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:./math/pprz_orientation_conversion.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:./math/pprz_orientation_conversion.h ****  * GNU General Public License for more details.
+  15:./math/pprz_orientation_conversion.h ****  *
+  16:./math/pprz_orientation_conversion.h ****  * You should have received a copy of the GNU General Public License
+  17:./math/pprz_orientation_conversion.h ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:./math/pprz_orientation_conversion.h ****  * <http://www.gnu.org/licenses/>.
+  19:./math/pprz_orientation_conversion.h ****  */
+  20:./math/pprz_orientation_conversion.h **** 
+  21:./math/pprz_orientation_conversion.h **** /**
+  22:./math/pprz_orientation_conversion.h ****  * @file math/pprz_orientation_conversion.h
+  23:./math/pprz_orientation_conversion.h ****  * Generic orientation representation and conversions.
+  24:./math/pprz_orientation_conversion.h ****  *
+  25:./math/pprz_orientation_conversion.h ****  * This file contains the functions to automatically convert between
+  26:./math/pprz_orientation_conversion.h ****  * the different representations. They should normally not be used
+  27:./math/pprz_orientation_conversion.h ****  * directly and instead the stateGet/Set interfaces used.
+  28:./math/pprz_orientation_conversion.h ****  * Also see the @ref math_orientation_representation "Generic Orientation Representation" page.
+  29:./math/pprz_orientation_conversion.h ****  *
+  30:./math/pprz_orientation_conversion.h ****  * @author Felix Ruess <felix.ruess@gmail.com>
+  31:./math/pprz_orientation_conversion.h ****  */
+  32:./math/pprz_orientation_conversion.h **** 
+  33:./math/pprz_orientation_conversion.h **** /**
+  34:./math/pprz_orientation_conversion.h ****  * @addtogroup math
+  35:./math/pprz_orientation_conversion.h ****  * @{
+  36:./math/pprz_orientation_conversion.h ****  */
+  37:./math/pprz_orientation_conversion.h **** 
+  38:./math/pprz_orientation_conversion.h **** /**
+  39:./math/pprz_orientation_conversion.h ****  * This generic orientation representation consists of a struct, containing the 6 orientation
+  40:./math/pprz_orientation_conversion.h ****  * representations, and a status variable. The bits in the status variable indicate  which
+  41:./math/pprz_orientation_conversion.h ****  * representations of the orientation are up-to-date.
+  42:./math/pprz_orientation_conversion.h ****  *
+  43:./math/pprz_orientation_conversion.h ****  * When a getter is used to get a certain representation, the status bit is checked to see if
+  44:./math/pprz_orientation_conversion.h ****  * the current value is already available in the desired orientation representation.
+  45:./math/pprz_orientation_conversion.h ****  * If the desired representation is not available, it will be calculated.
+  46:./math/pprz_orientation_conversion.h ****  *
+  47:./math/pprz_orientation_conversion.h ****  * When a setter is used to set a representation, all status bits are cleared, and only the
+  48:./math/pprz_orientation_conversion.h ****  * status bit for the set representation is set to one.
+  49:./math/pprz_orientation_conversion.h ****  */
+  50:./math/pprz_orientation_conversion.h **** 
+  51:./math/pprz_orientation_conversion.h **** /**
+  52:./math/pprz_orientation_conversion.h ****  * @defgroup math_orientation_representation Generic Orientation Representations
+  53:./math/pprz_orientation_conversion.h ****  * @{
+  54:./math/pprz_orientation_conversion.h ****  */
+  55:./math/pprz_orientation_conversion.h **** 
+  56:./math/pprz_orientation_conversion.h **** #ifndef PPRZ_ORIENTATION_CONVERSION_H
+  57:./math/pprz_orientation_conversion.h **** #define PPRZ_ORIENTATION_CONVERSION_H
+  58:./math/pprz_orientation_conversion.h **** 
+  59:./math/pprz_orientation_conversion.h **** #ifdef __cplusplus
+  60:./math/pprz_orientation_conversion.h **** extern "C" {
+  61:./math/pprz_orientation_conversion.h **** #endif
+  62:./math/pprz_orientation_conversion.h **** 
+  63:./math/pprz_orientation_conversion.h **** #include "math/pprz_algebra_int.h"
+  64:./math/pprz_orientation_conversion.h **** #include "math/pprz_algebra_float.h"
+  65:./math/pprz_orientation_conversion.h **** 
+  66:./math/pprz_orientation_conversion.h **** #include "std.h"
+  67:./math/pprz_orientation_conversion.h **** 
+  68:./math/pprz_orientation_conversion.h **** 
+  69:./math/pprz_orientation_conversion.h **** #define ORREP_QUAT_I  0  ///< Quaternion (BFP int)
+  70:./math/pprz_orientation_conversion.h **** #define ORREP_EULER_I 1  ///< zyx Euler (BFP int)
+  71:./math/pprz_orientation_conversion.h **** #define ORREP_RMAT_I  2  ///< Rotation Matrix (BFP int)
+  72:./math/pprz_orientation_conversion.h **** #define ORREP_QUAT_F  3  ///< Quaternion (float)
+  73:./math/pprz_orientation_conversion.h **** #define ORREP_EULER_F 4  ///< zyx Euler (float)
+  74:./math/pprz_orientation_conversion.h **** #define ORREP_RMAT_F  5  ///< Rotation Matrix (float)
+  75:./math/pprz_orientation_conversion.h **** 
+  76:./math/pprz_orientation_conversion.h **** /*
+  77:./math/pprz_orientation_conversion.h ****  * @brief Struct with euler/rmat/quaternion orientation representations in BFP int and float
+  78:./math/pprz_orientation_conversion.h ****  */
+  79:./math/pprz_orientation_conversion.h **** struct OrientationReps {
+  80:./math/pprz_orientation_conversion.h ****   /**
+  81:./math/pprz_orientation_conversion.h ****    * Holds the status bits for all orientation representations.
+  82:./math/pprz_orientation_conversion.h ****    * When the corresponding bit is set, the representation
+  83:./math/pprz_orientation_conversion.h ****    * is already computed.
+  84:./math/pprz_orientation_conversion.h ****    */
+  85:./math/pprz_orientation_conversion.h ****   uint8_t status;
+  86:./math/pprz_orientation_conversion.h **** 
+  87:./math/pprz_orientation_conversion.h ****   /**
+  88:./math/pprz_orientation_conversion.h ****    * Orientation quaternion.
+  89:./math/pprz_orientation_conversion.h ****    * Units: #INT32_QUAT_FRAC
+  90:./math/pprz_orientation_conversion.h ****    */
+  91:./math/pprz_orientation_conversion.h ****   struct Int32Quat quat_i;
+  92:./math/pprz_orientation_conversion.h **** 
+  93:./math/pprz_orientation_conversion.h ****   /**
+  94:./math/pprz_orientation_conversion.h ****    * Orientation in zyx euler angles.
+  95:./math/pprz_orientation_conversion.h ****    * Units: rad in BFP with #INT32_ANGLE_FRAC
+  96:./math/pprz_orientation_conversion.h ****    */
+  97:./math/pprz_orientation_conversion.h ****   struct Int32Eulers eulers_i;
+  98:./math/pprz_orientation_conversion.h **** 
+  99:./math/pprz_orientation_conversion.h ****   /**
+ 100:./math/pprz_orientation_conversion.h ****    * Orientation rotation matrix.
+ 101:./math/pprz_orientation_conversion.h ****    * Units: rad in BFP with #INT32_TRIG_FRAC
+ 102:./math/pprz_orientation_conversion.h ****    */
+ 103:./math/pprz_orientation_conversion.h ****   struct Int32RMat rmat_i;
+ 104:./math/pprz_orientation_conversion.h **** 
+ 105:./math/pprz_orientation_conversion.h ****   /**
+ 106:./math/pprz_orientation_conversion.h ****    * Orientation as quaternion.
+ 107:./math/pprz_orientation_conversion.h ****    * Units: unit length quaternion
+ 108:./math/pprz_orientation_conversion.h ****    */
+ 109:./math/pprz_orientation_conversion.h ****   struct FloatQuat quat_f;
+ 110:./math/pprz_orientation_conversion.h **** 
+ 111:./math/pprz_orientation_conversion.h ****   /**
+ 112:./math/pprz_orientation_conversion.h ****    * Orienation in zyx euler angles.
+ 113:./math/pprz_orientation_conversion.h ****    * Units: rad
+ 114:./math/pprz_orientation_conversion.h ****    */
+ 115:./math/pprz_orientation_conversion.h ****   struct FloatEulers eulers_f;
+ 116:./math/pprz_orientation_conversion.h **** 
+ 117:./math/pprz_orientation_conversion.h ****   /**
+ 118:./math/pprz_orientation_conversion.h ****    * Orientation rotation matrix.
+ 119:./math/pprz_orientation_conversion.h ****    * Units: rad
+ 120:./math/pprz_orientation_conversion.h ****    */
+ 121:./math/pprz_orientation_conversion.h ****   struct FloatRMat   rmat_f;
+ 122:./math/pprz_orientation_conversion.h **** };
+ 123:./math/pprz_orientation_conversion.h **** 
+ 124:./math/pprz_orientation_conversion.h **** /************* declaration of transformation functions ************/
+ 125:./math/pprz_orientation_conversion.h **** extern void orientationCalcQuat_i(struct OrientationReps *orientation);
+ 126:./math/pprz_orientation_conversion.h **** extern void orientationCalcRMat_i(struct OrientationReps *orientation);
+ 127:./math/pprz_orientation_conversion.h **** extern void orientationCalcEulers_i(struct OrientationReps *orientation);
+ 128:./math/pprz_orientation_conversion.h **** extern void orientationCalcQuat_f(struct OrientationReps *orientation);
+ 129:./math/pprz_orientation_conversion.h **** extern void orientationCalcRMat_f(struct OrientationReps *orientation);
+ 130:./math/pprz_orientation_conversion.h **** extern void orientationCalcEulers_f(struct OrientationReps *orientation);
+ 131:./math/pprz_orientation_conversion.h **** 
+ 132:./math/pprz_orientation_conversion.h **** 
+ 133:./math/pprz_orientation_conversion.h **** /*********************** validity test functions ******************/
+ 134:./math/pprz_orientation_conversion.h **** /// Test if orientations are valid.
+ 135:./math/pprz_orientation_conversion.h **** static inline bool_t orienationCheckValid(struct OrientationReps *orientation)
+ 136:./math/pprz_orientation_conversion.h **** {
+ 137:./math/pprz_orientation_conversion.h ****   return (orientation->status);
+ 138:./math/pprz_orientation_conversion.h **** }
+ 139:./math/pprz_orientation_conversion.h **** 
+ 140:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from quaternion (int).
+ 141:./math/pprz_orientation_conversion.h **** static inline void orientationSetQuat_i(struct OrientationReps *orientation, struct Int32Quat *quat
+ 142:./math/pprz_orientation_conversion.h **** {
+ 143:./math/pprz_orientation_conversion.h ****   QUAT_COPY(orientation->quat_i, *quat);
+ 144:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 145:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_QUAT_I);
+ 146:./math/pprz_orientation_conversion.h **** }
+ 147:./math/pprz_orientation_conversion.h **** 
+ 148:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from rotation matrix (int).
+ 149:./math/pprz_orientation_conversion.h **** static inline void orientationSetRMat_i(struct OrientationReps *orientation, struct Int32RMat *rmat
+ 150:./math/pprz_orientation_conversion.h **** {
+ 151:./math/pprz_orientation_conversion.h ****   RMAT_COPY(orientation->rmat_i, *rmat);
+ 152:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 153:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_RMAT_I);
+ 154:./math/pprz_orientation_conversion.h **** }
+ 155:./math/pprz_orientation_conversion.h **** 
+ 156:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from euler angles (int).
+ 157:./math/pprz_orientation_conversion.h **** static inline void orientationSetEulers_i(struct OrientationReps *orientation, struct Int32Eulers *
+ 158:./math/pprz_orientation_conversion.h **** {
+ 159:./math/pprz_orientation_conversion.h ****   EULERS_COPY(orientation->eulers_i, *eulers);
+ 160:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 161:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_EULER_I);
+ 162:./math/pprz_orientation_conversion.h **** }
+ 163:./math/pprz_orientation_conversion.h **** 
+ 164:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from quaternion (float).
+ 165:./math/pprz_orientation_conversion.h **** static inline void orientationSetQuat_f(struct OrientationReps *orientation, struct FloatQuat *quat
+ 166:./math/pprz_orientation_conversion.h **** {
+ 167:./math/pprz_orientation_conversion.h ****   QUAT_COPY(orientation->quat_f, *quat);
+ 261              		.loc 3 167 0
+ 262 0000 054B     		ldr	r3, .L14
+ 263 0002 0A68     		ldr	r2, [r1]	@ float
+ 264 0004 5A64     		str	r2, [r3, #68]	@ float
+ 265 0006 4A68     		ldr	r2, [r1, #4]	@ float
+ 266 0008 9A64     		str	r2, [r3, #72]	@ float
+ 267 000a 8A68     		ldr	r2, [r1, #8]	@ float
+ 268 000c DA64     		str	r2, [r3, #76]	@ float
+ 269 000e CA68     		ldr	r2, [r1, #12]	@ float
+ 270 0010 1A65     		str	r2, [r3, #80]	@ float
+ 168:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 169:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_QUAT_F);
+ 271              		.loc 3 169 0
+ 272 0012 0822     		movs	r2, #8
+ 273 0014 1A70     		strb	r2, [r3]
+ 274 0016 7047     		bx	lr
+ 275              	.L15:
+ 276              		.align	2
+ 277              	.L14:
+ 278 0018 00000000 		.word	.LANCHOR2
+ 279              	.LBE18:
+ 280              	.LBE17:
+ 281              		.cfi_endproc
+ 282              	.LFE196:
+ 284              		.global	__aeabi_i2d
+ 285              		.global	__aeabi_dadd
+ 286              		.global	__aeabi_d2iz
+ 287              		.section	.text.accel_cb,"ax",%progbits
+ 288              		.align	1
+ 289              		.thumb
+ 290              		.thumb_func
+ 292              	accel_cb:
+ 293              	.LFB195:
+ 355:subsystems/ins/ins_alt_float.c ****   // untilt accel and remove gravity
+ 294              		.loc 1 355 0
+ 295              		.cfi_startproc
+ 296              		@ args = 0, pretend = 0, frame = 24
+ 297              		@ frame_needed = 0, uses_anonymous_args = 0
+ 298              	.LVL14:
+ 299 0000 10B5     		push	{r4, lr}
+ 300              		.cfi_def_cfa_offset 8
+ 301              		.cfi_offset 4, -8
+ 302              		.cfi_offset 14, -4
+ 303              	.LBB27:
+ 304              	.LBB28:
+ 170:./math/pprz_orientation_conversion.h **** }
+ 171:./math/pprz_orientation_conversion.h **** 
+ 172:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from rotation matrix (float).
+ 173:./math/pprz_orientation_conversion.h **** static inline void orientationSetRMat_f(struct OrientationReps *orientation, struct FloatRMat *rmat
+ 174:./math/pprz_orientation_conversion.h **** {
+ 175:./math/pprz_orientation_conversion.h ****   RMAT_COPY(orientation->rmat_f, *rmat);
+ 176:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 177:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_RMAT_F);
+ 178:./math/pprz_orientation_conversion.h **** }
+ 179:./math/pprz_orientation_conversion.h **** 
+ 180:./math/pprz_orientation_conversion.h **** /// Set vehicle body attitude from euler angles (float).
+ 181:./math/pprz_orientation_conversion.h **** static inline void orientationSetEulers_f(struct OrientationReps *orientation, struct FloatEulers *
+ 182:./math/pprz_orientation_conversion.h **** {
+ 183:./math/pprz_orientation_conversion.h ****   EULERS_COPY(orientation->eulers_f, *eulers);
+ 184:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 185:./math/pprz_orientation_conversion.h ****   orientation->status = (1 << ORREP_EULER_F);
+ 186:./math/pprz_orientation_conversion.h **** }
+ 187:./math/pprz_orientation_conversion.h **** 
+ 188:./math/pprz_orientation_conversion.h **** 
+ 189:./math/pprz_orientation_conversion.h **** /// Get vehicle body attitude quaternion (int).
+ 190:./math/pprz_orientation_conversion.h **** static inline struct Int32Quat *orientationGetQuat_i(struct OrientationReps *orientation)
+ 191:./math/pprz_orientation_conversion.h **** {
+ 192:./math/pprz_orientation_conversion.h ****   if (!bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 193:./math/pprz_orientation_conversion.h ****     orientationCalcQuat_i(orientation);
+ 194:./math/pprz_orientation_conversion.h ****   }
+ 195:./math/pprz_orientation_conversion.h ****   return &orientation->quat_i;
+ 196:./math/pprz_orientation_conversion.h **** }
+ 197:./math/pprz_orientation_conversion.h **** 
+ 198:./math/pprz_orientation_conversion.h **** /// Get vehicle body attitude rotation matrix (int).
+ 199:./math/pprz_orientation_conversion.h **** static inline struct Int32RMat *orientationGetRMat_i(struct OrientationReps *orientation)
+ 200:./math/pprz_orientation_conversion.h **** {
+ 201:./math/pprz_orientation_conversion.h ****   if (!bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 305              		.loc 3 201 0
+ 306 0002 1B48     		ldr	r0, .L19+8
+ 307              	.LVL15:
+ 308 0004 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+ 309              	.LBE28:
+ 310              	.LBE27:
+ 355:subsystems/ins/ins_alt_float.c ****   // untilt accel and remove gravity
+ 311              		.loc 1 355 0
+ 312 0006 1446     		mov	r4, r2
+ 313              	.LBB31:
+ 314              	.LBB29:
+ 315              		.loc 3 201 0
+ 316 0008 5A07     		lsls	r2, r3, #29
+ 317              	.LVL16:
+ 318              	.LBE29:
+ 319              	.LBE31:
+ 355:subsystems/ins/ins_alt_float.c ****   // untilt accel and remove gravity
+ 320              		.loc 1 355 0
+ 321 000a 86B0     		sub	sp, sp, #24
+ 322              		.cfi_def_cfa_offset 32
+ 323              	.LBB32:
+ 324              	.LBB30:
+ 325              		.loc 3 201 0
+ 326 000c 01D4     		bmi	.L17
+ 202:./math/pprz_orientation_conversion.h ****     orientationCalcRMat_i(orientation);
+ 327              		.loc 3 202 0
+ 328 000e FFF7FEFF 		bl	orientationCalcRMat_i
+ 329              	.LVL17:
+ 330              	.L17:
+ 331              	.LBE30:
+ 332              	.LBE32:
+ 359:subsystems/ins/ins_alt_float.c ****   struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
+ 333              		.loc 1 359 0
+ 334 0012 2246     		mov	r2, r4
+ 335              	.LBB33:
+ 336              	.LBB34:
+ 337              	.LBB35:
+ 338              	.LBB36:
+ 201:./math/pprz_orientation_conversion.h ****     orientationCalcRMat_i(orientation);
+ 339              		.loc 3 201 0
+ 340 0014 174C     		ldr	r4, .L19+12
+ 341              	.LVL18:
+ 342              	.LBE36:
+ 343              	.LBE35:
+ 344              	.LBE34:
+ 345              	.LBE33:
+ 359:subsystems/ins/ins_alt_float.c ****   struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
+ 346              		.loc 1 359 0
+ 347 0016 1849     		ldr	r1, .L19+16
+ 348 0018 6846     		mov	r0, sp
+ 349 001a FFF7FEFF 		bl	int32_rmat_transp_vmult
+ 350              	.LVL19:
+ 351              	.LBB40:
+ 352              	.LBB39:
+ 353              	.LBB38:
+ 354              	.LBB37:
+ 201:./math/pprz_orientation_conversion.h ****     orientationCalcRMat_i(orientation);
+ 355              		.loc 3 201 0
+ 356 001e 94F8A431 		ldrb	r3, [r4, #420]	@ zero_extendqisi2
+ 357 0022 5B07     		lsls	r3, r3, #29
+ 358 0024 03D4     		bmi	.L18
+ 359              		.loc 3 202 0
+ 360 0026 04F5D270 		add	r0, r4, #420
+ 361 002a FFF7FEFF 		bl	orientationCalcRMat_i
+ 362              	.LVL20:
+ 363              	.L18:
+ 364              	.LBE37:
+ 365              	.LBE38:
+ 366              	.LBE39:
+ 367              	.LBE40:
+ 361:subsystems/ins/ins_alt_float.c ****   accel_ned.z += ACCEL_BFP_OF_REAL(9.81);
+ 368              		.loc 1 361 0
+ 369 002e 6A46     		mov	r2, sp
+ 370 0030 03A8     		add	r0, sp, #12
+ 371 0032 1249     		ldr	r1, .L19+20
+ 372 0034 FFF7FEFF 		bl	int32_rmat_transp_vmult
+ 373              	.LVL21:
+ 362:subsystems/ins/ins_alt_float.c ****   stateSetAccelNed_i((struct NedCoor_i *)&accel_ned);
+ 374              		.loc 1 362 0
+ 375 0038 0598     		ldr	r0, [sp, #20]
+ 376 003a FFF7FEFF 		bl	__aeabi_i2d
+ 377              	.LVL22:
+ 378 003e 0AA3     		adr	r3, .L19
+ 379 0040 D3E90023 		ldrd	r2, [r3]
+ 380 0044 FFF7FEFF 		bl	__aeabi_dadd
+ 381              	.LVL23:
+ 382 0048 FFF7FEFF 		bl	__aeabi_d2iz
+ 383              	.LVL24:
+ 384              	.LBB41:
+ 385              	.LBB42:
+ 470:./state.h     **** }
+ 471:./state.h     **** /*******************************************************************************
+ 472:./state.h     ****  *                                                                             *
+ 473:./state.h     ****  * Set and Get functions for the POSITION representations                      *
+ 474:./state.h     ****  *                                                                             *
+ 475:./state.h     ****  ******************************************************************************/
+ 476:./state.h     **** 
+ 477:./state.h     **** /************* declaration of transformation functions ************/
+ 478:./state.h     **** extern void stateCalcPositionEcef_i(void);
+ 479:./state.h     **** extern void stateCalcPositionNed_i(void);
+ 480:./state.h     **** extern void stateCalcPositionEnu_i(void);
+ 481:./state.h     **** extern void stateCalcPositionLla_i(void);
+ 482:./state.h     **** extern void stateCalcPositionUtm_f(void);
+ 483:./state.h     **** extern void stateCalcPositionEcef_f(void);
+ 484:./state.h     **** extern void stateCalcPositionNed_f(void);
+ 485:./state.h     **** extern void stateCalcPositionEnu_f(void);
+ 486:./state.h     **** extern void stateCalcPositionLla_f(void);
+ 487:./state.h     **** 
+ 488:./state.h     **** /*********************** validity test functions ******************/
+ 489:./state.h     **** 
+ 490:./state.h     **** /// Test if local coordinates are valid.
+ 491:./state.h     **** static inline bool_t stateIsLocalCoordinateValid(void)
+ 492:./state.h     **** {
+ 493:./state.h     ****   return ((state.ned_initialized_i || state.ned_initialized_f || state.utm_initialized_f)
+ 494:./state.h     ****           && (state.pos_status & (POS_LOCAL_COORD)));
+ 495:./state.h     **** }
+ 496:./state.h     **** 
+ 497:./state.h     **** /// Test if global coordinates are valid.
+ 498:./state.h     **** static inline bool_t stateIsGlobalCoordinateValid(void)
+ 499:./state.h     **** {
+ 500:./state.h     ****   return ((state.pos_status & (POS_GLOBAL_COORD)) || stateIsLocalCoordinateValid());
+ 501:./state.h     **** }
+ 502:./state.h     **** 
+ 503:./state.h     **** /************************ Set functions ****************************/
+ 504:./state.h     **** 
+ 505:./state.h     **** /// Set position from ECEF coordinates (int).
+ 506:./state.h     **** static inline void stateSetPositionEcef_i(struct EcefCoor_i *ecef_pos)
+ 507:./state.h     **** {
+ 508:./state.h     ****   VECT3_COPY(state.ecef_pos_i, *ecef_pos);
+ 509:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 510:./state.h     ****   state.pos_status = (1 << POS_ECEF_I);
+ 511:./state.h     **** }
+ 512:./state.h     **** 
+ 513:./state.h     **** /// Set position from local NED coordinates (int).
+ 514:./state.h     **** static inline void stateSetPositionNed_i(struct NedCoor_i *ned_pos)
+ 515:./state.h     **** {
+ 516:./state.h     ****   VECT3_COPY(state.ned_pos_i, *ned_pos);
+ 517:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 518:./state.h     ****   state.pos_status = (1 << POS_NED_I);
+ 519:./state.h     **** }
+ 520:./state.h     **** 
+ 521:./state.h     **** /// Set position from local ENU coordinates (int).
+ 522:./state.h     **** static inline void stateSetPositionEnu_i(struct EnuCoor_i *enu_pos)
+ 523:./state.h     **** {
+ 524:./state.h     ****   VECT3_COPY(state.enu_pos_i, *enu_pos);
+ 525:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 526:./state.h     ****   state.pos_status = (1 << POS_ENU_I);
+ 527:./state.h     **** }
+ 528:./state.h     **** 
+ 529:./state.h     **** /// Set position from LLA coordinates (int).
+ 530:./state.h     **** static inline void stateSetPositionLla_i(struct LlaCoor_i *lla_pos)
+ 531:./state.h     **** {
+ 532:./state.h     ****   LLA_COPY(state.lla_pos_i, *lla_pos);
+ 533:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 534:./state.h     ****   state.pos_status = (1 << POS_LLA_I);
+ 535:./state.h     **** }
+ 536:./state.h     **** 
+ 537:./state.h     **** /// Set multiple position coordinates (int).
+ 538:./state.h     **** static inline void stateSetPosition_i(
+ 539:./state.h     ****   struct EcefCoor_i *ecef_pos,
+ 540:./state.h     ****   struct NedCoor_i *ned_pos,
+ 541:./state.h     ****   struct EnuCoor_i *enu_pos,
+ 542:./state.h     ****   struct LlaCoor_i *lla_pos)
+ 543:./state.h     **** {
+ 544:./state.h     ****   /* clear all status bit */
+ 545:./state.h     ****   state.pos_status = 0;
+ 546:./state.h     ****   if (ecef_pos != NULL) {
+ 547:./state.h     ****     VECT3_COPY(state.ecef_pos_i, *ecef_pos);
+ 548:./state.h     ****     state.pos_status |= (1 << POS_ECEF_I);
+ 549:./state.h     ****   }
+ 550:./state.h     ****   if (ned_pos != NULL) {
+ 551:./state.h     ****     VECT3_COPY(state.ned_pos_i, *ned_pos);
+ 552:./state.h     ****     state.pos_status |= (1 << POS_NED_I);
+ 553:./state.h     ****   }
+ 554:./state.h     ****   if (enu_pos != NULL) {
+ 555:./state.h     ****     VECT3_COPY(state.enu_pos_i, *enu_pos);
+ 556:./state.h     ****     state.pos_status |= (1 << POS_ENU_I);
+ 557:./state.h     ****   }
+ 558:./state.h     ****   if (lla_pos != NULL) {
+ 559:./state.h     ****     LLA_COPY(state.lla_pos_i, *lla_pos);
+ 560:./state.h     ****     state.pos_status |= (1 << POS_LLA_I);
+ 561:./state.h     ****   }
+ 562:./state.h     **** }
+ 563:./state.h     **** 
+ 564:./state.h     **** /// Set position from UTM coordinates (float).
+ 565:./state.h     **** static inline void stateSetPositionUtm_f(struct UtmCoor_f *utm_pos)
+ 566:./state.h     **** {
+ 567:./state.h     ****   memcpy(&state.utm_pos_f, utm_pos, sizeof(struct UtmCoor_f));
+ 568:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 569:./state.h     ****   state.pos_status = (1 << POS_UTM_F);
+ 570:./state.h     **** }
+ 571:./state.h     **** 
+ 572:./state.h     **** /// Set position from ECEF coordinates (float).
+ 573:./state.h     **** static inline void stateSetPositionEcef_f(struct EcefCoor_f *ecef_pos)
+ 574:./state.h     **** {
+ 575:./state.h     ****   VECT3_COPY(state.ecef_pos_f, *ecef_pos);
+ 576:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 577:./state.h     ****   state.pos_status = (1 << POS_ECEF_F);
+ 578:./state.h     **** }
+ 579:./state.h     **** 
+ 580:./state.h     **** /// Set position from local NED coordinates (float).
+ 581:./state.h     **** static inline void stateSetPositionNed_f(struct NedCoor_f *ned_pos)
+ 582:./state.h     **** {
+ 583:./state.h     ****   VECT3_COPY(state.ned_pos_f, *ned_pos);
+ 584:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 585:./state.h     ****   state.pos_status = (1 << POS_NED_F);
+ 586:./state.h     **** }
+ 587:./state.h     **** 
+ 588:./state.h     **** /// Set position from local ENU coordinates (float).
+ 589:./state.h     **** static inline void stateSetPositionEnu_f(struct EnuCoor_f *enu_pos)
+ 590:./state.h     **** {
+ 591:./state.h     ****   VECT3_COPY(state.enu_pos_f, *enu_pos);
+ 592:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 593:./state.h     ****   state.pos_status = (1 << POS_ENU_F);
+ 594:./state.h     **** }
+ 595:./state.h     **** 
+ 596:./state.h     **** /// Set position from LLA coordinates (float).
+ 597:./state.h     **** static inline void stateSetPositionLla_f(struct LlaCoor_f *lla_pos)
+ 598:./state.h     **** {
+ 599:./state.h     ****   LLA_COPY(state.lla_pos_f, *lla_pos);
+ 600:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 601:./state.h     ****   state.pos_status = (1 << POS_LLA_F);
+ 602:./state.h     **** }
+ 603:./state.h     **** 
+ 604:./state.h     **** /// Set multiple position coordinates (float).
+ 605:./state.h     **** static inline void stateSetPosition_f(
+ 606:./state.h     ****   struct EcefCoor_f *ecef_pos,
+ 607:./state.h     ****   struct NedCoor_f *ned_pos,
+ 608:./state.h     ****   struct EnuCoor_f *enu_pos,
+ 609:./state.h     ****   struct LlaCoor_f *lla_pos,
+ 610:./state.h     ****   struct UtmCoor_f *utm_pos)
+ 611:./state.h     **** {
+ 612:./state.h     ****   /* clear all status bit */
+ 613:./state.h     ****   state.pos_status = 0;
+ 614:./state.h     ****   if (ecef_pos != NULL) {
+ 615:./state.h     ****     VECT3_COPY(state.ecef_pos_f, *ecef_pos);
+ 616:./state.h     ****     state.pos_status |= (1 << POS_ECEF_F);
+ 617:./state.h     ****   }
+ 618:./state.h     ****   if (ned_pos != NULL) {
+ 619:./state.h     ****     VECT3_COPY(state.ned_pos_f, *ned_pos);
+ 620:./state.h     ****     state.pos_status |= (1 << POS_NED_F);
+ 621:./state.h     ****   }
+ 622:./state.h     ****   if (enu_pos != NULL) {
+ 623:./state.h     ****     VECT3_COPY(state.enu_pos_f, *enu_pos);
+ 624:./state.h     ****     state.pos_status |= (1 << POS_ENU_F);
+ 625:./state.h     ****   }
+ 626:./state.h     ****   if (lla_pos != NULL) {
+ 627:./state.h     ****     LLA_COPY(state.lla_pos_f, *lla_pos);
+ 628:./state.h     ****     state.pos_status |= (1 << POS_LLA_F);
+ 629:./state.h     ****   }
+ 630:./state.h     ****   if (utm_pos != NULL) {
+ 631:./state.h     ****     memcpy(&state.utm_pos_f, utm_pos, sizeof(struct UtmCoor_f));
+ 632:./state.h     ****     state.pos_status |= (1 << POS_UTM_F);
+ 633:./state.h     ****   }
+ 634:./state.h     **** }
+ 635:./state.h     **** 
+ 636:./state.h     **** /************************ Get functions ****************************/
+ 637:./state.h     **** 
+ 638:./state.h     **** /// Get position in ECEF coordinates (int).
+ 639:./state.h     **** static inline struct EcefCoor_i *stateGetPositionEcef_i(void)
+ 640:./state.h     **** {
+ 641:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ECEF_I)) {
+ 642:./state.h     ****     stateCalcPositionEcef_i();
+ 643:./state.h     ****   }
+ 644:./state.h     ****   return &state.ecef_pos_i;
+ 645:./state.h     **** }
+ 646:./state.h     **** 
+ 647:./state.h     **** /// Get position in local NED coordinates (int).
+ 648:./state.h     **** static inline struct NedCoor_i *stateGetPositionNed_i(void)
+ 649:./state.h     **** {
+ 650:./state.h     ****   if (!bit_is_set(state.pos_status, POS_NED_I)) {
+ 651:./state.h     ****     stateCalcPositionNed_i();
+ 652:./state.h     ****   }
+ 653:./state.h     ****   return &state.ned_pos_i;
+ 654:./state.h     **** }
+ 655:./state.h     **** 
+ 656:./state.h     **** /// Get position in local ENU coordinates (int).
+ 657:./state.h     **** static inline struct EnuCoor_i *stateGetPositionEnu_i(void)
+ 658:./state.h     **** {
+ 659:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ENU_I)) {
+ 660:./state.h     ****     stateCalcPositionEnu_i();
+ 661:./state.h     ****   }
+ 662:./state.h     ****   return &state.enu_pos_i;
+ 663:./state.h     **** }
+ 664:./state.h     **** 
+ 665:./state.h     **** /// Get position in LLA coordinates (int).
+ 666:./state.h     **** static inline struct LlaCoor_i *stateGetPositionLla_i(void)
+ 667:./state.h     **** {
+ 668:./state.h     ****   if (!bit_is_set(state.pos_status, POS_LLA_I)) {
+ 669:./state.h     ****     stateCalcPositionLla_i();
+ 670:./state.h     ****   }
+ 671:./state.h     ****   return &state.lla_pos_i;
+ 672:./state.h     **** }
+ 673:./state.h     **** 
+ 674:./state.h     **** /// Get position in UTM coordinates (float).
+ 675:./state.h     **** static inline struct UtmCoor_f *stateGetPositionUtm_f(void)
+ 676:./state.h     **** {
+ 677:./state.h     ****   if (!bit_is_set(state.pos_status, POS_UTM_F)) {
+ 678:./state.h     ****     stateCalcPositionUtm_f();
+ 679:./state.h     ****   }
+ 680:./state.h     ****   return &state.utm_pos_f;
+ 681:./state.h     **** }
+ 682:./state.h     **** 
+ 683:./state.h     **** /// Get position in ECEF coordinates (float).
+ 684:./state.h     **** static inline struct EcefCoor_f *stateGetPositionEcef_f(void)
+ 685:./state.h     **** {
+ 686:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ECEF_F)) {
+ 687:./state.h     ****     stateCalcPositionEcef_f();
+ 688:./state.h     ****   }
+ 689:./state.h     ****   return &state.ecef_pos_f;
+ 690:./state.h     **** }
+ 691:./state.h     **** 
+ 692:./state.h     **** /// Get position in local NED coordinates (float).
+ 693:./state.h     **** static inline struct NedCoor_f *stateGetPositionNed_f(void)
+ 694:./state.h     **** {
+ 695:./state.h     ****   if (!bit_is_set(state.pos_status, POS_NED_F)) {
+ 696:./state.h     ****     stateCalcPositionNed_f();
+ 697:./state.h     ****   }
+ 698:./state.h     ****   return &state.ned_pos_f;
+ 699:./state.h     **** }
+ 700:./state.h     **** 
+ 701:./state.h     **** /// Get position in local ENU coordinates (float).
+ 702:./state.h     **** static inline struct EnuCoor_f *stateGetPositionEnu_f(void)
+ 703:./state.h     **** {
+ 704:./state.h     ****   if (!bit_is_set(state.pos_status, POS_ENU_F)) {
+ 705:./state.h     ****     stateCalcPositionEnu_f();
+ 706:./state.h     ****   }
+ 707:./state.h     ****   return &state.enu_pos_f;
+ 708:./state.h     **** }
+ 709:./state.h     **** 
+ 710:./state.h     **** /// Get position in LLA coordinates (float).
+ 711:./state.h     **** static inline struct LlaCoor_f *stateGetPositionLla_f(void)
+ 712:./state.h     **** {
+ 713:./state.h     ****   if (!bit_is_set(state.pos_status, POS_LLA_F)) {
+ 714:./state.h     ****     stateCalcPositionLla_f();
+ 715:./state.h     ****   }
+ 716:./state.h     ****   return &state.lla_pos_f;
+ 717:./state.h     **** }
+ 718:./state.h     **** 
+ 719:./state.h     **** /** @}*/
+ 720:./state.h     **** 
+ 721:./state.h     **** 
+ 722:./state.h     **** 
+ 723:./state.h     **** /******************************************************************************
+ 724:./state.h     ****  *                                                                            *
+ 725:./state.h     ****  * Set and Get functions for the SPEED representations                        *
+ 726:./state.h     ****  *                                                                            *
+ 727:./state.h     ****  *****************************************************************************/
+ 728:./state.h     **** /** @addtogroup state_velocity
+ 729:./state.h     ****  *  @{ */
+ 730:./state.h     **** 
+ 731:./state.h     **** /************* declaration of transformation functions ************/
+ 732:./state.h     **** extern void stateCalcSpeedNed_i(void);
+ 733:./state.h     **** extern void stateCalcSpeedEnu_i(void);
+ 734:./state.h     **** extern void stateCalcSpeedEcef_i(void);
+ 735:./state.h     **** extern void stateCalcHorizontalSpeedNorm_i(void);
+ 736:./state.h     **** extern void stateCalcHorizontalSpeedDir_i(void);
+ 737:./state.h     **** extern void stateCalcSpeedNed_f(void);
+ 738:./state.h     **** extern void stateCalcSpeedEnu_f(void);
+ 739:./state.h     **** extern void stateCalcSpeedEcef_f(void);
+ 740:./state.h     **** extern void stateCalcHorizontalSpeedNorm_f(void);
+ 741:./state.h     **** extern void stateCalcHorizontalSpeedDir_f(void);
+ 742:./state.h     **** 
+ 743:./state.h     **** /************************ Set functions ****************************/
+ 744:./state.h     **** 
+ 745:./state.h     **** /// Set ground speed in local NED coordinates (int).
+ 746:./state.h     **** static inline void stateSetSpeedNed_i(struct NedCoor_i *ned_speed)
+ 747:./state.h     **** {
+ 748:./state.h     ****   VECT3_COPY(state.ned_speed_i, *ned_speed);
+ 749:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 750:./state.h     ****   state.speed_status = (1 << SPEED_NED_I);
+ 751:./state.h     **** }
+ 752:./state.h     **** 
+ 753:./state.h     **** /// Set ground speed in local ENU coordinates (int).
+ 754:./state.h     **** static inline void stateSetSpeedEnu_i(struct EnuCoor_i *enu_speed)
+ 755:./state.h     **** {
+ 756:./state.h     ****   VECT3_COPY(state.enu_speed_i, *enu_speed);
+ 757:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 758:./state.h     ****   state.speed_status = (1 << SPEED_ENU_I);
+ 759:./state.h     **** }
+ 760:./state.h     **** 
+ 761:./state.h     **** /// Set ground speed in ECEF coordinates (int).
+ 762:./state.h     **** static inline void stateSetSpeedEcef_i(struct EcefCoor_i *ecef_speed)
+ 763:./state.h     **** {
+ 764:./state.h     ****   VECT3_COPY(state.ecef_speed_i, *ecef_speed);
+ 765:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 766:./state.h     ****   state.speed_status = (1 << SPEED_ECEF_I);
+ 767:./state.h     **** }
+ 768:./state.h     **** 
+ 769:./state.h     **** /// Set multiple speed coordinates (int).
+ 770:./state.h     **** static inline void stateSetSpeed_i(
+ 771:./state.h     ****   struct EcefCoor_i *ecef_speed,
+ 772:./state.h     ****   struct NedCoor_i *ned_speed,
+ 773:./state.h     ****   struct EnuCoor_i *enu_speed)
+ 774:./state.h     **** {
+ 775:./state.h     ****   /* clear all status bit */
+ 776:./state.h     ****   state.speed_status = 0;
+ 777:./state.h     ****   if (ecef_speed != NULL) {
+ 778:./state.h     ****     VECT3_COPY(state.ecef_speed_i, *ecef_speed);
+ 779:./state.h     ****     state.speed_status |= (1 << SPEED_ECEF_I);
+ 780:./state.h     ****   }
+ 781:./state.h     ****   if (ned_speed != NULL) {
+ 782:./state.h     ****     VECT3_COPY(state.ned_speed_i, *ned_speed);
+ 783:./state.h     ****     state.speed_status |= (1 << SPEED_NED_I);
+ 784:./state.h     ****   }
+ 785:./state.h     ****   if (enu_speed != NULL) {
+ 786:./state.h     ****     VECT3_COPY(state.enu_speed_i, *enu_speed);
+ 787:./state.h     ****     state.speed_status |= (1 << SPEED_ENU_I);
+ 788:./state.h     ****   }
+ 789:./state.h     **** }
+ 790:./state.h     **** 
+ 791:./state.h     **** /// Set ground speed in local NED coordinates (float).
+ 792:./state.h     **** static inline void stateSetSpeedNed_f(struct NedCoor_f *ned_speed)
+ 793:./state.h     **** {
+ 794:./state.h     ****   VECT3_COPY(state.ned_speed_f, *ned_speed);
+ 795:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 796:./state.h     ****   state.speed_status = (1 << SPEED_NED_F);
+ 797:./state.h     **** }
+ 798:./state.h     **** 
+ 799:./state.h     **** /// Set ground speed in local ENU coordinates (float).
+ 800:./state.h     **** static inline void stateSetSpeedEnu_f(struct EnuCoor_f *enu_speed)
+ 801:./state.h     **** {
+ 802:./state.h     ****   VECT3_COPY(state.enu_speed_f, *enu_speed);
+ 803:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 804:./state.h     ****   state.speed_status = (1 << SPEED_ENU_F);
+ 805:./state.h     **** }
+ 806:./state.h     **** 
+ 807:./state.h     **** /// Set ground speed in ECEF coordinates (float).
+ 808:./state.h     **** static inline void stateSetSpeedEcef_f(struct EcefCoor_f *ecef_speed)
+ 809:./state.h     **** {
+ 810:./state.h     ****   VECT3_COPY(state.ecef_speed_f, *ecef_speed);
+ 811:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 812:./state.h     ****   state.speed_status = (1 << SPEED_ECEF_F);
+ 813:./state.h     **** }
+ 814:./state.h     **** 
+ 815:./state.h     **** /// Set multiple speed coordinates (float).
+ 816:./state.h     **** static inline void stateSetSpeed_f(
+ 817:./state.h     ****   struct EcefCoor_f *ecef_speed,
+ 818:./state.h     ****   struct NedCoor_f *ned_speed,
+ 819:./state.h     ****   struct EnuCoor_f *enu_speed)
+ 820:./state.h     **** {
+ 821:./state.h     ****   /* clear all status bit */
+ 822:./state.h     ****   state.speed_status = 0;
+ 823:./state.h     ****   if (ecef_speed != NULL) {
+ 824:./state.h     ****     VECT3_COPY(state.ecef_speed_f, *ecef_speed);
+ 825:./state.h     ****     state.speed_status |= (1 << SPEED_ECEF_F);
+ 826:./state.h     ****   }
+ 827:./state.h     ****   if (ned_speed != NULL) {
+ 828:./state.h     ****     VECT3_COPY(state.ned_speed_f, *ned_speed);
+ 829:./state.h     ****     state.speed_status |= (1 << SPEED_NED_F);
+ 830:./state.h     ****   }
+ 831:./state.h     ****   if (enu_speed != NULL) {
+ 832:./state.h     ****     VECT3_COPY(state.enu_speed_f, *enu_speed);
+ 833:./state.h     ****     state.speed_status |= (1 << SPEED_ENU_F);
+ 834:./state.h     ****   }
+ 835:./state.h     **** }
+ 836:./state.h     **** 
+ 837:./state.h     **** /************************ Get functions ****************************/
+ 838:./state.h     **** 
+ 839:./state.h     **** /// Get ground speed in local NED coordinates (int).
+ 840:./state.h     **** static inline struct NedCoor_i *stateGetSpeedNed_i(void)
+ 841:./state.h     **** {
+ 842:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_NED_I)) {
+ 843:./state.h     ****     stateCalcSpeedNed_i();
+ 844:./state.h     ****   }
+ 845:./state.h     ****   return &state.ned_speed_i;
+ 846:./state.h     **** }
+ 847:./state.h     **** 
+ 848:./state.h     **** /// Get ground speed in local ENU coordinates (int).
+ 849:./state.h     **** static inline struct EnuCoor_i *stateGetSpeedEnu_i(void)
+ 850:./state.h     **** {
+ 851:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ENU_I)) {
+ 852:./state.h     ****     stateCalcSpeedEnu_i();
+ 853:./state.h     ****   }
+ 854:./state.h     ****   return &state.enu_speed_i;
+ 855:./state.h     **** }
+ 856:./state.h     **** 
+ 857:./state.h     **** /// Get ground speed in ECEF coordinates (int).
+ 858:./state.h     **** static inline struct EcefCoor_i *stateGetSpeedEcef_i(void)
+ 859:./state.h     **** {
+ 860:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ECEF_I)) {
+ 861:./state.h     ****     stateCalcSpeedEcef_i();
+ 862:./state.h     ****   }
+ 863:./state.h     ****   return &state.ecef_speed_i;
+ 864:./state.h     **** }
+ 865:./state.h     **** 
+ 866:./state.h     **** /// Get norm of horizontal ground speed (int).
+ 867:./state.h     **** static inline uint32_t *stateGetHorizontalSpeedNorm_i(void)
+ 868:./state.h     **** {
+ 869:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HNORM_I)) {
+ 870:./state.h     ****     stateCalcHorizontalSpeedNorm_i();
+ 871:./state.h     ****   }
+ 872:./state.h     ****   return &state.h_speed_norm_i;
+ 873:./state.h     **** }
+ 874:./state.h     **** 
+ 875:./state.h     **** /// Get dir of horizontal ground speed (int).
+ 876:./state.h     **** static inline int32_t *stateGetHorizontalSpeedDir_i(void)
+ 877:./state.h     **** {
+ 878:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HDIR_I)) {
+ 879:./state.h     ****     stateCalcHorizontalSpeedDir_i();
+ 880:./state.h     ****   }
+ 881:./state.h     ****   return &state.h_speed_dir_i;
+ 882:./state.h     **** }
+ 883:./state.h     **** 
+ 884:./state.h     **** /// Get ground speed in local NED coordinates (float).
+ 885:./state.h     **** static inline struct NedCoor_f *stateGetSpeedNed_f(void)
+ 886:./state.h     **** {
+ 887:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_NED_F)) {
+ 888:./state.h     ****     stateCalcSpeedNed_f();
+ 889:./state.h     ****   }
+ 890:./state.h     ****   return &state.ned_speed_f;
+ 891:./state.h     **** }
+ 892:./state.h     **** 
+ 893:./state.h     **** /// Get ground speed in local ENU coordinates (float).
+ 894:./state.h     **** static inline struct EnuCoor_f *stateGetSpeedEnu_f(void)
+ 895:./state.h     **** {
+ 896:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ENU_F)) {
+ 897:./state.h     ****     stateCalcSpeedEnu_f();
+ 898:./state.h     ****   }
+ 899:./state.h     ****   return &state.enu_speed_f;
+ 900:./state.h     **** }
+ 901:./state.h     **** 
+ 902:./state.h     **** /// Get ground speed in ECEF coordinates (float).
+ 903:./state.h     **** static inline struct EcefCoor_f *stateGetSpeedEcef_f(void)
+ 904:./state.h     **** {
+ 905:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_ECEF_F)) {
+ 906:./state.h     ****     stateCalcSpeedEcef_f();
+ 907:./state.h     ****   }
+ 908:./state.h     ****   return &state.ecef_speed_f;
+ 909:./state.h     **** }
+ 910:./state.h     **** 
+ 911:./state.h     **** /// Get norm of horizontal ground speed (float).
+ 912:./state.h     **** static inline float *stateGetHorizontalSpeedNorm_f(void)
+ 913:./state.h     **** {
+ 914:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HNORM_F)) {
+ 915:./state.h     ****     stateCalcHorizontalSpeedNorm_f();
+ 916:./state.h     ****   }
+ 917:./state.h     ****   return &state.h_speed_norm_f;
+ 918:./state.h     **** }
+ 919:./state.h     **** 
+ 920:./state.h     **** /// Get dir of horizontal ground speed (float).
+ 921:./state.h     **** static inline float *stateGetHorizontalSpeedDir_f(void)
+ 922:./state.h     **** {
+ 923:./state.h     ****   if (!bit_is_set(state.speed_status, SPEED_HDIR_F)) {
+ 924:./state.h     ****     stateCalcHorizontalSpeedDir_f();
+ 925:./state.h     ****   }
+ 926:./state.h     ****   return &state.h_speed_dir_f;
+ 927:./state.h     **** }
+ 928:./state.h     **** /** @}*/
+ 929:./state.h     **** 
+ 930:./state.h     **** 
+ 931:./state.h     **** 
+ 932:./state.h     **** /******************************************************************************
+ 933:./state.h     ****  *                                                                            *
+ 934:./state.h     ****  * Set and Get functions for the ACCELERATION representations                 *
+ 935:./state.h     ****  *                                                                            *
+ 936:./state.h     ****  *****************************************************************************/
+ 937:./state.h     **** /** @addtogroup state_acceleration
+ 938:./state.h     ****  *  @{ */
+ 939:./state.h     **** 
+ 940:./state.h     **** /************* declaration of transformation functions ************/
+ 941:./state.h     **** extern void stateCalcAccelNed_i(void);
+ 942:./state.h     **** extern void stateCalcAccelEcef_i(void);
+ 943:./state.h     **** extern void stateCalcAccelNed_f(void);
+ 944:./state.h     **** extern void stateCalcAccelEcef_f(void);
+ 945:./state.h     **** 
+ 946:./state.h     **** /*********************** validity test functions ******************/
+ 947:./state.h     **** 
+ 948:./state.h     **** /// Test if accelerations are valid.
+ 949:./state.h     **** static inline bool_t stateIsAccelValid(void)
+ 950:./state.h     **** {
+ 951:./state.h     ****   return (state.accel_status);
+ 952:./state.h     **** }
+ 953:./state.h     **** 
+ 954:./state.h     **** /************************ Set functions ****************************/
+ 955:./state.h     **** 
+ 956:./state.h     **** /// Set acceleration in NED coordinates (int).
+ 957:./state.h     **** static inline void stateSetAccelNed_i(struct NedCoor_i *ned_accel)
+ 958:./state.h     **** {
+ 959:./state.h     ****   VECT3_COPY(state.ned_accel_i, *ned_accel);
+ 386              		.loc 2 959 0
+ 387 004c 039B     		ldr	r3, [sp, #12]
+ 388 004e C4F87431 		str	r3, [r4, #372]
+ 389 0052 049B     		ldr	r3, [sp, #16]
+ 390 0054 C4F87831 		str	r3, [r4, #376]
+ 960:./state.h     ****   /* clear bits for all accel representations and only set the new one */
+ 961:./state.h     ****   state.accel_status = (1 << ACCEL_NED_I);
+ 391              		.loc 2 961 0
+ 392 0058 0223     		movs	r3, #2
+ 959:./state.h     ****   /* clear bits for all accel representations and only set the new one */
+ 393              		.loc 2 959 0
+ 394 005a C4F87C01 		str	r0, [r4, #380]
+ 395              		.loc 2 961 0
+ 396 005e 84F87031 		strb	r3, [r4, #368]
+ 397              	.LBE42:
+ 398              	.LBE41:
+ 364:subsystems/ins/ins_alt_float.c **** 
+ 399              		.loc 1 364 0
+ 400 0062 06B0     		add	sp, sp, #24
+ 401              		.cfi_def_cfa_offset 8
+ 402              		@ sp needed
+ 403 0064 10BD     		pop	{r4, pc}
+ 404              	.LVL25:
+ 405              	.L20:
+ 406 0066 00BF     		.align	3
+ 407              	.L19:
+ 408 0068 1F85EB51 		.word	1374389535
+ 409 006c B89EC340 		.word	1086561976
+ 410 0070 00000000 		.word	.LANCHOR2
+ 411 0074 00000000 		.word	state
+ 412 0078 20000000 		.word	.LANCHOR2+32
+ 413 007c C4010000 		.word	state+452
+ 414              		.cfi_endproc
+ 415              	.LFE195:
+ 417              		.section	.text.ins_alt_float_init,"ax",%progbits
+ 418              		.align	1
+ 419              		.global	ins_alt_float_init
+ 420              		.thumb
+ 421              		.thumb_func
+ 423              	ins_alt_float_init:
+ 424              	.LFB186:
+  89:subsystems/ins/ins_alt_float.c **** 
+ 425              		.loc 1 89 0
+ 426              		.cfi_startproc
+ 427              		@ args = 0, pretend = 0, frame = 16
+ 428              		@ frame_needed = 0, uses_anonymous_args = 0
+ 429 0000 7FB5     		push	{r0, r1, r2, r3, r4, r5, r6, lr}
+ 430              		.cfi_def_cfa_offset 32
+ 431              		.cfi_offset 4, -16
+ 432              		.cfi_offset 5, -12
+ 433              		.cfi_offset 6, -8
+ 434              		.cfi_offset 14, -4
+  91:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm0);
+ 435              		.loc 1 91 0
+ 436 0002 1E4B     		ldr	r3, .L22
+ 437              	.LBB51:
+ 438              	.LBB52:
+ 567:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 439              		.loc 2 567 0
+ 440 0004 1E4E     		ldr	r6, .L22+4
+ 441              	.LBE52:
+ 442              	.LBE51:
+  91:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm0);
+ 443              		.loc 1 91 0
+ 444 0006 D3ED007A 		flds	s15, [r3]	@ int
+ 445 000a 1E4B     		ldr	r3, .L22+8
+ 446 000c F8EEE77A 		fsitos	s15, s15
+  92:subsystems/ins/ins_alt_float.c **** 
+ 447              		.loc 1 92 0
+ 448 0010 6846     		mov	r0, sp
+  91:subsystems/ins/ins_alt_float.c ****   stateSetLocalUtmOrigin_f(&utm0);
+ 449              		.loc 1 91 0
+ 450 0012 CDED007A 		fsts	s15, [sp]
+ 451 0016 D3ED007A 		flds	s15, [r3]	@ int
+ 452 001a 1B4B     		ldr	r3, .L22+12
+ 453 001c 1B68     		ldr	r3, [r3]	@ float
+ 454 001e 0293     		str	r3, [sp, #8]	@ float
+ 455 0020 1A4B     		ldr	r3, .L22+16
+ 456 0022 F8EEE77A 		fsitos	s15, s15
+ 457 0026 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 458 0028 CDED017A 		fsts	s15, [sp, #4]
+ 459 002c 8DF80C30 		strb	r3, [sp, #12]
+  92:subsystems/ins/ins_alt_float.c **** 
+ 460              		.loc 1 92 0
+ 461 0030 FFF7FEFF 		bl	stateSetLocalUtmOrigin_f
+ 462              	.LVL26:
+ 463              	.LBB55:
+ 464              	.LBB53:
+ 567:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 465              		.loc 2 567 0
+ 466 0034 9DE80F00 		ldmia	sp, {r0, r1, r2, r3}
+ 467 0038 06F17805 		add	r5, r6, #120
+ 468 003c 85E80F00 		stmia	r5, {r0, r1, r2, r3}
+ 469              	.LBE53:
+ 470              	.LBE55:
+ 471              	.LBB56:
+ 472              	.LBB57:
+ 159:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 473              		.loc 3 159 0
+ 474 0040 134A     		ldr	r2, .L22+20
+ 475              	.LBE57:
+ 476              	.LBE56:
+ 477              	.LBB59:
+ 478              	.LBB60:
+ 479              	.LBB61:
+ 254:subsystems/ins/ins_alt_float.c ****   p[1][0] = 0.0f;
+ 480              		.loc 1 254 0
+ 481 0042 9FED140A 		flds	s0, .L22+24
+ 482              	.LBE61:
+ 483              	.LBE60:
+ 484              	.LBE59:
+ 110:subsystems/ins/ins_alt_float.c **** }
+ 485              		.loc 1 110 0
+ 486 0046 DFED140A 		flds	s1, .L22+28
+ 487              	.LBB64:
+ 488              	.LBB54:
+ 569:./state.h     **** }
+ 489              		.loc 2 569 0
+ 490 004a 4FF40073 		mov	r3, #512
+ 491 004e 3380     		strh	r3, [r6]	@ movhi
+ 492              	.LVL27:
+ 493              	.LBE54:
+ 494              	.LBE64:
+ 495              	.LBB65:
+ 496              	.LBB58:
+ 161:./math/pprz_orientation_conversion.h **** }
+ 497              		.loc 3 161 0
+ 498 0050 0221     		movs	r1, #2
+ 159:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 499              		.loc 3 159 0
+ 500 0052 0023     		movs	r3, #0
+ 161:./math/pprz_orientation_conversion.h **** }
+ 501              		.loc 3 161 0
+ 502 0054 1170     		strb	r1, [r2]
+ 159:./math/pprz_orientation_conversion.h ****   /* clear bits for all attitude representations and only set the new one */
+ 503              		.loc 3 159 0
+ 504 0056 5361     		str	r3, [r2, #20]
+ 505 0058 9361     		str	r3, [r2, #24]
+ 506 005a D361     		str	r3, [r2, #28]
+ 507              	.LBE58:
+ 508              	.LBE65:
+ 509              	.LBB66:
+ 510              	.LBB63:
+ 511              	.LBB62:
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 512              		.loc 1 253 0
+ 513 005c 0F4A     		ldr	r2, .L22+32
+ 514 005e 4FF07E51 		mov	r1, #1065353216
+ 255:subsystems/ins/ins_alt_float.c ****   p[1][1] = 1.0f;
+ 515              		.loc 1 255 0
+ 516 0062 82ED020A 		fsts	s0, [r2, #8]
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 517              		.loc 1 253 0
+ 518 0066 1160     		str	r1, [r2]	@ float
+ 254:subsystems/ins/ins_alt_float.c ****   p[1][0] = 0.0f;
+ 519              		.loc 1 254 0
+ 520 0068 82ED010A 		fsts	s0, [r2, #4]
+ 256:subsystems/ins/ins_alt_float.c **** }
+ 521              		.loc 1 256 0
+ 522 006c D160     		str	r1, [r2, #12]	@ float
+ 523              	.LBE62:
+ 524              	.LBE63:
+ 525              	.LBE66:
+ 107:subsystems/ins/ins_alt_float.c **** 
+ 526              		.loc 1 107 0
+ 527 006e 0C4A     		ldr	r2, .L22+36
+ 528 0070 1372     		strb	r3, [r2, #8]
+ 110:subsystems/ins/ins_alt_float.c **** }
+ 529              		.loc 1 110 0
+ 530 0072 FFF7FEFF 		bl	alt_kalman
+ 531              	.LVL28:
+ 111:subsystems/ins/ins_alt_float.c **** 
+ 532              		.loc 1 111 0
+ 533 0076 04B0     		add	sp, sp, #16
+ 534              		.cfi_def_cfa_offset 16
+ 535              	.LVL29:
+ 536              		@ sp needed
+ 537 0078 70BD     		pop	{r4, r5, r6, pc}
+ 538              	.LVL30:
+ 539              	.L23:
+ 540 007a 00BF     		.align	2
+ 541              	.L22:
+ 542 007c 00000000 		.word	nav_utm_north0
+ 543 0080 00000000 		.word	state
+ 544 0084 00000000 		.word	nav_utm_east0
+ 545 0088 00000000 		.word	ground_alt
+ 546 008c 00000000 		.word	nav_utm_zone0
+ 547 0090 00000000 		.word	.LANCHOR2
+ 548 0094 00000000 		.word	0
+ 549 0098 CDCCCC3D 		.word	1036831949
+ 550 009c 00000000 		.word	.LANCHOR1
+ 551 00a0 00000000 		.word	.LANCHOR0
+ 552              		.cfi_endproc
+ 553              	.LFE186:
+ 555              		.global	__aeabi_dmul
+ 556              		.global	__aeabi_ddiv
+ 557              		.global	__aeabi_d2f
+ 558              		.global	__aeabi_d2uiz
+ 559              		.section	.text.ins_reset_local_origin,"ax",%progbits
+ 560              		.align	1
+ 561              		.global	ins_reset_local_origin
+ 562              		.thumb
+ 563              		.thumb_func
+ 565              	ins_reset_local_origin:
+ 566              	.LFB187:
+ 115:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm;
+ 567              		.loc 1 115 0
+ 568              		.cfi_startproc
+ 569              		@ args = 0, pretend = 0, frame = 32
+ 570              		@ frame_needed = 0, uses_anonymous_args = 0
+ 571 0000 30B5     		push	{r4, r5, lr}
+ 572              		.cfi_def_cfa_offset 12
+ 573              		.cfi_offset 4, -12
+ 574              		.cfi_offset 5, -8
+ 575              		.cfi_offset 14, -4
+ 120:subsystems/ins/ins_alt_float.c ****   utm.zone = (gps.lla_pos.lon / 1e7 + 180) / 6 + 1;
+ 576              		.loc 1 120 0
+ 577 0002 374C     		ldr	r4, .L25+16
+ 578 0004 D4ED037A 		flds	s15, [r4, #12]	@ int
+ 115:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm;
+ 579              		.loc 1 115 0
+ 580 0008 2DED028B 		fstmfdd	sp!, {d8}
+ 581              		.cfi_def_cfa_offset 20
+ 582              		.cfi_offset 80, -20
+ 583              		.cfi_offset 81, -16
+ 120:subsystems/ins/ins_alt_float.c ****   utm.zone = (gps.lla_pos.lon / 1e7 + 180) / 6 + 1;
+ 584              		.loc 1 120 0
+ 585 000c F8EEE77A 		fsitos	s15, s15
+ 115:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm;
+ 586              		.loc 1 115 0
+ 587 0010 89B0     		sub	sp, sp, #36
+ 588              		.cfi_def_cfa_offset 56
+ 120:subsystems/ins/ins_alt_float.c ****   utm.zone = (gps.lla_pos.lon / 1e7 + 180) / 6 + 1;
+ 589              		.loc 1 120 0
+ 590 0012 17EE900A 		fmrs	r0, s15
+ 591 0016 FFF7FEFF 		bl	__aeabi_f2d
+ 592              	.LVL31:
+ 593 001a 2DA3     		adr	r3, .L25
+ 594 001c D3E90023 		ldrd	r2, [r3]
+ 595 0020 FFF7FEFF 		bl	__aeabi_dmul
+ 596              	.LVL32:
+ 597 0024 2CA3     		adr	r3, .L25+8
+ 598 0026 D3E90023 		ldrd	r2, [r3]
+ 599 002a FFF7FEFF 		bl	__aeabi_ddiv
+ 600              	.LVL33:
+ 601 002e FFF7FEFF 		bl	__aeabi_d2f
+ 602              	.LVL34:
+ 603 0032 2569     		ldr	r5, [r4, #16]
+ 604 0034 0190     		str	r0, [sp, #4]	@ float
+ 605 0036 07EE905A 		fmsr	s15, r5	@ int
+ 606 003a F8EEE77A 		fsitos	s15, s15
+ 607 003e 9FED298A 		flds	s16, .L25+20
+ 608 0042 17EE900A 		fmrs	r0, s15
+ 609 0046 FFF7FEFF 		bl	__aeabi_f2d
+ 610              	.LVL35:
+ 611 004a 21A3     		adr	r3, .L25
+ 612 004c D3E90023 		ldrd	r2, [r3]
+ 613 0050 FFF7FEFF 		bl	__aeabi_dmul
+ 614              	.LVL36:
+ 615 0054 20A3     		adr	r3, .L25+8
+ 616 0056 D3E90023 		ldrd	r2, [r3]
+ 617 005a FFF7FEFF 		bl	__aeabi_ddiv
+ 618              	.LVL37:
+ 619 005e FFF7FEFF 		bl	__aeabi_d2f
+ 620              	.LVL38:
+ 621 0062 D4ED057A 		flds	s15, [r4, #20]	@ int
+ 622 0066 0290     		str	r0, [sp, #8]	@ float
+ 623 0068 F8EEE77A 		fsitos	s15, s15
+ 121:subsystems/ins/ins_alt_float.c ****   utm_of_lla_f(&utm, &lla);
+ 624              		.loc 1 121 0
+ 625 006c 2846     		mov	r0, r5
+ 120:subsystems/ins/ins_alt_float.c ****   utm.zone = (gps.lla_pos.lon / 1e7 + 180) / 6 + 1;
+ 626              		.loc 1 120 0
+ 627 006e C7EE887A 		fdivs	s15, s15, s16
+ 628 0072 CDED037A 		fsts	s15, [sp, #12]
+ 121:subsystems/ins/ins_alt_float.c ****   utm_of_lla_f(&utm, &lla);
+ 629              		.loc 1 121 0
+ 630 0076 FFF7FEFF 		bl	__aeabi_i2d
+ 631              	.LVL39:
+ 632 007a 17A3     		adr	r3, .L25+8
+ 633 007c D3E90023 		ldrd	r2, [r3]
+ 634 0080 FFF7FEFF 		bl	__aeabi_ddiv
+ 635              	.LVL40:
+ 636 0084 0022     		movs	r2, #0
+ 637 0086 184B     		ldr	r3, .L25+24
+ 638 0088 FFF7FEFF 		bl	__aeabi_dadd
+ 639              	.LVL41:
+ 640 008c 0022     		movs	r2, #0
+ 641 008e 174B     		ldr	r3, .L25+28
+ 642 0090 FFF7FEFF 		bl	__aeabi_ddiv
+ 643              	.LVL42:
+ 644 0094 0022     		movs	r2, #0
+ 645 0096 164B     		ldr	r3, .L25+32
+ 646 0098 FFF7FEFF 		bl	__aeabi_dadd
+ 647              	.LVL43:
+ 648 009c FFF7FEFF 		bl	__aeabi_d2uiz
+ 649              	.LVL44:
+ 122:subsystems/ins/ins_alt_float.c **** #else
+ 650              		.loc 1 122 0
+ 651 00a0 01A9     		add	r1, sp, #4
+ 121:subsystems/ins/ins_alt_float.c ****   utm_of_lla_f(&utm, &lla);
+ 652              		.loc 1 121 0
+ 653 00a2 8DF81C00 		strb	r0, [sp, #28]
+ 122:subsystems/ins/ins_alt_float.c **** #else
+ 654              		.loc 1 122 0
+ 655 00a6 04A8     		add	r0, sp, #16
+ 656 00a8 FFF7FEFF 		bl	utm_of_lla_f
+ 657              	.LVL45:
+ 129:subsystems/ins/ins_alt_float.c **** 
+ 658              		.loc 1 129 0
+ 659 00ac D4ED0A7A 		flds	s15, [r4, #40]	@ int
+ 660 00b0 F8EEE77A 		fsitos	s15, s15
+ 132:subsystems/ins/ins_alt_float.c **** 
+ 661              		.loc 1 132 0
+ 662 00b4 04A8     		add	r0, sp, #16
+ 129:subsystems/ins/ins_alt_float.c **** 
+ 663              		.loc 1 129 0
+ 664 00b6 C7EE887A 		fdivs	s15, s15, s16
+ 665 00ba CDED067A 		fsts	s15, [sp, #24]
+ 132:subsystems/ins/ins_alt_float.c **** 
+ 666              		.loc 1 132 0
+ 667 00be FFF7FEFF 		bl	stateSetLocalUtmOrigin_f
+ 668              	.LVL46:
+ 135:subsystems/ins/ins_alt_float.c **** }
+ 669              		.loc 1 135 0
+ 670 00c2 0C4B     		ldr	r3, .L25+36
+ 671 00c4 0122     		movs	r2, #1
+ 672 00c6 1A72     		strb	r2, [r3, #8]
+ 136:subsystems/ins/ins_alt_float.c **** 
+ 673              		.loc 1 136 0
+ 674 00c8 09B0     		add	sp, sp, #36
+ 675              		.cfi_def_cfa_offset 20
+ 676              		@ sp needed
+ 677 00ca BDEC028B 		fldmfdd	sp!, {d8}
+ 678              		.cfi_restore 80
+ 679              		.cfi_restore 81
+ 680              		.cfi_def_cfa_offset 12
+ 681 00ce 30BD     		pop	{r4, r5, pc}
+ 682              	.L26:
+ 683              		.align	3
+ 684              	.L25:
+ 685 00d0 399D52A2 		.word	-1571644103
+ 686 00d4 46DF913F 		.word	1066524486
+ 687 00d8 00000000 		.word	0
+ 688 00dc D0126341 		.word	1097011920
+ 689 00e0 00000000 		.word	gps
+ 690 00e4 00007A44 		.word	1148846080
+ 691 00e8 00806640 		.word	1080459264
+ 692 00ec 00001840 		.word	1075314688
+ 693 00f0 0000F03F 		.word	1072693248
+ 694 00f4 00000000 		.word	.LANCHOR0
+ 695              		.cfi_endproc
+ 696              	.LFE187:
+ 698              		.section	.text.ins_reset_altitude_ref,"ax",%progbits
+ 699              		.align	1
+ 700              		.global	ins_reset_altitude_ref
+ 701              		.thumb
+ 702              		.thumb_func
+ 704              	ins_reset_altitude_ref:
+ 705              	.LFB188:
+ 139:subsystems/ins/ins_alt_float.c ****   struct UtmCoor_f utm = state.utm_origin_f;
+ 706              		.loc 1 139 0
+ 707              		.cfi_startproc
+ 708              		@ args = 0, pretend = 0, frame = 16
+ 709              		@ frame_needed = 0, uses_anonymous_args = 0
+ 710 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 711              		.cfi_def_cfa_offset 24
+ 712              		.cfi_offset 4, -8
+ 713              		.cfi_offset 14, -4
+ 140:subsystems/ins/ins_alt_float.c ****   // ground_alt
+ 714              		.loc 1 140 0
+ 715 0002 0B4B     		ldr	r3, .L28
+ 142:subsystems/ins/ins_alt_float.c ****   // reset state UTM ref
+ 716              		.loc 1 142 0
+ 717 0004 9FED0B7A 		flds	s14, .L28+4
+ 140:subsystems/ins/ins_alt_float.c ****   // ground_alt
+ 718              		.loc 1 140 0
+ 719 0008 0FCB     		ldmia	r3, {r0, r1, r2, r3}
+ 720 000a 8DE80F00 		stmia	sp, {r0, r1, r2, r3}
+ 142:subsystems/ins/ins_alt_float.c ****   // reset state UTM ref
+ 721              		.loc 1 142 0
+ 722 000e 0A4B     		ldr	r3, .L28+8
+ 723 0010 D3ED0A7A 		flds	s15, [r3, #40]	@ int
+ 724 0014 F8EEE77A 		fsitos	s15, s15
+ 144:subsystems/ins/ins_alt_float.c ****   // reset filter flag
+ 725              		.loc 1 144 0
+ 726 0018 6846     		mov	r0, sp
+ 142:subsystems/ins/ins_alt_float.c ****   // reset state UTM ref
+ 727              		.loc 1 142 0
+ 728 001a C7EE877A 		fdivs	s15, s15, s14
+ 729 001e CDED027A 		fsts	s15, [sp, #8]
+ 144:subsystems/ins/ins_alt_float.c ****   // reset filter flag
+ 730              		.loc 1 144 0
+ 731 0022 FFF7FEFF 		bl	stateSetLocalUtmOrigin_f
+ 732              	.LVL47:
+ 146:subsystems/ins/ins_alt_float.c **** }
+ 733              		.loc 1 146 0
+ 734 0026 054B     		ldr	r3, .L28+12
+ 735 0028 0122     		movs	r2, #1
+ 736 002a 1A72     		strb	r2, [r3, #8]
+ 147:subsystems/ins/ins_alt_float.c **** 
+ 737              		.loc 1 147 0
+ 738 002c 04B0     		add	sp, sp, #16
+ 739              		.cfi_def_cfa_offset 8
+ 740              		@ sp needed
+ 741 002e 10BD     		pop	{r4, pc}
+ 742              	.L29:
+ 743              		.align	2
+ 744              	.L28:
+ 745 0030 E8000000 		.word	state+232
+ 746 0034 00007A44 		.word	1148846080
+ 747 0038 00000000 		.word	gps
+ 748 003c 00000000 		.word	.LANCHOR0
+ 749              		.cfi_endproc
+ 750              	.LFE188:
+ 752              		.section	.text.ins_alt_float_update_baro,"ax",%progbits
+ 753              		.align	1
+ 754              		.global	ins_alt_float_update_baro
+ 755              		.thumb
+ 756              		.thumb_func
+ 758              	ins_alt_float_update_baro:
+ 759              	.LFB189:
+ 190:subsystems/ins/ins_alt_float.c **** }
+ 760              		.loc 1 190 0
+ 761              		.cfi_startproc
+ 762              		@ args = 0, pretend = 0, frame = 0
+ 763              		@ frame_needed = 0, uses_anonymous_args = 0
+ 764              		@ link register save eliminated.
+ 765              	.LVL48:
+ 766 0000 7047     		bx	lr
+ 767              		.cfi_endproc
+ 768              	.LFE189:
+ 770              		.global	__aeabi_dcmplt
+ 771              		.section	.text.ins_alt_float_update_gps,"ax",%progbits
+ 772              		.align	1
+ 773              		.global	ins_alt_float_update_gps
+ 774              		.thumb
+ 775              		.thumb_func
+ 777              	ins_alt_float_update_gps:
+ 778              	.LFB190:
+ 196:subsystems/ins/ins_alt_float.c **** #if USE_GPS
+ 779              		.loc 1 196 0
+ 780              		.cfi_startproc
+ 781              		@ args = 0, pretend = 0, frame = 0
+ 782              		@ frame_needed = 0, uses_anonymous_args = 0
+ 783              	.LVL49:
+ 196:subsystems/ins/ins_alt_float.c **** #if USE_GPS
+ 784              		.loc 1 196 0
+ 785 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+ 786              		.cfi_def_cfa_offset 32
+ 787              		.cfi_offset 3, -32
+ 788              		.cfi_offset 4, -28
+ 789              		.cfi_offset 5, -24
+ 790              		.cfi_offset 6, -20
+ 791              		.cfi_offset 7, -16
+ 792              		.cfi_offset 8, -12
+ 793              		.cfi_offset 9, -8
+ 794              		.cfi_offset 14, -4
+ 795 0004 2DED048B 		fstmfdd	sp!, {d8, d9}
+ 796              		.cfi_def_cfa_offset 48
+ 797              		.cfi_offset 80, -48
+ 798              		.cfi_offset 81, -44
+ 799              		.cfi_offset 82, -40
+ 800              		.cfi_offset 83, -36
+ 199:subsystems/ins/ins_alt_float.c ****   utm.north = gps_s->utm_pos.north / 100.0f;
+ 801              		.loc 1 199 0
+ 802 0008 D0ED077A 		flds	s15, [r0, #28]	@ int
+ 803              	.LBB79:
+ 804              	.LBB80:
+ 805              		.file 4 "/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h"
+   1:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /*
+   2:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   3:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   4:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   5:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * This file is part of paparazzi.
+   6:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   7:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * it under the terms of the GNU General Public License as published by
+   9:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * any later version.
+  11:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  12:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * paparazzi is distributed in the hope that it will be useful,
+  13:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * GNU General Public License for more details.
+  16:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  17:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * You should have received a copy of the GNU General Public License
+  18:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Boston, MA 02111-1307, USA.
+  21:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  22:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  23:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  24:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /**
+  25:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @file arch/stm32/mcu_periph/sys_time_arch.h
+  26:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @ingroup stm32_arch
+  27:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  28:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * STM32 timing functions.
+  29:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  30:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  31:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  32:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifndef SYS_TIME_ARCH_H
+  33:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #define SYS_TIME_ARCH_H
+  34:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  35:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "mcu_periph/sys_time.h"
+  36:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  37:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/stm32/gpio.h>
+  38:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/stm32/rcc.h>
+  39:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/cm3/systick.h>
+  40:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "std.h"
+  41:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifdef RTOS_IS_CHIBIOS
+  42:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "chibios_stub.h"
+  43:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "chconf.h"
+  44:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #endif
+  45:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  46:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /**
+  47:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Get the time in microseconds since startup.
+  48:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * WARNING: overflows after 70min!
+  49:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @return microseconds since startup as uint32_t
+  50:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  51:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** static inline uint32_t get_sys_time_usec(void)
+  52:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** {
+  53:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifdef RTOS_IS_CHIBIOS
+  54:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return (chibios_chTimeNow() * (1000000 / CH_FREQUENCY));
+  55:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #else
+  56:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return sys_time.nb_sec * 1000000 +
+ 806              		.loc 4 56 0
+ 807 000c 524F     		ldr	r7, .L38+8
+ 808              	.LBE80:
+ 809              	.LBE79:
+ 201:subsystems/ins/ins_alt_float.c **** 
+ 810              		.loc 1 201 0
+ 811 000e 534B     		ldr	r3, .L38+12
+ 812              	.LBB97:
+ 813              	.LBB91:
+ 814              	.LBB81:
+ 815              	.LBB82:
+ 816              		.file 5 "./mcu_periph/sys_time.h"
+   1:./mcu_periph/sys_time.h **** /*
+   2:./mcu_periph/sys_time.h ****  *
+   3:./mcu_periph/sys_time.h ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   4:./mcu_periph/sys_time.h ****  *
+   5:./mcu_periph/sys_time.h ****  * This file is part of paparazzi.
+   6:./mcu_periph/sys_time.h ****  *
+   7:./mcu_periph/sys_time.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:./mcu_periph/sys_time.h ****  * it under the terms of the GNU General Public License as published by
+   9:./mcu_periph/sys_time.h ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:./mcu_periph/sys_time.h ****  * any later version.
+  11:./mcu_periph/sys_time.h ****  *
+  12:./mcu_periph/sys_time.h ****  * paparazzi is distributed in the hope that it will be useful,
+  13:./mcu_periph/sys_time.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:./mcu_periph/sys_time.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:./mcu_periph/sys_time.h ****  * GNU General Public License for more details.
+  16:./mcu_periph/sys_time.h ****  *
+  17:./mcu_periph/sys_time.h ****  * You should have received a copy of the GNU General Public License
+  18:./mcu_periph/sys_time.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:./mcu_periph/sys_time.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:./mcu_periph/sys_time.h ****  * Boston, MA 02111-1307, USA.
+  21:./mcu_periph/sys_time.h ****  *
+  22:./mcu_periph/sys_time.h ****  */
+  23:./mcu_periph/sys_time.h **** 
+  24:./mcu_periph/sys_time.h **** /**
+  25:./mcu_periph/sys_time.h ****  * @file mcu_periph/sys_time.h
+  26:./mcu_periph/sys_time.h ****  * @brief Architecture independent timing functions.
+  27:./mcu_periph/sys_time.h ****  *
+  28:./mcu_periph/sys_time.h ****  */
+  29:./mcu_periph/sys_time.h **** 
+  30:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_H
+  31:./mcu_periph/sys_time.h **** #define SYS_TIME_H
+  32:./mcu_periph/sys_time.h **** 
+  33:./mcu_periph/sys_time.h **** #include <inttypes.h>
+  34:./mcu_periph/sys_time.h **** #include <stdlib.h>
+  35:./mcu_periph/sys_time.h **** #include "std.h"
+  36:./mcu_periph/sys_time.h **** 
+  37:./mcu_periph/sys_time.h **** #include BOARD_CONFIG
+  38:./mcu_periph/sys_time.h **** 
+  39:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_NB_TIMER
+  40:./mcu_periph/sys_time.h **** #define SYS_TIME_NB_TIMER 16
+  41:./mcu_periph/sys_time.h **** #endif
+  42:./mcu_periph/sys_time.h **** 
+  43:./mcu_periph/sys_time.h **** 
+  44:./mcu_periph/sys_time.h **** /**
+  45:./mcu_periph/sys_time.h ****  * (Default) sys_time timer frequency in Hz.
+  46:./mcu_periph/sys_time.h ****  * sys_time.resolution is set from this define.
+  47:./mcu_periph/sys_time.h ****  */
+  48:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_FREQUENCY
+  49:./mcu_periph/sys_time.h **** #if defined PERIODIC_FREQUENCY
+  50:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY (2 * PERIODIC_FREQUENCY)
+  51:./mcu_periph/sys_time.h **** #else
+  52:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY 1000
+  53:./mcu_periph/sys_time.h **** #endif
+  54:./mcu_periph/sys_time.h **** #endif
+  55:./mcu_periph/sys_time.h **** 
+  56:./mcu_periph/sys_time.h **** 
+  57:./mcu_periph/sys_time.h **** typedef uint8_t tid_t; ///< sys_time timer id type
+  58:./mcu_periph/sys_time.h **** typedef void (*sys_time_cb)(uint8_t id);
+  59:./mcu_periph/sys_time.h **** 
+  60:./mcu_periph/sys_time.h **** struct sys_time_timer {
+  61:./mcu_periph/sys_time.h ****   bool_t          in_use;
+  62:./mcu_periph/sys_time.h ****   sys_time_cb     cb;
+  63:./mcu_periph/sys_time.h ****   volatile bool_t elapsed;
+  64:./mcu_periph/sys_time.h ****   uint32_t        end_time; ///< in SYS_TIME_TICKS
+  65:./mcu_periph/sys_time.h ****   uint32_t        duration; ///< in SYS_TIME_TICKS
+  66:./mcu_periph/sys_time.h **** };
+  67:./mcu_periph/sys_time.h **** 
+  68:./mcu_periph/sys_time.h **** struct sys_time {
+  69:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec;       ///< full seconds since startup
+  70:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec_rem;   ///< remainder of seconds since startup in CPU_TICKS
+  71:./mcu_periph/sys_time.h ****   volatile uint32_t nb_tick;      ///< SYS_TIME_TICKS since startup
+  72:./mcu_periph/sys_time.h ****   struct sys_time_timer timer[SYS_TIME_NB_TIMER];
+  73:./mcu_periph/sys_time.h **** 
+  74:./mcu_periph/sys_time.h ****   float resolution;               ///< sys_time_timer resolution in seconds
+  75:./mcu_periph/sys_time.h ****   uint32_t ticks_per_sec;         ///< sys_time ticks per second (SYS_TIME_FREQUENCY)
+  76:./mcu_periph/sys_time.h ****   uint32_t resolution_cpu_ticks;  ///< sys_time_timer resolution in cpu ticks
+  77:./mcu_periph/sys_time.h ****   uint32_t cpu_ticks_per_sec;     ///< cpu ticks per second
+  78:./mcu_periph/sys_time.h **** };
+  79:./mcu_periph/sys_time.h **** 
+  80:./mcu_periph/sys_time.h **** extern struct sys_time sys_time;
+  81:./mcu_periph/sys_time.h **** 
+  82:./mcu_periph/sys_time.h **** 
+  83:./mcu_periph/sys_time.h **** extern void sys_time_init(void);
+  84:./mcu_periph/sys_time.h **** 
+  85:./mcu_periph/sys_time.h **** /**
+  86:./mcu_periph/sys_time.h ****  * Register a new system timer.
+  87:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+  88:./mcu_periph/sys_time.h ****  * @param cb Callback function that is called from the ISR when timer elapses, or NULL
+  89:./mcu_periph/sys_time.h ****  * @return -1 if it failed, the timer id otherwise
+  90:./mcu_periph/sys_time.h ****  */
+  91:./mcu_periph/sys_time.h **** extern int sys_time_register_timer(float duration, sys_time_cb cb);
+  92:./mcu_periph/sys_time.h **** 
+  93:./mcu_periph/sys_time.h **** /**
+  94:./mcu_periph/sys_time.h ****  * Cancel a system timer by id.
+  95:./mcu_periph/sys_time.h ****  * @param id Timer id.
+  96:./mcu_periph/sys_time.h ****  */
+  97:./mcu_periph/sys_time.h **** extern void sys_time_cancel_timer(tid_t id);
+  98:./mcu_periph/sys_time.h **** 
+  99:./mcu_periph/sys_time.h **** /**
+ 100:./mcu_periph/sys_time.h ****  * Update the duration until a timer elapses.
+ 101:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 102:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+ 103:./mcu_periph/sys_time.h ****  */
+ 104:./mcu_periph/sys_time.h **** extern void sys_time_update_timer(tid_t id, float duration);
+ 105:./mcu_periph/sys_time.h **** 
+ 106:./mcu_periph/sys_time.h **** /**
+ 107:./mcu_periph/sys_time.h ****  * Check if timer has elapsed.
+ 108:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 109:./mcu_periph/sys_time.h ****  * @return TRUE if timer has elapsed
+ 110:./mcu_periph/sys_time.h ****  */
+ 111:./mcu_periph/sys_time.h **** static inline bool_t sys_time_check_and_ack_timer(tid_t id)
+ 112:./mcu_periph/sys_time.h **** {
+ 113:./mcu_periph/sys_time.h ****   if (sys_time.timer[id].elapsed) {
+ 114:./mcu_periph/sys_time.h ****     sys_time.timer[id].elapsed = FALSE;
+ 115:./mcu_periph/sys_time.h ****     return TRUE;
+ 116:./mcu_periph/sys_time.h ****   }
+ 117:./mcu_periph/sys_time.h ****   return FALSE;
+ 118:./mcu_periph/sys_time.h **** }
+ 119:./mcu_periph/sys_time.h **** 
+ 120:./mcu_periph/sys_time.h **** /**
+ 121:./mcu_periph/sys_time.h ****  * Get the time in seconds since startup.
+ 122:./mcu_periph/sys_time.h ****  * @return current system time as float with sys_time.resolution
+ 123:./mcu_periph/sys_time.h ****  */
+ 124:./mcu_periph/sys_time.h **** static inline float get_sys_time_float(void)
+ 125:./mcu_periph/sys_time.h **** {
+ 126:./mcu_periph/sys_time.h ****   return (float)(sys_time.nb_sec + (float)(sys_time.nb_sec_rem) / sys_time.cpu_ticks_per_sec);
+ 127:./mcu_periph/sys_time.h **** }
+ 128:./mcu_periph/sys_time.h **** 
+ 129:./mcu_periph/sys_time.h **** 
+ 130:./mcu_periph/sys_time.h **** /*
+ 131:./mcu_periph/sys_time.h ****  * Convenience functions to convert between seconds and sys_time ticks.
+ 132:./mcu_periph/sys_time.h ****  */
+ 133:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_sec(float seconds)
+ 134:./mcu_periph/sys_time.h **** {
+ 135:./mcu_periph/sys_time.h ****   return (uint32_t)(seconds * sys_time.ticks_per_sec + 0.5);
+ 136:./mcu_periph/sys_time.h **** }
+ 137:./mcu_periph/sys_time.h **** 
+ 138:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_msec(uint32_t msec)
+ 139:./mcu_periph/sys_time.h **** {
+ 140:./mcu_periph/sys_time.h ****   return msec * sys_time.ticks_per_sec / 1000;
+ 141:./mcu_periph/sys_time.h **** }
+ 142:./mcu_periph/sys_time.h **** 
+ 143:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_usec(uint32_t usec)
+ 144:./mcu_periph/sys_time.h **** {
+ 145:./mcu_periph/sys_time.h ****   return usec * sys_time.ticks_per_sec / 1000000;
+ 146:./mcu_periph/sys_time.h **** }
+ 147:./mcu_periph/sys_time.h **** 
+ 148:./mcu_periph/sys_time.h **** static inline float sec_of_sys_time_ticks(uint32_t ticks)
+ 149:./mcu_periph/sys_time.h **** {
+ 150:./mcu_periph/sys_time.h ****   return (float)ticks * sys_time.resolution;
+ 151:./mcu_periph/sys_time.h **** }
+ 152:./mcu_periph/sys_time.h **** 
+ 153:./mcu_periph/sys_time.h **** static inline uint32_t msec_of_sys_time_ticks(uint32_t ticks)
+ 154:./mcu_periph/sys_time.h **** {
+ 155:./mcu_periph/sys_time.h ****   return ticks * 1000 / sys_time.ticks_per_sec;
+ 156:./mcu_periph/sys_time.h **** }
+ 157:./mcu_periph/sys_time.h **** 
+ 158:./mcu_periph/sys_time.h **** static inline uint32_t usec_of_sys_time_ticks(uint32_t ticks)
+ 159:./mcu_periph/sys_time.h **** {
+ 160:./mcu_periph/sys_time.h ****   return ticks * 1000 / sys_time.ticks_per_sec * 1000;
+ 161:./mcu_periph/sys_time.h **** }
+ 162:./mcu_periph/sys_time.h **** 
+ 163:./mcu_periph/sys_time.h **** 
+ 164:./mcu_periph/sys_time.h **** 
+ 165:./mcu_periph/sys_time.h **** /*
+ 166:./mcu_periph/sys_time.h ****  * Convenience functions to convert between seconds and CPU ticks.
+ 167:./mcu_periph/sys_time.h ****  */
+ 168:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_sec(float seconds)
+ 169:./mcu_periph/sys_time.h **** {
+ 170:./mcu_periph/sys_time.h ****   return (uint32_t)(seconds * sys_time.cpu_ticks_per_sec + 0.5);
+ 171:./mcu_periph/sys_time.h **** }
+ 172:./mcu_periph/sys_time.h **** 
+ 173:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_usec(uint32_t usec)
+ 174:./mcu_periph/sys_time.h **** {
+ 175:./mcu_periph/sys_time.h ****   return usec * (sys_time.cpu_ticks_per_sec / 1000000);
+ 176:./mcu_periph/sys_time.h **** }
+ 177:./mcu_periph/sys_time.h **** 
+ 178:./mcu_periph/sys_time.h **** static inline int32_t signed_cpu_ticks_of_usec(int32_t usec)
+ 179:./mcu_periph/sys_time.h **** {
+ 180:./mcu_periph/sys_time.h ****   return usec * ((int32_t)sys_time.cpu_ticks_per_sec / 1000000);
+ 181:./mcu_periph/sys_time.h **** }
+ 182:./mcu_periph/sys_time.h **** 
+ 183:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_nsec(uint32_t nsec)
+ 184:./mcu_periph/sys_time.h **** {
+ 185:./mcu_periph/sys_time.h ****   return nsec * (sys_time.cpu_ticks_per_sec / 1000000) / 1000;
+ 186:./mcu_periph/sys_time.h **** }
+ 187:./mcu_periph/sys_time.h **** 
+ 188:./mcu_periph/sys_time.h **** static inline uint32_t msec_of_cpu_ticks(uint32_t cpu_ticks)
+ 189:./mcu_periph/sys_time.h **** {
+ 190:./mcu_periph/sys_time.h ****   return cpu_ticks / (sys_time.cpu_ticks_per_sec / 1000);
+ 191:./mcu_periph/sys_time.h **** }
+ 192:./mcu_periph/sys_time.h **** 
+ 193:./mcu_periph/sys_time.h **** static inline uint32_t usec_of_cpu_ticks(uint32_t cpu_ticks)
+ 194:./mcu_periph/sys_time.h **** {
+ 195:./mcu_periph/sys_time.h ****   return cpu_ticks / (sys_time.cpu_ticks_per_sec / 1000000);
+ 817              		.loc 5 195 0
+ 818 0010 DFF86C91 		ldr	r9, .L38+48
+ 819              	.LBE82:
+ 820              	.LBE81:
+ 821              	.LBE91:
+ 822              	.LBE97:
+ 201:subsystems/ins/ins_alt_float.c **** 
+ 823              		.loc 1 201 0
+ 824 0014 1D78     		ldrb	r5, [r3]	@ zero_extendqisi2
+ 825              	.LBB98:
+ 826              	.LBB92:
+ 827              		.loc 4 56 0
+ 828 0016 3B68     		ldr	r3, [r7]
+  57:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(sys_time.nb_sec_rem) +
+ 829              		.loc 4 57 0
+ 830 0018 7A68     		ldr	r2, [r7, #4]
+ 831              	.LBE92:
+ 832              	.LBE98:
+ 199:subsystems/ins/ins_alt_float.c ****   utm.north = gps_s->utm_pos.north / 100.0f;
+ 833              		.loc 1 199 0
+ 834 001a DFED518A 		flds	s17, .L38+16
+ 835 001e B8EEE79A 		fsitos	s18, s15
+ 200:subsystems/ins/ins_alt_float.c ****   utm.zone = nav_utm_zone0;
+ 836              		.loc 1 200 0
+ 837 0022 D0ED067A 		flds	s15, [r0, #24]	@ int
+ 196:subsystems/ins/ins_alt_float.c **** #if USE_GPS
+ 838              		.loc 1 196 0
+ 839 0026 0646     		mov	r6, r0
+ 200:subsystems/ins/ins_alt_float.c ****   utm.zone = nav_utm_zone0;
+ 840              		.loc 1 200 0
+ 841 0028 F8EEE79A 		fsitos	s19, s15
+ 842              	.LBB99:
+ 843              	.LBB93:
+ 844              	.LBB84:
+ 845              	.LBB83:
+ 846              		.loc 5 195 0
+ 847 002c D7F85801 		ldr	r0, [r7, #344]
+ 848              	.LVL50:
+ 849 0030 B0FBF9F0 		udiv	r0, r0, r9
+ 850 0034 B2FBF0F0 		udiv	r0, r2, r0
+ 851              	.LBE83:
+ 852              	.LBE84:
+  56:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(sys_time.nb_sec_rem) +
+ 853              		.loc 4 56 0
+ 854 0038 09FB0308 		mla	r8, r9, r3, r0
+  58:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(systick_get_reload() - systick_get_value());
+ 855              		.loc 4 58 0
+ 856 003c FFF7FEFF 		bl	systick_get_reload
+ 857              	.LVL51:
+ 858 0040 0446     		mov	r4, r0
+ 859 0042 FFF7FEFF 		bl	systick_get_value
+ 860              	.LVL52:
+ 861              	.LBE93:
+ 862              	.LBE99:
+ 212:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 863              		.loc 1 212 0
+ 864 0046 474A     		ldr	r2, .L38+20
+ 865              	.LBB100:
+ 866              	.LBB94:
+ 867              	.LBB85:
+ 868              	.LBB86:
+ 869              		.loc 5 195 0
+ 870 0048 D7F85831 		ldr	r3, [r7, #344]
+ 871              	.LBE86:
+ 872              	.LBE85:
+ 873              	.LBE94:
+ 874              	.LBE100:
+ 212:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 875              		.loc 1 212 0
+ 876 004c DFED467A 		flds	s15, .L38+24
+ 877              	.LBB101:
+ 878              	.LBB95:
+ 879              		.loc 4 58 0
+ 880 0050 201A     		subs	r0, r4, r0
+ 881              	.LBB89:
+ 882              	.LBB87:
+ 883              		.loc 5 195 0
+ 884 0052 B3FBF9F4 		udiv	r4, r3, r9
+ 885              	.LBE87:
+ 886              	.LBE89:
+ 887              	.LBE95:
+ 888              	.LBE101:
+ 212:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 889              		.loc 1 212 0
+ 890 0056 1368     		ldr	r3, [r2]
+ 891              	.LBB102:
+ 892              	.LBB96:
+ 893              	.LBB90:
+ 894              	.LBB88:
+ 895              		.loc 5 195 0
+ 896 0058 B0FBF4F0 		udiv	r0, r0, r4
+ 897              	.LBE88:
+ 898              	.LBE90:
+  56:/home/dino/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(sys_time.nb_sec_rem) +
+ 899              		.loc 4 56 0
+ 900 005c 4044     		add	r0, r0, r8
+ 901              	.LBE96:
+ 902              	.LBE102:
+ 212:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 903              		.loc 1 212 0
+ 904 005e C31A     		subs	r3, r0, r3
+ 905 0060 08EE103A 		fmsr	s16, r3	@ int
+ 906 0064 B8EE488A 		fuitos	s16, s16
+ 199:subsystems/ins/ins_alt_float.c ****   utm.north = gps_s->utm_pos.north / 100.0f;
+ 907              		.loc 1 199 0
+ 908 0068 89EE289A 		fdivs	s18, s18, s17
+ 909              	.LVL53:
+ 213:subsystems/ins/ins_alt_float.c **** 
+ 910              		.loc 1 213 0
+ 911 006c 1060     		str	r0, [r2]
+ 212:subsystems/ins/ins_alt_float.c ****   last_ts = now_ts;
+ 912              		.loc 1 212 0
+ 913 006e 88EE278A 		fdivs	s16, s16, s15
+ 216:subsystems/ins/ins_alt_float.c **** #endif
+ 914              		.loc 1 216 0
+ 915 0072 F0EE007A 		fconsts	s15, #0
+ 916 0076 B4EEE78A 		fcmpes	s16, s15
+ 917 007a F1EE10FA 		fmstat
+ 200:subsystems/ins/ins_alt_float.c ****   utm.zone = nav_utm_zone0;
+ 918              		.loc 1 200 0
+ 919 007e C9EEA89A 		fdivs	s19, s19, s17
+ 920              	.LVL54:
+ 216:subsystems/ins/ins_alt_float.c **** #endif
+ 921              		.loc 1 216 0
+ 922 0082 0FDC     		bgt	.L36
+ 216:subsystems/ins/ins_alt_float.c **** #endif
+ 923              		.loc 1 216 0 is_stmt 0 discriminator 2
+ 924 0084 18EE100A 		fmrs	r0, s16
+ 925 0088 FFF7FEFF 		bl	__aeabi_f2d
+ 926              	.LVL55:
+ 927 008c 30A3     		adr	r3, .L38
+ 928 008e D3E90023 		ldrd	r2, [r3]
+ 929 0092 FFF7FEFF 		bl	__aeabi_dcmplt
+ 930              	.LVL56:
+ 931 0096 DFED357A 		flds	s15, .L38+28
+ 932 009a 0028     		cmp	r0, #0
+ 933 009c 18BF     		it	ne
+ 934 009e B0EE678A 		fcpysne	s16, s15
+ 935              	.LVL57:
+ 936 00a2 01E0     		b	.L32
+ 937              	.LVL58:
+ 938              	.L36:
+ 216:subsystems/ins/ins_alt_float.c **** #endif
+ 939              		.loc 1 216 0
+ 940 00a4 B0EE678A 		fcpys	s16, s15
+ 941              	.LVL59:
+ 942              	.L32:
+ 219:subsystems/ins/ins_alt_float.c ****   if (ins_altf.reset_alt_ref) {
+ 943              		.loc 1 219 0 is_stmt 1
+ 944 00a8 D6ED0A7A 		flds	s15, [r6, #40]	@ int
+ 220:subsystems/ins/ins_alt_float.c ****     ins_altf.reset_alt_ref = FALSE;
+ 945              		.loc 1 220 0
+ 946 00ac 304C     		ldr	r4, .L38+32
+ 219:subsystems/ins/ins_alt_float.c ****   if (ins_altf.reset_alt_ref) {
+ 947              		.loc 1 219 0
+ 948 00ae 9FED310A 		flds	s0, .L38+36
+ 220:subsystems/ins/ins_alt_float.c ****     ins_altf.reset_alt_ref = FALSE;
+ 949              		.loc 1 220 0
+ 950 00b2 237A     		ldrb	r3, [r4, #8]	@ zero_extendqisi2
+ 219:subsystems/ins/ins_alt_float.c ****   if (ins_altf.reset_alt_ref) {
+ 951              		.loc 1 219 0
+ 952 00b4 F8EEE77A 		fsitos	s15, s15
+ 953 00b8 87EE800A 		fdivs	s0, s15, s0
+ 954              	.LVL60:
+ 220:subsystems/ins/ins_alt_float.c ****     ins_altf.reset_alt_ref = FALSE;
+ 955              		.loc 1 220 0
+ 956 00bc 6BB1     		cbz	r3, .L34
+ 221:subsystems/ins/ins_alt_float.c ****     ins_altf.alt = falt;
+ 957              		.loc 1 221 0
+ 958 00be 0023     		movs	r3, #0
+ 959 00c0 2372     		strb	r3, [r4, #8]
+ 960              	.LBB103:
+ 961              	.LBB104:
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 962              		.loc 1 253 0
+ 963 00c2 2D4B     		ldr	r3, .L38+40
+ 964              	.LBE104:
+ 965              	.LBE103:
+ 223:subsystems/ins/ins_alt_float.c ****     alt_kalman_reset();
+ 966              		.loc 1 223 0
+ 967 00c4 0022     		movs	r2, #0
+ 968              	.LBB108:
+ 969              	.LBB105:
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 970              		.loc 1 253 0
+ 971 00c6 4FF07E51 		mov	r1, #1065353216
+ 972              	.LBE105:
+ 973              	.LBE108:
+ 223:subsystems/ins/ins_alt_float.c ****     alt_kalman_reset();
+ 974              		.loc 1 223 0
+ 975 00ca 6260     		str	r2, [r4, #4]	@ float
+ 976              	.LBB109:
+ 977              	.LBB106:
+ 253:subsystems/ins/ins_alt_float.c ****   p[0][1] = 0.0f;
+ 978              		.loc 1 253 0
+ 979 00cc 1960     		str	r1, [r3]	@ float
+ 254:subsystems/ins/ins_alt_float.c ****   p[1][0] = 0.0f;
+ 980              		.loc 1 254 0
+ 981 00ce 5A60     		str	r2, [r3, #4]	@ float
+ 255:subsystems/ins/ins_alt_float.c ****   p[1][1] = 1.0f;
+ 982              		.loc 1 255 0
+ 983 00d0 9A60     		str	r2, [r3, #8]	@ float
+ 984              	.LBE106:
+ 985              	.LBE109:
+ 222:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot = 0.0f;
+ 986              		.loc 1 222 0
+ 987 00d2 84ED000A 		fsts	s0, [r4]
+ 988              	.LBB110:
+ 989              	.LBB107:
+ 256:subsystems/ins/ins_alt_float.c **** }
+ 990              		.loc 1 256 0
+ 991 00d6 D960     		str	r1, [r3, #12]	@ float
+ 992 00d8 0DE0     		b	.L35
+ 993              	.L34:
+ 994              	.LBE107:
+ 995              	.LBE110:
+ 226:subsystems/ins/ins_alt_float.c ****     ins_altf.alt_dot = -gps_s->ned_vel.z / 100.0f;
+ 996              		.loc 1 226 0
+ 997 00da F0EE480A 		fcpys	s1, s16
+ 998 00de FFF7FEFF 		bl	alt_kalman
+ 999              	.LVL61:
+ 227:subsystems/ins/ins_alt_float.c ****   }
+ 1000              		.loc 1 227 0
+ 1001 00e2 336C     		ldr	r3, [r6, #64]
+ 1002 00e4 5B42     		negs	r3, r3
+ 1003 00e6 07EE903A 		fmsr	s15, r3	@ int
+ 1004 00ea F8EEE77A 		fsitos	s15, s15
+ 1005 00ee C7EEA87A 		fdivs	s15, s15, s17
+ 1006 00f2 C4ED017A 		fsts	s15, [r4, #4]
+ 1007              	.L35:
+ 1008              	.LBB111:
+ 1009              	.LBB112:
+ 567:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 1010              		.loc 2 567 0
+ 1011 00f6 214B     		ldr	r3, .L38+44
+ 1012              	.LBE112:
+ 1013              	.LBE111:
+ 230:subsystems/ins/ins_alt_float.c ****   // set position
+ 1014              		.loc 1 230 0
+ 1015 00f8 2268     		ldr	r2, [r4]	@ float
+ 1016              	.LVL62:
+ 1017              	.LBB115:
+ 1018              	.LBB113:
+ 567:./state.h     ****   /* clear bits for all position representations and only set the new one */
+ 1019              		.loc 2 567 0
+ 1020 00fa C3F88020 		str	r2, [r3, #128]	@ float
+ 1021 00fe C3ED1E9A 		fsts	s19, [r3, #120]
+ 1022 0102 83ED1F9A 		fsts	s18, [r3, #124]
+ 1023 0106 83F88450 		strb	r5, [r3, #132]
+ 1024              	.LBE113:
+ 1025              	.LBE115:
+ 236:subsystems/ins/ins_alt_float.c ****     -ins_altf.alt_dot
+ 1026              		.loc 1 236 0
+ 1027 010a D6ED0F7A 		flds	s15, [r6, #60]	@ int
+ 235:subsystems/ins/ins_alt_float.c ****     gps_s->ned_vel.y / 100.0f,
+ 1028              		.loc 1 235 0
+ 1029 010e 96ED0E7A 		flds	s14, [r6, #56]	@ int
+ 237:subsystems/ins/ins_alt_float.c ****   };
+ 1030              		.loc 1 237 0
+ 1031 0112 D4ED016A 		flds	s13, [r4, #4]
+ 236:subsystems/ins/ins_alt_float.c ****     -ins_altf.alt_dot
+ 1032              		.loc 1 236 0
+ 1033 0116 F8EEE77A 		fsitos	s15, s15
+ 235:subsystems/ins/ins_alt_float.c ****     gps_s->ned_vel.y / 100.0f,
+ 1034              		.loc 1 235 0
+ 1035 011a B8EEC77A 		fsitos	s14, s14
+ 236:subsystems/ins/ins_alt_float.c ****     -ins_altf.alt_dot
+ 1036              		.loc 1 236 0
+ 1037 011e C7EEA87A 		fdivs	s15, s15, s17
+ 1038              	.LBB116:
+ 1039              	.LBB114:
+ 569:./state.h     **** }
+ 1040              		.loc 2 569 0
+ 1041 0122 4FF40072 		mov	r2, #512
+ 1042              	.LVL63:
+ 1043 0126 1A80     		strh	r2, [r3]	@ movhi
+ 1044              	.LBE114:
+ 1045              	.LBE116:
+ 1046              	.LBB117:
+ 1047              	.LBB118:
+ 796:./state.h     **** }
+ 1048              		.loc 2 796 0
+ 1049 0128 4022     		movs	r2, #64
+ 1050 012a A3F81421 		strh	r2, [r3, #276]	@ movhi
+ 1051              	.LBE118:
+ 1052              	.LBE117:
+ 235:subsystems/ins/ins_alt_float.c ****     gps_s->ned_vel.y / 100.0f,
+ 1053              		.loc 1 235 0
+ 1054 012e C7EE288A 		fdivs	s17, s14, s17
+ 237:subsystems/ins/ins_alt_float.c ****   };
+ 1055              		.loc 1 237 0
+ 1056 0132 F1EE666A 		fnegs	s13, s13
+ 1057              	.LVL64:
+ 1058              	.LBB121:
+ 1059              	.LBB119:
+ 794:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 1060              		.loc 2 794 0
+ 1061 0136 C3ED548A 		fsts	s17, [r3, #336]
+ 1062              	.LBE119:
+ 1063              	.LBE121:
+ 243:subsystems/ins/ins_alt_float.c **** 
+ 1064              		.loc 1 243 0
+ 1065 013a BDEC048B 		fldmfdd	sp!, {d8-d9}
+ 1066              		.cfi_restore 82
+ 1067              		.cfi_restore 83
+ 1068              		.cfi_restore 80
+ 1069              		.cfi_restore 81
+ 1070              		.cfi_def_cfa_offset 32
+ 1071              	.LVL65:
+ 1072              	.LBB122:
+ 1073              	.LBB120:
+ 794:./state.h     ****   /* clear bits for all speed representations and only set the new one */
+ 1074              		.loc 2 794 0
+ 1075 013e C3ED557A 		fsts	s15, [r3, #340]
+ 1076 0142 C3ED566A 		fsts	s13, [r3, #344]
+ 1077              	.LBE120:
+ 1078              	.LBE122:
+ 243:subsystems/ins/ins_alt_float.c **** 
+ 1079              		.loc 1 243 0
+ 1080 0146 BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 1081              	.LVL66:
+ 1082              	.L39:
+ 1083 014a 00BFAFF3 		.align	3
+ 1083      0080
+ 1084              	.L38:
+ 1085 0150 7B14AE47 		.word	1202590843
+ 1086 0154 E17A943F 		.word	1066695393
+ 1087 0158 00000000 		.word	sys_time
+ 1088 015c 00000000 		.word	nav_utm_zone0
+ 1089 0160 0000C842 		.word	1120403456
+ 1090 0164 00000000 		.word	.LANCHOR3
+ 1091 0168 00247449 		.word	1232348160
+ 1092 016c 0AD7A33C 		.word	1017370378
+ 1093 0170 00000000 		.word	.LANCHOR0
+ 1094 0174 00007A44 		.word	1148846080
+ 1095 0178 00000000 		.word	.LANCHOR1
+ 1096 017c 00000000 		.word	state
+ 1097 0180 40420F00 		.word	1000000
+ 1098              		.cfi_endproc
+ 1099              	.LFE190:
+ 1101              		.section	.text.gps_cb,"ax",%progbits
+ 1102              		.align	1
+ 1103              		.thumb
+ 1104              		.thumb_func
+ 1106              	gps_cb:
+ 1107              	.LFB194:
+ 348:subsystems/ins/ins_alt_float.c ****   ins_alt_float_update_gps(gps_s);
+ 1108              		.loc 1 348 0
+ 1109              		.cfi_startproc
+ 1110              		@ args = 0, pretend = 0, frame = 0
+ 1111              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1112              		@ link register save eliminated.
+ 1113              	.LVL67:
+ 349:subsystems/ins/ins_alt_float.c **** }
+ 1114              		.loc 1 349 0
+ 1115 0000 1046     		mov	r0, r2
+ 1116              	.LVL68:
+ 1117 0002 FFF7FEBF 		b	ins_alt_float_update_gps
+ 1118              	.LVL69:
+ 1119              		.cfi_endproc
+ 1120              	.LFE194:
+ 1122              		.section	.text.ins_altf_register,"ax",%progbits
+ 1123              		.align	1
+ 1124              		.global	ins_altf_register
+ 1125              		.thumb
+ 1126              		.thumb_func
+ 1128              	ins_altf_register:
+ 1129              	.LFB197:
+ 369:subsystems/ins/ins_alt_float.c ****   orientationSetQuat_f(&body_to_imu, q_b2i_f);
+ 370:subsystems/ins/ins_alt_float.c **** }
+ 371:subsystems/ins/ins_alt_float.c **** 
+ 372:subsystems/ins/ins_alt_float.c **** void ins_altf_register(void)
+ 373:subsystems/ins/ins_alt_float.c **** {
+ 1130              		.loc 1 373 0
+ 1131              		.cfi_startproc
+ 1132              		@ args = 0, pretend = 0, frame = 0
+ 1133              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1134 0000 08B5     		push	{r3, lr}
+ 1135              		.cfi_def_cfa_offset 8
+ 1136              		.cfi_offset 3, -8
+ 1137              		.cfi_offset 14, -4
+ 374:subsystems/ins/ins_alt_float.c ****   ins_register_impl(ins_alt_float_init);
+ 1138              		.loc 1 374 0
+ 1139 0002 0D48     		ldr	r0, .L42
+ 1140 0004 FFF7FEFF 		bl	ins_register_impl
+ 1141              	.LVL70:
+ 1142              	.LBB123:
+ 1143              	.LBB124:
+ 1144              		.file 6 "/home/dino/paparazzi/var/include/abi_messages.h"
+   1:/home/dino/paparazzi/var/include/abi_messages.h **** /* Automatically generated by gen_abi from /home/dino/paparazzi/conf/abi.xml */
+   2:/home/dino/paparazzi/var/include/abi_messages.h **** /* Please DO NOT EDIT */
+   3:/home/dino/paparazzi/var/include/abi_messages.h **** 
+   4:/home/dino/paparazzi/var/include/abi_messages.h **** /* Onboard middleware library ABI
+   5:/home/dino/paparazzi/var/include/abi_messages.h ****  * send and receive messages of class airborne
+   6:/home/dino/paparazzi/var/include/abi_messages.h ****  */
+   7:/home/dino/paparazzi/var/include/abi_messages.h **** 
+   8:/home/dino/paparazzi/var/include/abi_messages.h **** #ifndef ABI_MESSAGES_H
+   9:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGES_H
+  10:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  11:/home/dino/paparazzi/var/include/abi_messages.h **** #include "subsystems/abi_common.h"
+  12:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  13:/home/dino/paparazzi/var/include/abi_messages.h **** /* Messages IDs */
+  14:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_ABS_ID 0
+  15:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_DIFF_ID 1
+  16:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_AGL_ID 2
+  17:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_TEMPERATURE_ID 3
+  18:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_GYRO_INT32_ID 4
+  19:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_ACCEL_INT32_ID 5
+  20:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_MAG_INT32_ID 6
+  21:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_LOWPASSED_ID 7
+  22:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_BODY_TO_IMU_QUAT_ID 8
+  23:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_GEO_MAG_ID 9
+  24:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_GPS_ID 10
+  25:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  26:/home/dino/paparazzi/var/include/abi_messages.h **** /* Array and linked list structure */
+  27:/home/dino/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGE_NB 11
+  28:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  29:/home/dino/paparazzi/var/include/abi_messages.h **** ABI_EXTERN abi_event* abi_queues[ABI_MESSAGE_NB];
+  30:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  31:/home/dino/paparazzi/var/include/abi_messages.h **** /* Callbacks */
+  32:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_ABS)(uint8_t sender_id, float pressure);
+  33:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_DIFF)(uint8_t sender_id, float pressure);
+  34:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackAGL)(uint8_t sender_id, float distance);
+  35:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackTEMPERATURE)(uint8_t sender_id, float temp);
+  36:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_GYRO_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * g
+  37:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_ACCEL_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * 
+  38:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_MAG_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * ma
+  39:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_LOWPASSED)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * gy
+  40:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBODY_TO_IMU_QUAT)(uint8_t sender_id, struct FloatQuat * q_b2i_f);
+  41:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGEO_MAG)(uint8_t sender_id, struct FloatVect3 * h);
+  42:/home/dino/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGPS)(uint8_t sender_id, uint32_t stamp, struct GpsState * gps_s);
+  43:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  44:/home/dino/paparazzi/var/include/abi_messages.h **** /* Bind and Send functions */
+  45:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  46:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_ABS(uint8_t sender_id, abi_event * ev, abi_callbackBARO_ABS cb) {
+  47:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  48:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  49:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_ABS_ID],ev);
+  50:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  51:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  52:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_ABS(uint8_t sender_id, float pressure) {
+  53:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  54:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_ABS_ID],e) {
+  55:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  56:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_ABS cb = (abi_callbackBARO_ABS)(e->cb);
+  57:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+  58:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+  59:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+  60:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  61:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  62:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_DIFF(uint8_t sender_id, abi_event * ev, abi_callbackBARO_DIFF cb)
+  63:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  64:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  65:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_DIFF_ID],ev);
+  66:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  67:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  68:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_DIFF(uint8_t sender_id, float pressure) {
+  69:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  70:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_DIFF_ID],e) {
+  71:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  72:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_DIFF cb = (abi_callbackBARO_DIFF)(e->cb);
+  73:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+  74:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+  75:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+  76:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  77:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  78:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgAGL(uint8_t sender_id, abi_event * ev, abi_callbackAGL cb) {
+  79:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  80:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  81:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_AGL_ID],ev);
+  82:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  83:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  84:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgAGL(uint8_t sender_id, float distance) {
+  85:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  86:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_AGL_ID],e) {
+  87:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  88:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackAGL cb = (abi_callbackAGL)(e->cb);
+  89:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, distance);
+  90:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+  91:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+  92:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  93:/home/dino/paparazzi/var/include/abi_messages.h **** 
+  94:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgTEMPERATURE(uint8_t sender_id, abi_event * ev, abi_callbackTEMPERATURE
+  95:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  96:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  97:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_TEMPERATURE_ID],ev);
+  98:/home/dino/paparazzi/var/include/abi_messages.h **** }
+  99:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 100:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgTEMPERATURE(uint8_t sender_id, float temp) {
+ 101:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 102:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_TEMPERATURE_ID],e) {
+ 103:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 104:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackTEMPERATURE cb = (abi_callbackTEMPERATURE)(e->cb);
+ 105:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, temp);
+ 106:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 107:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 108:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 109:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 110:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_GYRO_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_GYRO
+ 111:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 112:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 113:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_GYRO_INT32_ID],ev);
+ 114:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 115:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 116:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_GYRO_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Rates * 
+ 117:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 118:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_GYRO_INT32_ID],e) {
+ 119:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 120:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_GYRO_INT32 cb = (abi_callbackIMU_GYRO_INT32)(e->cb);
+ 121:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, gyro);
+ 122:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 123:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 124:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 125:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 126:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_ACCEL_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_ACC
+ 127:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 128:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 129:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_ACCEL_INT32_ID],ev);
+ 130:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 131:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 132:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_ACCEL_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 *
+ 133:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 134:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_ACCEL_INT32_ID],e) {
+ 135:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 136:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_ACCEL_INT32 cb = (abi_callbackIMU_ACCEL_INT32)(e->cb);
+ 137:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, accel);
+ 138:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 139:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 140:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 141:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 142:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_MAG_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_MAG_I
+ 143:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 144:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 145:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_MAG_INT32_ID],ev);
+ 146:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 147:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 148:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_MAG_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * m
+ 149:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 150:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_MAG_INT32_ID],e) {
+ 151:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 152:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_MAG_INT32 cb = (abi_callbackIMU_MAG_INT32)(e->cb);
+ 153:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, mag);
+ 154:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 155:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 156:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 157:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 158:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_LOWPASSED(uint8_t sender_id, abi_event * ev, abi_callbackIMU_LOWPA
+ 159:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 160:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 161:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_LOWPASSED_ID],ev);
+ 162:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 163:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 164:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_LOWPASSED(uint8_t sender_id, uint32_t stamp, struct Int32Rates * g
+ 165:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 166:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_LOWPASSED_ID],e) {
+ 167:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 168:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_LOWPASSED cb = (abi_callbackIMU_LOWPASSED)(e->cb);
+ 169:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, gyro, accel, mag);
+ 170:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 171:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 172:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 173:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 174:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBODY_TO_IMU_QUAT(uint8_t sender_id, abi_event * ev, abi_callbackBODY_T
+ 175:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 176:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 177:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BODY_TO_IMU_QUAT_ID],ev);
+ 178:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 179:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 180:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBODY_TO_IMU_QUAT(uint8_t sender_id, struct FloatQuat * q_b2i_f) {
+ 181:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 182:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BODY_TO_IMU_QUAT_ID],e) {
+ 183:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 184:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackBODY_TO_IMU_QUAT cb = (abi_callbackBODY_TO_IMU_QUAT)(e->cb);
+ 185:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, q_b2i_f);
+ 186:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 187:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 188:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 189:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 190:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgGEO_MAG(uint8_t sender_id, abi_event * ev, abi_callbackGEO_MAG cb) {
+ 191:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 192:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 193:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_GEO_MAG_ID],ev);
+ 194:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 195:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 196:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgGEO_MAG(uint8_t sender_id, struct FloatVect3 * h) {
+ 197:/home/dino/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 198:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_GEO_MAG_ID],e) {
+ 199:/home/dino/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 200:/home/dino/paparazzi/var/include/abi_messages.h ****       abi_callbackGEO_MAG cb = (abi_callbackGEO_MAG)(e->cb);
+ 201:/home/dino/paparazzi/var/include/abi_messages.h ****       cb(sender_id, h);
+ 202:/home/dino/paparazzi/var/include/abi_messages.h ****     }
+ 203:/home/dino/paparazzi/var/include/abi_messages.h ****   }
+ 204:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 205:/home/dino/paparazzi/var/include/abi_messages.h **** 
+ 206:/home/dino/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgGPS(uint8_t sender_id, abi_event * ev, abi_callbackGPS cb) {
+ 207:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 1145              		.loc 6 207 0
+ 1146 0008 0C4A     		ldr	r2, .L42+4
+ 208:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1147              		.loc 6 208 0
+ 1148 000a 0D4B     		ldr	r3, .L42+8
+ 1149 000c 5360     		str	r3, [r2, #4]
+ 209:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_GPS_ID],ev);
+ 1150              		.loc 6 209 0
+ 1151 000e 0D4B     		ldr	r3, .L42+12
+ 207:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1152              		.loc 6 207 0
+ 1153 0010 0021     		movs	r1, #0
+ 1154              		.loc 6 209 0
+ 1155 0012 986A     		ldr	r0, [r3, #40]
+ 207:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1156              		.loc 6 207 0
+ 1157 0014 1170     		strb	r1, [r2]
+ 1158              		.loc 6 209 0
+ 1159 0016 9060     		str	r0, [r2, #8]
+ 1160 0018 9A62     		str	r2, [r3, #40]
+ 1161              	.LVL71:
+ 1162              	.LBE124:
+ 1163              	.LBE123:
+ 1164              	.LBB125:
+ 1165              	.LBB126:
+ 127:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1166              		.loc 6 127 0
+ 1167 001a 0B4A     		ldr	r2, .L42+16
+ 128:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_ACCEL_INT32_ID],ev);
+ 1168              		.loc 6 128 0
+ 1169 001c 0B48     		ldr	r0, .L42+20
+ 1170 001e 5060     		str	r0, [r2, #4]
+ 129:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 1171              		.loc 6 129 0
+ 1172 0020 5869     		ldr	r0, [r3, #20]
+ 127:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1173              		.loc 6 127 0
+ 1174 0022 1170     		strb	r1, [r2]
+ 129:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 1175              		.loc 6 129 0
+ 1176 0024 9060     		str	r0, [r2, #8]
+ 1177 0026 5A61     		str	r2, [r3, #20]
+ 1178              	.LVL72:
+ 1179              	.LBE126:
+ 1180              	.LBE125:
+ 1181              	.LBB127:
+ 1182              	.LBB128:
+ 175:/home/dino/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 1183              		.loc 6 175 0
+ 1184 0028 094A     		ldr	r2, .L42+24
+ 1185 002a 1170     		strb	r1, [r2]
+ 176:/home/dino/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BODY_TO_IMU_QUAT_ID],ev);
+ 1186              		.loc 6 176 0
+ 1187 002c 0949     		ldr	r1, .L42+28
+ 1188 002e 5160     		str	r1, [r2, #4]
+ 177:/home/dino/paparazzi/var/include/abi_messages.h **** }
+ 1189              		.loc 6 177 0
+ 1190 0030 196A     		ldr	r1, [r3, #32]
+ 1191 0032 9160     		str	r1, [r2, #8]
+ 1192 0034 1A62     		str	r2, [r3, #32]
+ 1193 0036 08BD     		pop	{r3, pc}
+ 1194              	.L43:
+ 1195              		.align	2
+ 1196              	.L42:
+ 1197 0038 00000000 		.word	ins_alt_float_init
+ 1198 003c 00000000 		.word	.LANCHOR4
+ 1199 0040 00000000 		.word	gps_cb
+ 1200 0044 00000000 		.word	abi_queues
+ 1201 0048 00000000 		.word	.LANCHOR5
+ 1202 004c 00000000 		.word	accel_cb
+ 1203 0050 00000000 		.word	.LANCHOR6
+ 1204 0054 00000000 		.word	body_to_imu_cb
+ 1205              	.LBE128:
+ 1206              	.LBE127:
+ 1207              		.cfi_endproc
+ 1208              	.LFE197:
+ 1210              		.global	ins_altf
+ 1211              		.section	.bss.last_ts.7796,"aw",%nobits
+ 1212              		.align	2
+ 1213              		.set	.LANCHOR3,. + 0
+ 1216              	last_ts.7796:
+ 1217 0000 00000000 		.space	4
+ 1218              		.section	.bss.ins_altf,"aw",%nobits
+ 1219              		.align	2
+ 1220              		.set	.LANCHOR0,. + 0
+ 1223              	ins_altf:
+ 1224 0000 00000000 		.space	12
+ 1224      00000000 
+ 1224      00000000 
+ 1225              		.section	.bss.p,"aw",%nobits
+ 1226              		.align	2
+ 1227              		.set	.LANCHOR1,. + 0
+ 1230              	p:
+ 1231 0000 00000000 		.space	16
+ 1231      00000000 
+ 1231      00000000 
+ 1231      00000000 
+ 1232              		.section	.bss.gps_ev,"aw",%nobits
+ 1233              		.align	2
+ 1234              		.set	.LANCHOR4,. + 0
+ 1237              	gps_ev:
+ 1238 0000 00000000 		.space	12
+ 1238      00000000 
+ 1238      00000000 
+ 1239              		.section	.bss.body_to_imu,"aw",%nobits
+ 1240              		.align	2
+ 1241              		.set	.LANCHOR2,. + 0
+ 1244              	body_to_imu:
+ 1245 0000 00000000 		.space	132
+ 1245      00000000 
+ 1245      00000000 
+ 1245      00000000 
+ 1245      00000000 
+ 1246              		.section	.bss.body_to_imu_ev,"aw",%nobits
+ 1247              		.align	2
+ 1248              		.set	.LANCHOR6,. + 0
+ 1251              	body_to_imu_ev:
+ 1252 0000 00000000 		.space	12
+ 1252      00000000 
+ 1252      00000000 
+ 1253              		.section	.bss.accel_ev,"aw",%nobits
+ 1254              		.align	2
+ 1255              		.set	.LANCHOR5,. + 0
+ 1258              	accel_ev:
+ 1259 0000 00000000 		.space	12
+ 1259      00000000 
+ 1259      00000000 
+ 1260              		.text
+ 1261              	.Letext0:
+ 1262              		.file 7 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1263              		.file 8 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1264              		.file 9 "/home/dino/paparazzi/sw/include/std.h"
+ 1265              		.file 10 "./math/pprz_algebra_int.h"
+ 1266              		.file 11 "./math/pprz_geodetic_int.h"
+ 1267              		.file 12 "./math/pprz_algebra_float.h"
+ 1268              		.file 13 "./math/pprz_geodetic_float.h"
+ 1269              		.file 14 "./subsystems/ins.h"
+ 1270              		.file 15 "./subsystems/ins/ins_alt_float.h"
+ 1271              		.file 16 "./mcu_periph/link_device.h"
+ 1272              		.file 17 "./mcu_periph/uart.h"
+ 1273              		.file 18 "./subsystems/gps/gps_ubx.h"
+ 1274              		.file 19 "./subsystems/gps.h"
+ 1275              		.file 20 "./subsystems/abi_common.h"
+ 1276              		.file 21 "./subsystems/navigation/common_nav.h"
+ 1277              		.file 22 "../ext/libopencm3/include/libopencm3/cm3/systick.h"
+ 1278              		.file 23 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 ins_alt_float.c
+     /tmp/cc6VylzM.s:22     .text.alt_kalman:00000000 $t
+     /tmp/cc6VylzM.s:26     .text.alt_kalman:00000000 alt_kalman
+     /tmp/cc6VylzM.s:178    .text.alt_kalman:000000e0 $d
+     /tmp/cc6VylzM.s:186    .text.stateSetLocalUtmOrigin_f:00000000 $t
+     /tmp/cc6VylzM.s:190    .text.stateSetLocalUtmOrigin_f:00000000 stateSetLocalUtmOrigin_f
+     /tmp/cc6VylzM.s:240    .text.stateSetLocalUtmOrigin_f:00000044 $d
+     /tmp/cc6VylzM.s:246    .text.body_to_imu_cb:00000000 $t
+     /tmp/cc6VylzM.s:250    .text.body_to_imu_cb:00000000 body_to_imu_cb
+     /tmp/cc6VylzM.s:278    .text.body_to_imu_cb:00000018 $d
+     /tmp/cc6VylzM.s:288    .text.accel_cb:00000000 $t
+     /tmp/cc6VylzM.s:292    .text.accel_cb:00000000 accel_cb
+     /tmp/cc6VylzM.s:408    .text.accel_cb:00000068 $d
+     /tmp/cc6VylzM.s:418    .text.ins_alt_float_init:00000000 $t
+     /tmp/cc6VylzM.s:423    .text.ins_alt_float_init:00000000 ins_alt_float_init
+     /tmp/cc6VylzM.s:542    .text.ins_alt_float_init:0000007c $d
+     /tmp/cc6VylzM.s:560    .text.ins_reset_local_origin:00000000 $t
+     /tmp/cc6VylzM.s:565    .text.ins_reset_local_origin:00000000 ins_reset_local_origin
+     /tmp/cc6VylzM.s:685    .text.ins_reset_local_origin:000000d0 $d
+     /tmp/cc6VylzM.s:699    .text.ins_reset_altitude_ref:00000000 $t
+     /tmp/cc6VylzM.s:704    .text.ins_reset_altitude_ref:00000000 ins_reset_altitude_ref
+     /tmp/cc6VylzM.s:745    .text.ins_reset_altitude_ref:00000030 $d
+     /tmp/cc6VylzM.s:753    .text.ins_alt_float_update_baro:00000000 $t
+     /tmp/cc6VylzM.s:758    .text.ins_alt_float_update_baro:00000000 ins_alt_float_update_baro
+     /tmp/cc6VylzM.s:772    .text.ins_alt_float_update_gps:00000000 $t
+     /tmp/cc6VylzM.s:777    .text.ins_alt_float_update_gps:00000000 ins_alt_float_update_gps
+     /tmp/cc6VylzM.s:1085   .text.ins_alt_float_update_gps:00000150 $d
+     /tmp/cc6VylzM.s:1102   .text.gps_cb:00000000 $t
+     /tmp/cc6VylzM.s:1106   .text.gps_cb:00000000 gps_cb
+     /tmp/cc6VylzM.s:1123   .text.ins_altf_register:00000000 $t
+     /tmp/cc6VylzM.s:1128   .text.ins_altf_register:00000000 ins_altf_register
+     /tmp/cc6VylzM.s:1197   .text.ins_altf_register:00000038 $d
+     /tmp/cc6VylzM.s:1223   .bss.ins_altf:00000000 ins_altf
+     /tmp/cc6VylzM.s:1212   .bss.last_ts.7796:00000000 $d
+     /tmp/cc6VylzM.s:1216   .bss.last_ts.7796:00000000 last_ts.7796
+     /tmp/cc6VylzM.s:1219   .bss.ins_altf:00000000 $d
+     /tmp/cc6VylzM.s:1226   .bss.p:00000000 $d
+     /tmp/cc6VylzM.s:1230   .bss.p:00000000 p
+     /tmp/cc6VylzM.s:1233   .bss.gps_ev:00000000 $d
+     /tmp/cc6VylzM.s:1237   .bss.gps_ev:00000000 gps_ev
+     /tmp/cc6VylzM.s:1240   .bss.body_to_imu:00000000 $d
+     /tmp/cc6VylzM.s:1244   .bss.body_to_imu:00000000 body_to_imu
+     /tmp/cc6VylzM.s:1247   .bss.body_to_imu_ev:00000000 $d
+     /tmp/cc6VylzM.s:1251   .bss.body_to_imu_ev:00000000 body_to_imu_ev
+     /tmp/cc6VylzM.s:1254   .bss.accel_ev:00000000 $d
+     /tmp/cc6VylzM.s:1258   .bss.accel_ev:00000000 accel_ev
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.7f506cdee5614e5fae524d20989ad8c8
+                           .group:00000000 wm4.newlib.h.8.2702bca278809460f0af6fba1d84eb68
+                           .group:00000000 wm4.features.h.22.2e382148a0560adabf236cddd4e880f4
+                           .group:00000000 wm4.config.h.220.a09b0b0de3c25be3f39d71990e617bff
+                           .group:00000000 wm4._intsup.h.10.b2832a532eae49c14d45880be6d4ca65
+                           .group:00000000 wm4._default_types.h.6.35ee9e747940367bf2a634907d1c2382
+                           .group:00000000 wm4._stdint.h.10.f76354baea1c7088202064e6f3d4f5e3
+                           .group:00000000 wm4.stdint.h.23.373a9d32a9e4c2e88fd347156532d281
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.23.a096771aacee9aba4b33c2d04aacc9b1
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4._ansi.h.13.1b5575dc7921a4c0cff7dbaa2f33e670
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.ad242c9287d2217c7d2035216e5d04ca
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.47.3052445825803de6c3a3b68ec8193866
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.54.cd3744e0b066087ec8fbb1bdc22d1043
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+                           .group:00000000 wm4.state.h.65.b18954aacb3801ec3e27b4e857d620d3
+                           .group:00000000 wm4.apogee_1.0.h.2.34ab7bb688056eecb54e2e3ffff48ca6
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.gps.h.41.79d1c69e44dd427f855100ff8e932fbe
+                           .group:00000000 wm4.abi_sender_ids.h.29.e18315036ac250e614ad78ed4bcb93da
+                           .group:00000000 wm4.abi_common.h.46.0bb6611719a01752e88980049d8d5177
+                           .group:00000000 wm4.abi_messages.h.14.a63139ccdcd5241f8ab897fe12fc8134
+                           .group:00000000 wm4.paparazzi.h.2.eeb1c9dc8e5acded3c1d3014b2b23af3
+                           .group:00000000 wm4.guidance_common.h.29.1bf3aadf5e973d07dcbb9e181585cee6
+                           .group:00000000 wm4.nav_survey_rectangle.h.40.be8d41ad6903a05cab94fc858d7a6899
+                           .group:00000000 wm4.common_flight_plan.h.28.998f628cac1ef266b3e88de20c1aaea2
+                           .group:00000000 wm4.common_nav.h.28.8e6fb87079f62fdfc188e60962e671bb
+                           .group:00000000 wm4.nav.h.44.3eb88fcdae84be242ba32ecd12ce1b48
+                           .group:00000000 wm4.airframe.h.5.55ffe79377b235d0a97162ed16ec170d
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.5a737f85d71223e6481c4ba4068c062a
+                           .group:00000000 wm4.airframe.h.14.814d9a421a57ec2d434c7b6efc262c4b
+                           .group:00000000 wm4.modules.h.5.3647ee45f49511088e2f33d88288be64
+                           .group:00000000 wm4.gps_ubx_ucenter.h.29.30a3f1ed020dbc7085e412c29746d829
+                           .group:00000000 wm4.modules.h.23.3d04ad9f740a156fcd476d18714df592
+
+UNDEFINED SYMBOLS
+__aeabi_f2d
+__aeabi_dcmpgt
+state
+__aeabi_i2d
+__aeabi_dadd
+__aeabi_d2iz
+orientationCalcRMat_i
+int32_rmat_transp_vmult
+nav_utm_north0
+nav_utm_east0
+ground_alt
+nav_utm_zone0
+__aeabi_dmul
+__aeabi_ddiv
+__aeabi_d2f
+__aeabi_d2uiz
+utm_of_lla_f
+gps
+__aeabi_dcmplt
+systick_get_reload
+systick_get_value
+sys_time
+ins_register_impl
+abi_queues
