@@ -1,0 +1,177 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"actuators.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.actuators_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	actuators_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	actuators_init:
+  26              	.LFB23:
+  27              		.file 1 "subsystems/actuators.c"
+   1:subsystems/actuators.c **** /*
+   2:subsystems/actuators.c ****  * Copyright (C) 2006 Pascal Brisset, Antoine Drouin
+   3:subsystems/actuators.c ****  * Copyright (C) 2012 Gautier Hattenberger
+   4:subsystems/actuators.c ****  *
+   5:subsystems/actuators.c ****  * This file is part of paparazzi.
+   6:subsystems/actuators.c ****  *
+   7:subsystems/actuators.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:subsystems/actuators.c ****  * it under the terms of the GNU General Public License as published by
+   9:subsystems/actuators.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:subsystems/actuators.c ****  * any later version.
+  11:subsystems/actuators.c ****  *
+  12:subsystems/actuators.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:subsystems/actuators.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:subsystems/actuators.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:subsystems/actuators.c ****  * GNU General Public License for more details.
+  16:subsystems/actuators.c ****  *
+  17:subsystems/actuators.c ****  * You should have received a copy of the GNU General Public License
+  18:subsystems/actuators.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:subsystems/actuators.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:subsystems/actuators.c ****  * Boston, MA 02111-1307, USA.
+  21:subsystems/actuators.c ****  */
+  22:subsystems/actuators.c **** 
+  23:subsystems/actuators.c **** /** @file subsystems/actuators.c
+  24:subsystems/actuators.c ****  *  Hardware independent actuators code.
+  25:subsystems/actuators.c ****  *
+  26:subsystems/actuators.c ****  */
+  27:subsystems/actuators.c **** 
+  28:subsystems/actuators.c **** #include "subsystems/actuators.h"
+  29:subsystems/actuators.c **** #include "mcu_periph/sys_time.h"
+  30:subsystems/actuators.c **** 
+  31:subsystems/actuators.c **** #if ACTUATORS_NB
+  32:subsystems/actuators.c **** 
+  33:subsystems/actuators.c **** int16_t actuators[ACTUATORS_NB];
+  34:subsystems/actuators.c **** 
+  35:subsystems/actuators.c **** uint32_t actuators_delay_time;
+  36:subsystems/actuators.c **** bool_t   actuators_delay_done;
+  37:subsystems/actuators.c **** 
+  38:subsystems/actuators.c **** void actuators_init(void)
+  39:subsystems/actuators.c **** {
+  28              		.loc 1 39 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  40:subsystems/actuators.c **** 
+  41:subsystems/actuators.c **** #if defined ACTUATORS_START_DELAY && ! defined SITL
+  42:subsystems/actuators.c ****   actuators_delay_done = FALSE;
+  43:subsystems/actuators.c ****   SysTimeTimerStart(actuators_delay_time);
+  44:subsystems/actuators.c **** #else
+  45:subsystems/actuators.c ****   actuators_delay_done = TRUE;
+  33              		.loc 1 45 0
+  34 0000 034B     		ldr	r3, .L2
+  35 0002 0122     		movs	r2, #1
+  36 0004 1A70     		strb	r2, [r3]
+  46:subsystems/actuators.c ****   actuators_delay_time = 0;
+  37              		.loc 1 46 0
+  38 0006 034B     		ldr	r3, .L2+4
+  39 0008 0022     		movs	r2, #0
+  40 000a 1A60     		str	r2, [r3]
+  47:subsystems/actuators.c **** #endif
+  48:subsystems/actuators.c **** 
+  49:subsystems/actuators.c ****   // Init macro from generated airframe.h
+  50:subsystems/actuators.c ****   AllActuatorsInit();
+  41              		.loc 1 50 0
+  42 000c FFF7FEBF 		b	actuators_pwm_arch_init
+  43              	.LVL0:
+  44              	.L3:
+  45              		.align	2
+  46              	.L2:
+  47 0010 00000000 		.word	.LANCHOR0
+  48 0014 00000000 		.word	.LANCHOR1
+  49              		.cfi_endproc
+  50              	.LFE23:
+  52              		.global	actuators_delay_done
+  53              		.global	actuators_delay_time
+  54              		.global	actuators
+  55              		.section	.bss.actuators_delay_time,"aw",%nobits
+  56              		.align	2
+  57              		.set	.LANCHOR1,. + 0
+  60              	actuators_delay_time:
+  61 0000 00000000 		.space	4
+  62              		.section	.bss.actuators_delay_done,"aw",%nobits
+  63              		.set	.LANCHOR0,. + 0
+  66              	actuators_delay_done:
+  67 0000 00       		.space	1
+  68              		.section	.bss.actuators,"aw",%nobits
+  69              		.align	1
+  72              	actuators:
+  73 0000 00000000 		.space	8
+  73      00000000 
+  74              		.text
+  75              	.Letext0:
+  76              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+  77              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+  78              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+  79              		.file 5 "./mcu_periph/sys_time.h"
+  80              		.file 6 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+  81              		.file 7 "./subsystems/actuators/actuators_pwm.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 actuators.c
+     /tmp/cchmQg8d.s:20     .text.actuators_init:00000000 $t
+     /tmp/cchmQg8d.s:25     .text.actuators_init:00000000 actuators_init
+     /tmp/cchmQg8d.s:47     .text.actuators_init:00000010 $d
+     /tmp/cchmQg8d.s:66     .bss.actuators_delay_done:00000000 actuators_delay_done
+     /tmp/cchmQg8d.s:60     .bss.actuators_delay_time:00000000 actuators_delay_time
+     /tmp/cchmQg8d.s:72     .bss.actuators:00000000 actuators
+     /tmp/cchmQg8d.s:56     .bss.actuators_delay_time:00000000 $d
+     /tmp/cchmQg8d.s:67     .bss.actuators_delay_done:00000000 $d
+     /tmp/cchmQg8d.s:69     .bss.actuators:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.paparazzi.h.8.8c568e553ef48a77c5eec83d5e842baa
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.actuators.h.56.cc0cf027333b0642dbfb6b9d3145461b
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+
+UNDEFINED SYMBOLS
+actuators_pwm_arch_init

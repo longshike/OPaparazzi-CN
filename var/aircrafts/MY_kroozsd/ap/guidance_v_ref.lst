@@ -1,0 +1,717 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"guidance_v_ref.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.gv_set_ref,"ax",%progbits
+  20              		.align	1
+  21              		.global	gv_set_ref
+  22              		.thumb
+  23              		.thumb_func
+  25              	gv_set_ref:
+  26              	.LFB9:
+  27              		.file 1 "firmwares/rotorcraft/guidance/guidance_v_ref.c"
+   1:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /*
+   2:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+   3:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * Copyright (C) 2013 Gautier Hattenberger
+   4:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *
+   5:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * This file is part of paparazzi.
+   6:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *
+   7:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * it under the terms of the GNU General Public License as published by
+   9:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * any later version.
+  11:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *
+  12:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * GNU General Public License for more details.
+  16:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *
+  17:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * You should have received a copy of the GNU General Public License
+  18:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  * Boston, MA 02111-1307, USA.
+  21:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  */
+  22:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  23:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /** @file firmwares/rotorcraft/guidance/guidance_v_ref.c
+  24:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  Reference generation for vertical guidance.
+  25:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *
+  26:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  */
+  27:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  28:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #include "firmwares/rotorcraft/guidance/guidance_v_ref.h"
+  29:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #include "generated/airframe.h"
+  30:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  31:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /** reference model vertical accel in meters/s^2 (output)
+  32:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  fixed point representation with #GV_ZDD_REF_FRAC
+  33:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  Q23.8 : accuracy 0.0039 , range 8388km/s^2
+  34:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  */
+  35:firmwares/rotorcraft/guidance/guidance_v_ref.c **** int32_t gv_zdd_ref;
+  36:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  37:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /** reference model vertical speed in meters/sec (output)
+  38:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  fixed point representation with #GV_ZD_REF_FRAC
+  39:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  Q14.17 : accuracy 0.0000076 , range 16384m/s2
+  40:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  */
+  41:firmwares/rotorcraft/guidance/guidance_v_ref.c **** int32_t gv_zd_ref;
+  42:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  43:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /** reference model altitude in meters (output)
+  44:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  fixed point representation with #GV_Z_REF_FRAC
+  45:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  *  Q37.26 :
+  46:firmwares/rotorcraft/guidance/guidance_v_ref.c ****  */
+  47:firmwares/rotorcraft/guidance/guidance_v_ref.c **** int64_t gv_z_ref;
+  48:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  49:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  50:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /* Saturations definition */
+  51:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #ifndef GUIDANCE_V_REF_MIN_ZDD
+  52:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GUIDANCE_V_REF_MIN_ZDD (-2.0*9.81)
+  53:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #endif
+  54:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_MIN_ZDD BFP_OF_REAL(GUIDANCE_V_REF_MIN_ZDD, GV_ZDD_REF_FRAC)
+  55:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  56:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #ifndef GUIDANCE_V_REF_MAX_ZDD
+  57:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GUIDANCE_V_REF_MAX_ZDD ( 0.8*9.81)
+  58:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #endif
+  59:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_MAX_ZDD BFP_OF_REAL(GUIDANCE_V_REF_MAX_ZDD, GV_ZDD_REF_FRAC)
+  60:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  61:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /** maximum distance altitude setpoint is advanced in climb mode */
+  62:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #ifndef GUIDANCE_V_REF_MAX_Z_DIFF
+  63:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GUIDANCE_V_REF_MAX_Z_DIFF 2.0
+  64:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #endif
+  65:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_MAX_Z_DIFF BFP_OF_REAL(GUIDANCE_V_REF_MAX_Z_DIFF, GV_Z_REF_FRAC)
+  66:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  67:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_MIN_ZD  BFP_OF_REAL(GUIDANCE_V_REF_MIN_ZD , GV_ZD_REF_FRAC)
+  68:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_MAX_ZD  BFP_OF_REAL(GUIDANCE_V_REF_MAX_ZD , GV_ZD_REF_FRAC)
+  69:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  70:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /* second order model natural frequency and damping */
+  71:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #ifndef GUIDANCE_V_REF_OMEGA
+  72:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GUIDANCE_V_REF_OMEGA RadOfDeg(100.)
+  73:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #endif
+  74:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #ifndef GUIDANCE_V_REF_ZETA
+  75:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GUIDANCE_V_REF_ZETA  0.85
+  76:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #endif
+  77:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_ZETA_OMEGA_FRAC 10
+  78:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_ZETA_OMEGA BFP_OF_REAL((GUIDANCE_V_REF_ZETA*GUIDANCE_V_REF_OMEGA), GV_ZETA_OMEGA_FRAC)
+  79:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_OMEGA_2_FRAC 7
+  80:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_OMEGA_2    BFP_OF_REAL((GUIDANCE_V_REF_OMEGA*GUIDANCE_V_REF_OMEGA), GV_OMEGA_2_FRAC)
+  81:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  82:firmwares/rotorcraft/guidance/guidance_v_ref.c **** /* first order time constant */
+  83:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_REF_THAU_F  0.25
+  84:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_REF_INV_THAU_FRAC 16
+  85:firmwares/rotorcraft/guidance/guidance_v_ref.c **** #define GV_REF_INV_THAU  BFP_OF_REAL((1./0.25), GV_REF_INV_THAU_FRAC)
+  86:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  87:firmwares/rotorcraft/guidance/guidance_v_ref.c **** void gv_set_ref(int32_t alt, int32_t speed, int32_t accel)
+  88:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+  28              		.loc 1 88 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 30B5     		push	{r4, r5, lr}
+  34              		.cfi_def_cfa_offset 12
+  35              		.cfi_offset 4, -12
+  36              		.cfi_offset 5, -8
+  37              		.cfi_offset 14, -4
+  89:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int64_t new_z = ((int64_t)alt) << (GV_Z_REF_FRAC - INT32_POS_FRAC);
+  38              		.loc 1 89 0
+  39 0002 C517     		asrs	r5, r0, #31
+  90:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref   = new_z;
+  40              		.loc 1 90 0
+  41 0004 064B     		ldr	r3, .L2
+  89:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int64_t new_z = ((int64_t)alt) << (GV_Z_REF_FRAC - INT32_POS_FRAC);
+  42              		.loc 1 89 0
+  43 0006 AC04     		lsls	r4, r5, #18
+  44 0008 44EA9034 		orr	r4, r4, r0, lsr #14
+  45 000c 8004     		lsls	r0, r0, #18
+  46              	.LVL1:
+  47 000e 1860     		str	r0, [r3]
+  48 0010 5C60     		str	r4, [r3, #4]
+  91:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref  = speed >> (INT32_SPEED_FRAC - GV_ZD_REF_FRAC);
+  49              		.loc 1 91 0
+  50 0012 044B     		ldr	r3, .L2+4
+  51 0014 8910     		asrs	r1, r1, #2
+  52              	.LVL2:
+  53 0016 1960     		str	r1, [r3]
+  92:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zdd_ref = accel >> (INT32_ACCEL_FRAC - GV_ZDD_REF_FRAC);
+  54              		.loc 1 92 0
+  55 0018 034B     		ldr	r3, .L2+8
+  56 001a 9210     		asrs	r2, r2, #2
+  57              	.LVL3:
+  58 001c 1A60     		str	r2, [r3]
+  59 001e 30BD     		pop	{r4, r5, pc}
+  60              	.L3:
+  61              		.align	2
+  62              	.L2:
+  63 0020 00000000 		.word	.LANCHOR0
+  64 0024 00000000 		.word	.LANCHOR1
+  65 0028 00000000 		.word	.LANCHOR2
+  66              		.cfi_endproc
+  67              	.LFE9:
+  69              		.global	__aeabi_i2d
+  70              		.global	__aeabi_dcmpgt
+  71              		.global	__aeabi_dcmplt
+  72              		.global	__aeabi_dcmple
+  73              		.global	__aeabi_dcmpge
+  74              		.section	.text.gv_update_ref_from_z_sp,"ax",%progbits
+  75              		.align	1
+  76              		.global	gv_update_ref_from_z_sp
+  77              		.thumb
+  78              		.thumb_func
+  80              	gv_update_ref_from_z_sp:
+  81              	.LFB10:
+  93:firmwares/rotorcraft/guidance/guidance_v_ref.c **** }
+  94:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  95:firmwares/rotorcraft/guidance/guidance_v_ref.c **** void gv_update_ref_from_z_sp(int32_t z_sp)
+  96:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+  82              		.loc 1 96 0
+  83              		.cfi_startproc
+  84              		@ args = 0, pretend = 0, frame = 0
+  85              		@ frame_needed = 0, uses_anonymous_args = 0
+  86              	.LVL4:
+  97:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+  98:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+  87              		.loc 1 98 0
+  88 0000 374A     		ldr	r2, .L22+16
+  99:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 100:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 101:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   // compute the "speed part" of zdd = -2*zeta*omega*zd -omega^2(z_sp - z)
+ 102:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zd_zdd_res = gv_zd_ref >> (GV_ZD_REF_FRAC - GV_ZDD_REF_FRAC);
+ 103:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zdd_speed = ((int32_t)(-2 * GV_ZETA_OMEGA) * zd_zdd_res) >> (GV_ZETA_OMEGA_FRAC);
+  89              		.loc 1 103 0
+  90 0002 3849     		ldr	r1, .L22+20
+  96:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+  91              		.loc 1 96 0
+  92 0004 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+  93              		.cfi_def_cfa_offset 32
+  94              		.cfi_offset 4, -32
+  95              		.cfi_offset 5, -28
+  96              		.cfi_offset 6, -24
+  97              		.cfi_offset 7, -20
+  98              		.cfi_offset 8, -16
+  99              		.cfi_offset 9, -12
+ 100              		.cfi_offset 10, -8
+ 101              		.cfi_offset 14, -4
+  98:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 102              		.loc 1 98 0
+ 103 0008 374E     		ldr	r6, .L22+24
+  99:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 104              		.loc 1 99 0
+ 105 000a DFF8EC80 		ldr	r8, .L22+40
+  98:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 106              		.loc 1 98 0
+ 107 000e 3368     		ldr	r3, [r6]
+  99:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 108              		.loc 1 99 0
+ 109 0010 D8F80070 		ldr	r7, [r8]
+  98:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 110              		.loc 1 98 0
+ 111 0014 D2E90045 		ldrd	r4, [r2]
+ 112 0018 E418     		adds	r4, r4, r3
+ 113 001a 45EBE375 		adc	r5, r5, r3, asr #31
+ 114 001e C2E90045 		strd	r4, [r2]
+ 104:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   // compute z error in z_sp resolution
+ 105:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t z_err_sp = z_sp - (int32_t)(gv_z_ref >> (GV_Z_REF_FRAC - INT32_POS_FRAC));
+ 115              		.loc 1 105 0
+ 116 0022 A20C     		lsrs	r2, r4, #18
+ 117 0024 42EA8532 		orr	r2, r2, r5, lsl #14
+ 118 0028 801A     		subs	r0, r0, r2
+ 119              	.LVL5:
+  99:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 120              		.loc 1 99 0
+ 121 002a 1F44     		add	r7, r7, r3
+ 106:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   // convert to accel resolution
+ 107:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t z_err_accel = z_err_sp >> (INT32_POS_FRAC - GV_ZDD_REF_FRAC);
+ 108:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zdd_pos = ((int32_t)(GV_OMEGA_2) * z_err_accel) >> GV_OMEGA_2_FRAC;
+ 122              		.loc 1 108 0
+ 123 002c 40F2851A 		movw	r10, #389
+ 102:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zd_zdd_res = gv_zd_ref >> (GV_ZD_REF_FRAC - GV_ZDD_REF_FRAC);
+ 124              		.loc 1 102 0
+ 125 0030 7B12     		asrs	r3, r7, #9
+ 126              		.loc 1 108 0
+ 127 0032 0AFB00FA 		mul	r10, r10, r0
+ 103:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zdd_speed = ((int32_t)(-2 * GV_ZETA_OMEGA) * zd_zdd_res) >> (GV_ZETA_OMEGA_FRAC);
+ 128              		.loc 1 103 0
+ 129 0036 5943     		muls	r1, r3, r1
+ 130              		.loc 1 108 0
+ 131 0038 4FEAEA1A 		asr	r10, r10, #7
+ 109:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zdd_ref = zdd_speed + zdd_pos;
+ 132              		.loc 1 109 0
+ 133 003c 0AEBA12A 		add	r10, r10, r1, asr #10
+  99:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 134              		.loc 1 99 0
+ 135 0040 3760     		str	r7, [r6]
+ 136              	.LVL6:
+ 110:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 111:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   /* Saturate accelerations */
+ 112:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   Bound(gv_zdd_ref, GV_MIN_ZDD, GV_MAX_ZDD);
+ 137              		.loc 1 112 0
+ 138 0042 5046     		mov	r0, r10
+ 139 0044 FFF7FEFF 		bl	__aeabi_i2d
+ 140              	.LVL7:
+ 141 0048 21A3     		adr	r3, .L22
+ 142 004a D3E90023 		ldrd	r2, [r3]
+ 143 004e 0446     		mov	r4, r0
+ 144 0050 0D46     		mov	r5, r1
+ 145 0052 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 146              	.LVL8:
+ 147 0056 B146     		mov	r9, r6
+ 148 0058 4646     		mov	r6, r8
+ 149 005a 10B1     		cbz	r0, .L18
+ 150              		.loc 1 112 0 is_stmt 0 discriminator 1
+ 151 005c 4FF4FB73 		mov	r3, #502
+ 152 0060 0BE0     		b	.L20
+ 153              	.L18:
+ 154              		.loc 1 112 0 discriminator 2
+ 155 0062 2046     		mov	r0, r4
+ 156 0064 2946     		mov	r1, r5
+ 157 0066 1CA3     		adr	r3, .L22+8
+ 158 0068 D3E90023 		ldrd	r2, [r3]
+ 159 006c FFF7FEFF 		bl	__aeabi_dcmplt
+ 160              	.LVL9:
+ 161 0070 10B9     		cbnz	r0, .L8
+ 109:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zdd_ref = zdd_speed + zdd_pos;
+ 162              		.loc 1 109 0 is_stmt 1
+ 163 0072 C6F800A0 		str	r10, [r6]
+ 164 0076 01E0     		b	.L7
+ 165              	.L8:
+ 166              		.loc 1 112 0 discriminator 1
+ 167 0078 1C4B     		ldr	r3, .L22+28
+ 168              	.L20:
+ 169 007a 3360     		str	r3, [r6]
+ 170              	.L7:
+ 113:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 114:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   /* Saturate speed and adjust acceleration accordingly */
+ 115:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   if (gv_zd_ref <= GV_MIN_ZD) {
+ 171              		.loc 1 115 0
+ 172 007c 3846     		mov	r0, r7
+ 173 007e FFF7FEFF 		bl	__aeabi_i2d
+ 174              	.LVL10:
+ 175 0082 0022     		movs	r2, #0
+ 176 0084 1A4B     		ldr	r3, .L22+32
+ 177 0086 0446     		mov	r4, r0
+ 178 0088 0D46     		mov	r5, r1
+ 179 008a FFF7FEFF 		bl	__aeabi_dcmple
+ 180              	.LVL11:
+ 181 008e 0746     		mov	r7, r0
+ 182              	.LVL12:
+ 183 0090 50B1     		cbz	r0, .L19
+ 116:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     gv_zd_ref = GV_MIN_ZD;
+ 184              		.loc 1 116 0
+ 185 0092 184B     		ldr	r3, .L22+36
+ 186 0094 C9F80030 		str	r3, [r9]
+ 117:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     if (gv_zdd_ref < 0) {
+ 187              		.loc 1 117 0
+ 188 0098 3368     		ldr	r3, [r6]
+ 189 009a 002B     		cmp	r3, #0
+ 190 009c 14DA     		bge	.L4
+ 118:firmwares/rotorcraft/guidance/guidance_v_ref.c ****       gv_zdd_ref = 0;
+ 191              		.loc 1 118 0
+ 192 009e 164B     		ldr	r3, .L22+40
+ 193 00a0 0022     		movs	r2, #0
+ 194 00a2 1A60     		str	r2, [r3]
+ 195 00a4 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 196              	.L19:
+ 119:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     }
+ 120:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   } else if (gv_zd_ref >= GV_MAX_ZD) {
+ 197              		.loc 1 120 0
+ 198 00a8 2046     		mov	r0, r4
+ 199 00aa 2946     		mov	r1, r5
+ 200 00ac 0022     		movs	r2, #0
+ 201 00ae 134B     		ldr	r3, .L22+44
+ 202 00b0 FFF7FEFF 		bl	__aeabi_dcmpge
+ 203              	.LVL13:
+ 204 00b4 40B1     		cbz	r0, .L4
+ 121:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     gv_zd_ref = GV_MAX_ZD;
+ 205              		.loc 1 121 0
+ 206 00b6 4FF4C023 		mov	r3, #393216
+ 207 00ba C9F80030 		str	r3, [r9]
+ 122:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     if (gv_zdd_ref > 0) {
+ 208              		.loc 1 122 0
+ 209 00be 3368     		ldr	r3, [r6]
+ 210 00c0 002B     		cmp	r3, #0
+ 123:firmwares/rotorcraft/guidance/guidance_v_ref.c ****       gv_zdd_ref = 0;
+ 211              		.loc 1 123 0
+ 212 00c2 C4BF     		itt	gt
+ 213 00c4 0C4B     		ldrgt	r3, .L22+40
+ 214 00c6 1F60     		strgt	r7, [r3]
+ 215              	.L4:
+ 216 00c8 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 217              	.L23:
+ 218 00cc AFF30080 		.align	3
+ 219              	.L22:
+ 220 00d0 3208AC1C 		.word	481036338
+ 221 00d4 5A647F40 		.word	1082090586
+ 222 00d8 3208AC1C 		.word	481036338
+ 223 00dc 5A647FC0 		.word	-1065393062
+ 224 00e0 00000000 		.word	.LANCHOR0
+ 225 00e4 22F4FFFF 		.word	-3038
+ 226 00e8 00000000 		.word	.LANCHOR1
+ 227 00ec 0AFEFFFF 		.word	-502
+ 228 00f0 000018C1 		.word	-1055391744
+ 229 00f4 0000FAFF 		.word	-393216
+ 230 00f8 00000000 		.word	.LANCHOR2
+ 231 00fc 00001841 		.word	1092091904
+ 232              		.cfi_endproc
+ 233              	.LFE10:
+ 235              		.global	__aeabi_l2d
+ 236              		.global	__aeabi_dadd
+ 237              		.global	__aeabi_d2lz
+ 238              		.global	__aeabi_dsub
+ 239              		.section	.text.gv_update_ref_from_zd_sp,"ax",%progbits
+ 240              		.align	1
+ 241              		.global	gv_update_ref_from_zd_sp
+ 242              		.thumb
+ 243              		.thumb_func
+ 245              	gv_update_ref_from_zd_sp:
+ 246              	.LFB11:
+ 124:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     }
+ 125:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   }
+ 126:firmwares/rotorcraft/guidance/guidance_v_ref.c **** }
+ 127:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 128:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 129:firmwares/rotorcraft/guidance/guidance_v_ref.c **** void gv_update_ref_from_zd_sp(int32_t zd_sp, int32_t z_pos)
+ 130:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+ 247              		.loc 1 130 0
+ 248              		.cfi_startproc
+ 249              		@ args = 0, pretend = 0, frame = 16
+ 250              		@ frame_needed = 0, uses_anonymous_args = 0
+ 251              	.LVL14:
+ 252 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 253              		.cfi_def_cfa_offset 36
+ 254              		.cfi_offset 4, -36
+ 255              		.cfi_offset 5, -32
+ 256              		.cfi_offset 6, -28
+ 257              		.cfi_offset 7, -24
+ 258              		.cfi_offset 8, -20
+ 259              		.cfi_offset 9, -16
+ 260              		.cfi_offset 10, -12
+ 261              		.cfi_offset 11, -8
+ 262              		.cfi_offset 14, -4
+ 131:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 132:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 263              		.loc 1 132 0
+ 264 0004 504E     		ldr	r6, .L49+16
+ 265 0006 514C     		ldr	r4, .L49+20
+ 133:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zd_ref += gv_zdd_ref;
+ 266              		.loc 1 133 0
+ 267 0008 514D     		ldr	r5, .L49+24
+ 132:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 268              		.loc 1 132 0
+ 269 000a 2768     		ldr	r7, [r4]
+ 270              		.loc 1 133 0
+ 271 000c 2B68     		ldr	r3, [r5]
+ 130:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+ 272              		.loc 1 130 0
+ 273 000e 8946     		mov	r9, r1
+ 274 0010 8046     		mov	r8, r0
+ 132:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 275              		.loc 1 132 0
+ 276 0012 D6E90001 		ldrd	r0, [r6]
+ 277              	.LVL15:
+ 278 0016 C019     		adds	r0, r0, r7
+ 279 0018 41EBE771 		adc	r1, r1, r7, asr #31
+ 280              	.LVL16:
+ 281              		.loc 1 133 0
+ 282 001c 1F44     		add	r7, r7, r3
+ 130:firmwares/rotorcraft/guidance/guidance_v_ref.c **** {
+ 283              		.loc 1 130 0
+ 284 001e 85B0     		sub	sp, sp, #20
+ 285              		.cfi_def_cfa_offset 56
+ 132:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_z_ref  += gv_zd_ref;
+ 286              		.loc 1 132 0
+ 287 0020 C6E90001 		strd	r0, [r6]
+ 288              		.loc 1 133 0
+ 289 0024 2760     		str	r7, [r4]
+ 290              	.LVL17:
+ 134:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 135:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   /* limit z_ref to GUIDANCE_V_REF_MAX_Z_DIFF from current z pos */
+ 136:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int64_t cur_z = ((int64_t)z_pos) << (GV_Z_REF_FRAC - INT32_POS_FRAC);
+ 137:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   Bound(gv_z_ref, cur_z - GV_MAX_Z_DIFF, cur_z + GV_MAX_Z_DIFF);
+ 291              		.loc 1 137 0
+ 292 0026 FFF7FEFF 		bl	__aeabi_l2d
+ 293              	.LVL18:
+ 294 002a 8B46     		mov	fp, r1
+ 136:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int64_t cur_z = ((int64_t)z_pos) << (GV_Z_REF_FRAC - INT32_POS_FRAC);
+ 295              		.loc 1 136 0
+ 296 002c 4FEAE971 		asr	r1, r9, #31
+ 297 0030 8B04     		lsls	r3, r1, #18
+ 298 0032 43EA9933 		orr	r3, r3, r9, lsr #14
+ 299 0036 4FEA8942 		lsl	r2, r9, #18
+ 300              		.loc 1 137 0
+ 301 003a 8246     		mov	r10, r0
+ 302 003c 1946     		mov	r1, r3
+ 303 003e 1046     		mov	r0, r2
+ 304 0040 FFF7FEFF 		bl	__aeabi_l2d
+ 305              	.LVL19:
+ 306 0044 0022     		movs	r2, #0
+ 307 0046 434B     		ldr	r3, .L49+28
+ 308 0048 CDE90201 		strd	r0, [sp, #8]
+ 309 004c FFF7FEFF 		bl	__aeabi_dadd
+ 310              	.LVL20:
+ 311 0050 CDE90001 		strd	r0, [sp]
+ 312 0054 DDE90023 		ldrd	r2, [sp]
+ 313 0058 5046     		mov	r0, r10
+ 314 005a 5946     		mov	r1, fp
+ 315 005c FFF7FEFF 		bl	__aeabi_dcmpgt
+ 316              	.LVL21:
+ 317 0060 A946     		mov	r9, r5
+ 318              	.LVL22:
+ 319 0062 10B1     		cbz	r0, .L44
+ 320              		.loc 1 137 0 is_stmt 0 discriminator 1
+ 321 0064 DDE90001 		ldrd	r0, [sp]
+ 322 0068 10E0     		b	.L47
+ 323              	.L44:
+ 324              		.loc 1 137 0 discriminator 2
+ 325 006a 0022     		movs	r2, #0
+ 326 006c 394B     		ldr	r3, .L49+28
+ 327 006e DDE90201 		ldrd	r0, [sp, #8]
+ 328 0072 FFF7FEFF 		bl	__aeabi_dsub
+ 329              	.LVL23:
+ 330 0076 0446     		mov	r4, r0
+ 331 0078 0D46     		mov	r5, r1
+ 332 007a 5046     		mov	r0, r10
+ 333 007c 5946     		mov	r1, fp
+ 334 007e 2246     		mov	r2, r4
+ 335 0080 2B46     		mov	r3, r5
+ 336 0082 FFF7FEFF 		bl	__aeabi_dcmplt
+ 337              	.LVL24:
+ 338 0086 28B1     		cbz	r0, .L27
+ 339              		.loc 1 137 0 discriminator 1
+ 340 0088 2046     		mov	r0, r4
+ 341 008a 2946     		mov	r1, r5
+ 342              	.L47:
+ 343 008c FFF7FEFF 		bl	__aeabi_d2lz
+ 344              	.LVL25:
+ 345 0090 C6E90001 		strd	r0, [r6]
+ 346              	.L27:
+ 347              	.LVL26:
+ 138:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 139:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zd_err = gv_zd_ref - (zd_sp >> (INT32_SPEED_FRAC - GV_ZD_REF_FRAC));
+ 348              		.loc 1 139 0 is_stmt 1
+ 349 0094 A7EBA808 		sub	r8, r7, r8, asr #2
+ 350              	.LVL27:
+ 140:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   int32_t zd_err_zdd_res = zd_err >> (GV_ZD_REF_FRAC - GV_ZDD_REF_FRAC);
+ 351              		.loc 1 140 0
+ 352 0098 4FEA6828 		asr	r8, r8, #9
+ 353              	.LVL28:
+ 141:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zdd_ref = (-(int32_t)GV_REF_INV_THAU * zd_err_zdd_res) >> GV_REF_INV_THAU_FRAC;
+ 354              		.loc 1 141 0
+ 355 009c C8EB8838 		rsb	r8, r8, r8, lsl #14
+ 356              	.LVL29:
+ 357 00a0 4FEA8846 		lsl	r6, r8, #18
+ 358 00a4 3614     		asrs	r6, r6, #16
+ 142:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 143:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   /* Saturate accelerations */
+ 144:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   Bound(gv_zdd_ref, GV_MIN_ZDD, GV_MAX_ZDD);
+ 359              		.loc 1 144 0
+ 360 00a6 3046     		mov	r0, r6
+ 361 00a8 FFF7FEFF 		bl	__aeabi_i2d
+ 362              	.LVL30:
+ 363 00ac 22A3     		adr	r3, .L49
+ 364 00ae D3E90023 		ldrd	r2, [r3]
+ 365 00b2 0446     		mov	r4, r0
+ 366 00b4 0D46     		mov	r5, r1
+ 367 00b6 FFF7FEFF 		bl	__aeabi_dcmpgt
+ 368              	.LVL31:
+ 369 00ba 10B1     		cbz	r0, .L45
+ 370              		.loc 1 144 0 is_stmt 0 discriminator 1
+ 371 00bc 4FF4FB73 		mov	r3, #502
+ 372 00c0 0BE0     		b	.L48
+ 373              	.L45:
+ 374              		.loc 1 144 0 discriminator 2
+ 375 00c2 2046     		mov	r0, r4
+ 376 00c4 2946     		mov	r1, r5
+ 377 00c6 1EA3     		adr	r3, .L49+8
+ 378 00c8 D3E90023 		ldrd	r2, [r3]
+ 379 00cc FFF7FEFF 		bl	__aeabi_dcmplt
+ 380              	.LVL32:
+ 381 00d0 10B9     		cbnz	r0, .L32
+ 141:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   gv_zdd_ref = (-(int32_t)GV_REF_INV_THAU * zd_err_zdd_res) >> GV_REF_INV_THAU_FRAC;
+ 382              		.loc 1 141 0 is_stmt 1
+ 383 00d2 C9F80060 		str	r6, [r9]
+ 384 00d6 02E0     		b	.L31
+ 385              	.L32:
+ 386              		.loc 1 144 0 discriminator 1
+ 387 00d8 1F4B     		ldr	r3, .L49+32
+ 388              	.L48:
+ 389 00da C9F80030 		str	r3, [r9]
+ 390              	.L31:
+ 145:firmwares/rotorcraft/guidance/guidance_v_ref.c **** 
+ 146:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   /* Saturate speed and adjust acceleration accordingly */
+ 147:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   if (gv_zd_ref <= GV_MIN_ZD) {
+ 391              		.loc 1 147 0
+ 392 00de 3846     		mov	r0, r7
+ 393 00e0 FFF7FEFF 		bl	__aeabi_i2d
+ 394              	.LVL33:
+ 395 00e4 0022     		movs	r2, #0
+ 396 00e6 1D4B     		ldr	r3, .L49+36
+ 397 00e8 0446     		mov	r4, r0
+ 398 00ea 0D46     		mov	r5, r1
+ 399 00ec FFF7FEFF 		bl	__aeabi_dcmple
+ 400              	.LVL34:
+ 401 00f0 0646     		mov	r6, r0
+ 402 00f2 50B1     		cbz	r0, .L46
+ 148:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     gv_zd_ref = GV_MIN_ZD;
+ 403              		.loc 1 148 0
+ 404 00f4 154A     		ldr	r2, .L49+20
+ 405 00f6 1A4B     		ldr	r3, .L49+40
+ 406 00f8 1360     		str	r3, [r2]
+ 149:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     if (gv_zdd_ref < 0) {
+ 407              		.loc 1 149 0
+ 408 00fa D9F80030 		ldr	r3, [r9]
+ 409 00fe 002B     		cmp	r3, #0
+ 410 0100 14DA     		bge	.L24
+ 150:firmwares/rotorcraft/guidance/guidance_v_ref.c ****       gv_zdd_ref = 0;
+ 411              		.loc 1 150 0
+ 412 0102 134B     		ldr	r3, .L49+24
+ 413 0104 0022     		movs	r2, #0
+ 414 0106 1A60     		str	r2, [r3]
+ 415 0108 10E0     		b	.L24
+ 416              	.L46:
+ 151:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     }
+ 152:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   } else if (gv_zd_ref >= GV_MAX_ZD) {
+ 417              		.loc 1 152 0
+ 418 010a 2046     		mov	r0, r4
+ 419 010c 2946     		mov	r1, r5
+ 420 010e 0022     		movs	r2, #0
+ 421 0110 144B     		ldr	r3, .L49+44
+ 422 0112 FFF7FEFF 		bl	__aeabi_dcmpge
+ 423              	.LVL35:
+ 424 0116 48B1     		cbz	r0, .L24
+ 153:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     gv_zd_ref = GV_MAX_ZD;
+ 425              		.loc 1 153 0
+ 426 0118 0C4A     		ldr	r2, .L49+20
+ 427 011a 4FF4C023 		mov	r3, #393216
+ 428 011e 1360     		str	r3, [r2]
+ 154:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     if (gv_zdd_ref > 0) {
+ 429              		.loc 1 154 0
+ 430 0120 D9F80030 		ldr	r3, [r9]
+ 431 0124 002B     		cmp	r3, #0
+ 155:firmwares/rotorcraft/guidance/guidance_v_ref.c ****       gv_zdd_ref = 0;
+ 432              		.loc 1 155 0
+ 433 0126 C4BF     		itt	gt
+ 434 0128 094B     		ldrgt	r3, .L49+24
+ 435 012a 1E60     		strgt	r6, [r3]
+ 436              	.L24:
+ 156:firmwares/rotorcraft/guidance/guidance_v_ref.c ****     }
+ 157:firmwares/rotorcraft/guidance/guidance_v_ref.c ****   }
+ 158:firmwares/rotorcraft/guidance/guidance_v_ref.c **** }
+ 437              		.loc 1 158 0
+ 438 012c 05B0     		add	sp, sp, #20
+ 439              		@ sp needed
+ 440 012e BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 441              	.LVL36:
+ 442              	.L50:
+ 443 0132 00BFAFF3 		.align	3
+ 443      0080
+ 444              	.L49:
+ 445 0138 3208AC1C 		.word	481036338
+ 446 013c 5A647F40 		.word	1082090586
+ 447 0140 3208AC1C 		.word	481036338
+ 448 0144 5A647FC0 		.word	-1065393062
+ 449 0148 00000000 		.word	.LANCHOR0
+ 450 014c 00000000 		.word	.LANCHOR1
+ 451 0150 00000000 		.word	.LANCHOR2
+ 452 0154 0000A041 		.word	1101004800
+ 453 0158 0AFEFFFF 		.word	-502
+ 454 015c 000018C1 		.word	-1055391744
+ 455 0160 0000FAFF 		.word	-393216
+ 456 0164 00001841 		.word	1092091904
+ 457              		.cfi_endproc
+ 458              	.LFE11:
+ 460              		.global	gv_z_ref
+ 461              		.global	gv_zd_ref
+ 462              		.global	gv_zdd_ref
+ 463              		.section	.bss.gv_z_ref,"aw",%nobits
+ 464              		.align	3
+ 465              		.set	.LANCHOR0,. + 0
+ 468              	gv_z_ref:
+ 469 0000 00000000 		.space	8
+ 469      00000000 
+ 470              		.section	.bss.gv_zd_ref,"aw",%nobits
+ 471              		.align	2
+ 472              		.set	.LANCHOR1,. + 0
+ 475              	gv_zd_ref:
+ 476 0000 00000000 		.space	4
+ 477              		.section	.bss.gv_zdd_ref,"aw",%nobits
+ 478              		.align	2
+ 479              		.set	.LANCHOR2,. + 0
+ 482              	gv_zdd_ref:
+ 483 0000 00000000 		.space	4
+ 484              		.text
+ 485              	.Letext0:
+ 486              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 487              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 guidance_v_ref.c
+     /tmp/ccNjsybl.s:20     .text.gv_set_ref:00000000 $t
+     /tmp/ccNjsybl.s:25     .text.gv_set_ref:00000000 gv_set_ref
+     /tmp/ccNjsybl.s:63     .text.gv_set_ref:00000020 $d
+     /tmp/ccNjsybl.s:75     .text.gv_update_ref_from_z_sp:00000000 $t
+     /tmp/ccNjsybl.s:80     .text.gv_update_ref_from_z_sp:00000000 gv_update_ref_from_z_sp
+     /tmp/ccNjsybl.s:220    .text.gv_update_ref_from_z_sp:000000d0 $d
+     /tmp/ccNjsybl.s:240    .text.gv_update_ref_from_zd_sp:00000000 $t
+     /tmp/ccNjsybl.s:245    .text.gv_update_ref_from_zd_sp:00000000 gv_update_ref_from_zd_sp
+     /tmp/ccNjsybl.s:445    .text.gv_update_ref_from_zd_sp:00000138 $d
+     /tmp/ccNjsybl.s:468    .bss.gv_z_ref:00000000 gv_z_ref
+     /tmp/ccNjsybl.s:475    .bss.gv_zd_ref:00000000 gv_zd_ref
+     /tmp/ccNjsybl.s:482    .bss.gv_zdd_ref:00000000 gv_zdd_ref
+     /tmp/ccNjsybl.s:464    .bss.gv_z_ref:00000000 $d
+     /tmp/ccNjsybl.s:471    .bss.gv_zd_ref:00000000 $d
+     /tmp/ccNjsybl.s:478    .bss.gv_zdd_ref:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.math.h.35.6ddd393aa87bd6f6206738d11f2687bd
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.guidance_v_ref.h.47.9864d192fd54d9786063581840c72452
+
+UNDEFINED SYMBOLS
+__aeabi_i2d
+__aeabi_dcmpgt
+__aeabi_dcmplt
+__aeabi_dcmple
+__aeabi_dcmpge
+__aeabi_l2d
+__aeabi_dadd
+__aeabi_d2lz
+__aeabi_dsub

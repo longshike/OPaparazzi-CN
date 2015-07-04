@@ -1,0 +1,980 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"geo_mag.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.geo_mag_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	geo_mag_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	geo_mag_init:
+  26              	.LFB195:
+  27              		.file 1 "modules/geo_mag/geo_mag.c"
+   1:modules/geo_mag/geo_mag.c **** /*
+   2:modules/geo_mag/geo_mag.c ****  * Copyright (C) 2012  Sergey Krukowski <softsr@yahoo.de>
+   3:modules/geo_mag/geo_mag.c ****  *
+   4:modules/geo_mag/geo_mag.c ****  * This file is part of paparazzi.
+   5:modules/geo_mag/geo_mag.c ****  *
+   6:modules/geo_mag/geo_mag.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:modules/geo_mag/geo_mag.c ****  * it under the terms of the GNU General Public License as published by
+   8:modules/geo_mag/geo_mag.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:modules/geo_mag/geo_mag.c ****  * any later version.
+  10:modules/geo_mag/geo_mag.c ****  *
+  11:modules/geo_mag/geo_mag.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:modules/geo_mag/geo_mag.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:modules/geo_mag/geo_mag.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:modules/geo_mag/geo_mag.c ****  * GNU General Public License for more details.
+  15:modules/geo_mag/geo_mag.c ****  *
+  16:modules/geo_mag/geo_mag.c ****  * You should have received a copy of the GNU General Public License
+  17:modules/geo_mag/geo_mag.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:modules/geo_mag/geo_mag.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:modules/geo_mag/geo_mag.c ****  * Boston, MA 02111-1307, USA.
+  20:modules/geo_mag/geo_mag.c ****  */
+  21:modules/geo_mag/geo_mag.c **** 
+  22:modules/geo_mag/geo_mag.c **** /**
+  23:modules/geo_mag/geo_mag.c ****  * @file modules/geo_mag/geo_mag.c
+  24:modules/geo_mag/geo_mag.c ****  * @brief Calculation of the Geomagnetic field vector from current GPS fix.
+  25:modules/geo_mag/geo_mag.c ****  * This module is based on the WMM2010 model (http://www.ngdc.noaa.gov/geomag/models.shtml).
+  26:modules/geo_mag/geo_mag.c ****  */
+  27:modules/geo_mag/geo_mag.c **** 
+  28:modules/geo_mag/geo_mag.c **** #include "modules/geo_mag/geo_mag.h"
+  29:modules/geo_mag/geo_mag.c **** #include "math/pprz_geodetic_wmm2010.h"
+  30:modules/geo_mag/geo_mag.c **** #include "math/pprz_algebra_double.h"
+  31:modules/geo_mag/geo_mag.c **** #include "subsystems/gps.h"
+  32:modules/geo_mag/geo_mag.c **** #include "subsystems/abi.h"
+  33:modules/geo_mag/geo_mag.c **** 
+  34:modules/geo_mag/geo_mag.c **** // for kill_throttle check
+  35:modules/geo_mag/geo_mag.c **** #include "autopilot.h"
+  36:modules/geo_mag/geo_mag.c **** 
+  37:modules/geo_mag/geo_mag.c **** #ifndef GEO_MAG_SENDER_ID
+  38:modules/geo_mag/geo_mag.c **** #define GEO_MAG_SENDER_ID 1
+  39:modules/geo_mag/geo_mag.c **** #endif
+  40:modules/geo_mag/geo_mag.c **** 
+  41:modules/geo_mag/geo_mag.c **** bool_t geo_mag_calc_flag;
+  42:modules/geo_mag/geo_mag.c **** struct GeoMag geo_mag;
+  43:modules/geo_mag/geo_mag.c **** 
+  44:modules/geo_mag/geo_mag.c **** void geo_mag_init(void)
+  45:modules/geo_mag/geo_mag.c **** {
+  28              		.loc 1 45 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  46:modules/geo_mag/geo_mag.c ****   geo_mag_calc_flag = FALSE;
+  33              		.loc 1 46 0
+  34 0000 024A     		ldr	r2, .L2
+  35 0002 0023     		movs	r3, #0
+  36 0004 1370     		strb	r3, [r2]
+  47:modules/geo_mag/geo_mag.c ****   geo_mag.ready = FALSE;
+  37              		.loc 1 47 0
+  38 0006 024A     		ldr	r2, .L2+4
+  39 0008 1376     		strb	r3, [r2, #24]
+  40 000a 7047     		bx	lr
+  41              	.L3:
+  42              		.align	2
+  43              	.L2:
+  44 000c 00000000 		.word	.LANCHOR0
+  45 0010 00000000 		.word	.LANCHOR1
+  46              		.cfi_endproc
+  47              	.LFE195:
+  49              		.section	.text.geo_mag_periodic,"ax",%progbits
+  50              		.align	1
+  51              		.global	geo_mag_periodic
+  52              		.thumb
+  53              		.thumb_func
+  55              	geo_mag_periodic:
+  56              	.LFB196:
+  48:modules/geo_mag/geo_mag.c **** }
+  49:modules/geo_mag/geo_mag.c **** 
+  50:modules/geo_mag/geo_mag.c **** void geo_mag_periodic(void)
+  51:modules/geo_mag/geo_mag.c **** {
+  57              		.loc 1 51 0
+  58              		.cfi_startproc
+  59              		@ args = 0, pretend = 0, frame = 0
+  60              		@ frame_needed = 0, uses_anonymous_args = 0
+  61              		@ link register save eliminated.
+  52:modules/geo_mag/geo_mag.c ****   if (!geo_mag.ready && gps.fix == GPS_FIX_3D && kill_throttle) {
+  62              		.loc 1 52 0
+  63 0000 074B     		ldr	r3, .L10
+  64 0002 1B7E     		ldrb	r3, [r3, #24]	@ zero_extendqisi2
+  65 0004 53B9     		cbnz	r3, .L4
+  66              		.loc 1 52 0 is_stmt 0 discriminator 1
+  67 0006 074B     		ldr	r3, .L10+4
+  68 0008 93F85B30 		ldrb	r3, [r3, #91]	@ zero_extendqisi2
+  69 000c 032B     		cmp	r3, #3
+  70 000e 05D1     		bne	.L4
+  71 0010 054B     		ldr	r3, .L10+8
+  72 0012 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  73 0014 13B1     		cbz	r3, .L4
+  53:modules/geo_mag/geo_mag.c ****     geo_mag_calc_flag = TRUE;
+  74              		.loc 1 53 0 is_stmt 1
+  75 0016 054B     		ldr	r3, .L10+12
+  76 0018 0122     		movs	r2, #1
+  77 001a 1A70     		strb	r2, [r3]
+  78              	.L4:
+  79 001c 7047     		bx	lr
+  80              	.L11:
+  81 001e 00BF     		.align	2
+  82              	.L10:
+  83 0020 00000000 		.word	.LANCHOR1
+  84 0024 00000000 		.word	gps
+  85 0028 00000000 		.word	kill_throttle
+  86 002c 00000000 		.word	.LANCHOR0
+  87              		.cfi_endproc
+  88              	.LFE196:
+  90              		.global	__aeabi_i2d
+  91              		.global	__aeabi_ddiv
+  92              		.global	__aeabi_ui2d
+  93              		.global	__aeabi_dadd
+  94              		.global	__aeabi_d2f
+  95              		.section	.text.geo_mag_event,"ax",%progbits
+  96              		.align	1
+  97              		.global	geo_mag_event
+  98              		.thumb
+  99              		.thumb_func
+ 101              	geo_mag_event:
+ 102              	.LFB197:
+  54:modules/geo_mag/geo_mag.c ****   }
+  55:modules/geo_mag/geo_mag.c **** }
+  56:modules/geo_mag/geo_mag.c **** 
+  57:modules/geo_mag/geo_mag.c **** void geo_mag_event(void)
+  58:modules/geo_mag/geo_mag.c **** {
+ 103              		.loc 1 58 0
+ 104              		.cfi_startproc
+ 105              		@ args = 0, pretend = 0, frame = 1592
+ 106              		@ frame_needed = 0, uses_anonymous_args = 0
+ 107 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 108              		.cfi_def_cfa_offset 36
+ 109              		.cfi_offset 4, -36
+ 110              		.cfi_offset 5, -32
+ 111              		.cfi_offset 6, -28
+ 112              		.cfi_offset 7, -24
+ 113              		.cfi_offset 8, -20
+ 114              		.cfi_offset 9, -16
+ 115              		.cfi_offset 10, -12
+ 116              		.cfi_offset 11, -8
+ 117              		.cfi_offset 14, -4
+ 118 0004 2DED028B 		fstmfdd	sp!, {d8}
+ 119              		.cfi_def_cfa_offset 44
+ 120              		.cfi_offset 80, -44
+  59:modules/geo_mag/geo_mag.c **** 
+  60:modules/geo_mag/geo_mag.c ****   if (geo_mag_calc_flag) {
+ 121              		.loc 1 60 0
+ 122 0008 6D4B     		ldr	r3, .L24+48
+ 123 000a 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+  58:modules/geo_mag/geo_mag.c **** {
+ 124              		.loc 1 58 0
+ 125 000c ADF27C6D 		subw	sp, sp, #1660
+ 126              		.cfi_def_cfa_offset 1704
+ 127 0010 9B46     		mov	fp, r3
+ 128              		.loc 1 60 0
+ 129 0012 002A     		cmp	r2, #0
+ 130 0014 00F0B380 		beq	.L13
+ 131              	.LVL0:
+ 132              	.LBB13:
+  61:modules/geo_mag/geo_mag.c ****     double gha[MAXCOEFF]; // Geomag global variables
+  62:modules/geo_mag/geo_mag.c ****     int32_t nmax;
+  63:modules/geo_mag/geo_mag.c **** 
+  64:modules/geo_mag/geo_mag.c ****     /* Current date in decimal year, for example 2012.68 */
+  65:modules/geo_mag/geo_mag.c ****     double sdate = GPS_EPOCH_BEGIN +
+  66:modules/geo_mag/geo_mag.c ****                    (double)gps.week / WEEKS_IN_YEAR +
+  67:modules/geo_mag/geo_mag.c ****                    (double)gps.tow / 1000 / SECS_IN_YEAR;
+  68:modules/geo_mag/geo_mag.c **** 
+  69:modules/geo_mag/geo_mag.c ****     /* LLA Position in decimal degrees and altitude in km */
+  70:modules/geo_mag/geo_mag.c ****     double latitude = (double)gps.lla_pos.lat / 1e7;
+ 133              		.loc 1 70 0
+ 134 0018 DFF8B4A1 		ldr	r10, .L24+64
+ 135 001c DAF80C00 		ldr	r0, [r10, #12]
+ 136 0020 FFF7FEFF 		bl	__aeabi_i2d
+ 137              	.LVL1:
+ 138 0024 5AA3     		adr	r3, .L24
+ 139 0026 D3E90023 		ldrd	r2, [r3]
+ 140 002a FFF7FEFF 		bl	__aeabi_ddiv
+ 141              	.LVL2:
+ 142 002e CDE91001 		strd	r0, [sp, #64]
+ 143              	.LVL3:
+  71:modules/geo_mag/geo_mag.c ****     double longitude = (double)gps.lla_pos.lon / 1e7;
+ 144              		.loc 1 71 0
+ 145 0032 DAF81000 		ldr	r0, [r10, #16]
+ 146              	.LVL4:
+ 147 0036 FFF7FEFF 		bl	__aeabi_i2d
+ 148              	.LVL5:
+ 149 003a 55A3     		adr	r3, .L24
+ 150 003c D3E90023 		ldrd	r2, [r3]
+ 151 0040 FFF7FEFF 		bl	__aeabi_ddiv
+ 152              	.LVL6:
+ 153 0044 8046     		mov	r8, r0
+  72:modules/geo_mag/geo_mag.c ****     double alt = (double)gps.lla_pos.alt / 1e6;
+ 154              		.loc 1 72 0
+ 155 0046 DAF81400 		ldr	r0, [r10, #20]
+  71:modules/geo_mag/geo_mag.c ****     double longitude = (double)gps.lla_pos.lon / 1e7;
+ 156              		.loc 1 71 0
+ 157 004a 8946     		mov	r9, r1
+ 158              	.LVL7:
+ 159              		.loc 1 72 0
+ 160 004c FFF7FEFF 		bl	__aeabi_i2d
+ 161              	.LVL8:
+ 162 0050 51A3     		adr	r3, .L24+8
+ 163 0052 D3E90023 		ldrd	r2, [r3]
+ 164 0056 FFF7FEFF 		bl	__aeabi_ddiv
+ 165              	.LVL9:
+ 166 005a 0446     		mov	r4, r0
+  66:modules/geo_mag/geo_mag.c ****                    (double)gps.week / WEEKS_IN_YEAR +
+ 167              		.loc 1 66 0
+ 168 005c BAF85C00 		ldrh	r0, [r10, #92]
+ 169              		.loc 1 72 0
+ 170 0060 0D46     		mov	r5, r1
+ 171              	.LVL10:
+  66:modules/geo_mag/geo_mag.c ****                    (double)gps.week / WEEKS_IN_YEAR +
+ 172              		.loc 1 66 0
+ 173 0062 FFF7FEFF 		bl	__aeabi_ui2d
+ 174              	.LVL11:
+ 175 0066 4EA3     		adr	r3, .L24+16
+ 176 0068 D3E90023 		ldrd	r2, [r3]
+ 177 006c FFF7FEFF 		bl	__aeabi_ddiv
+ 178              	.LVL12:
+  65:modules/geo_mag/geo_mag.c ****     double sdate = GPS_EPOCH_BEGIN +
+ 179              		.loc 1 65 0
+ 180 0070 4DA3     		adr	r3, .L24+24
+ 181 0072 D3E90023 		ldrd	r2, [r3]
+ 182 0076 FFF7FEFF 		bl	__aeabi_dadd
+ 183              	.LVL13:
+ 184 007a 0646     		mov	r6, r0
+  67:modules/geo_mag/geo_mag.c ****                    (double)gps.tow / 1000 / SECS_IN_YEAR;
+ 185              		.loc 1 67 0
+ 186 007c DAF86000 		ldr	r0, [r10, #96]
+  65:modules/geo_mag/geo_mag.c ****     double sdate = GPS_EPOCH_BEGIN +
+ 187              		.loc 1 65 0
+ 188 0080 0F46     		mov	r7, r1
+  67:modules/geo_mag/geo_mag.c ****                    (double)gps.tow / 1000 / SECS_IN_YEAR;
+ 189              		.loc 1 67 0
+ 190 0082 FFF7FEFF 		bl	__aeabi_ui2d
+ 191              	.LVL14:
+ 192 0086 0022     		movs	r2, #0
+ 193 0088 4E4B     		ldr	r3, .L24+52
+ 194 008a FFF7FEFF 		bl	__aeabi_ddiv
+ 195              	.LVL15:
+ 196 008e 48A3     		adr	r3, .L24+32
+ 197 0090 D3E90023 		ldrd	r2, [r3]
+ 198 0094 FFF7FEFF 		bl	__aeabi_ddiv
+ 199              	.LVL16:
+ 200 0098 0246     		mov	r2, r0
+ 201 009a 0B46     		mov	r3, r1
+  65:modules/geo_mag/geo_mag.c ****     double sdate = GPS_EPOCH_BEGIN +
+ 202              		.loc 1 65 0
+ 203 009c 3046     		mov	r0, r6
+ 204 009e 3946     		mov	r1, r7
+ 205 00a0 FFF7FEFF 		bl	__aeabi_dadd
+ 206              	.LVL17:
+  73:modules/geo_mag/geo_mag.c **** 
+  74:modules/geo_mag/geo_mag.c ****     // Calculates additional coeffs
+  75:modules/geo_mag/geo_mag.c ****     nmax = extrapsh(sdate, GEO_EPOCH, NMAX_1, NMAX_2, gha);
+ 207              		.loc 1 75 0
+ 208 00a4 16AE     		add	r6, sp, #88
+ 209 00a6 0C23     		movs	r3, #12
+ 210 00a8 0093     		str	r3, [sp]
+ 211 00aa 0193     		str	r3, [sp, #4]
+ 212 00ac 0296     		str	r6, [sp, #8]
+ 213 00ae 42A3     		adr	r3, .L24+40
+ 214 00b0 D3E90023 		ldrd	r2, [r3]
+ 215 00b4 FFF7FEFF 		bl	extrapsh
+ 216              	.LVL18:
+  76:modules/geo_mag/geo_mag.c ****     // Calculates absolute magnet fields
+  77:modules/geo_mag/geo_mag.c ****     mag_calc(1, latitude, longitude, alt, nmax, gha,
+ 217              		.loc 1 77 0
+ 218 00b8 CDE90245 		strd	r4, [sp, #8]
+ 219 00bc 424C     		ldr	r4, .L24+56
+ 220              	.LVL19:
+ 221 00be 0490     		str	r0, [sp, #16]
+ 222 00c0 04F10803 		add	r3, r4, #8
+ 223 00c4 0793     		str	r3, [sp, #28]
+ 224 00c6 04F11003 		add	r3, r4, #16
+ 225 00ca 0893     		str	r3, [sp, #32]
+ 226 00cc 0023     		movs	r3, #0
+ 227 00ce 0022     		movs	r2, #0
+ 228 00d0 0993     		str	r3, [sp, #36]
+ 229 00d2 0023     		movs	r3, #0
+ 230 00d4 CDE90A23 		strd	r2, [sp, #40]
+ 231 00d8 CDE90C23 		strd	r2, [sp, #48]
+ 232 00dc CDE90E23 		strd	r2, [sp, #56]
+ 233 00e0 CDE90089 		strd	r8, [sp]
+ 234 00e4 DDE91023 		ldrd	r2, [sp, #64]
+ 235 00e8 0596     		str	r6, [sp, #20]
+ 236 00ea 0694     		str	r4, [sp, #24]
+ 237 00ec 0120     		movs	r0, #1
+ 238              	.LVL20:
+ 239 00ee FFF7FEFF 		bl	mag_calc
+ 240              	.LVL21:
+  78:modules/geo_mag/geo_mag.c ****              &geo_mag.vect.x, &geo_mag.vect.y, &geo_mag.vect.z,
+  79:modules/geo_mag/geo_mag.c ****              IEXT, EXT_COEFF1, EXT_COEFF2, EXT_COEFF3);
+  80:modules/geo_mag/geo_mag.c **** 
+  81:modules/geo_mag/geo_mag.c ****     // send as normalized float vector via ABI
+  82:modules/geo_mag/geo_mag.c ****     struct FloatVect3 h = { .x = geo_mag.vect.x,
+ 241              		.loc 1 82 0
+ 242 00f2 D4E90001 		ldrd	r0, [r4]
+ 243 00f6 FFF7FEFF 		bl	__aeabi_d2f
+ 244              	.LVL22:
+ 245 00fa 08EE100A 		fmsr	s16, r0
+ 246 00fe 1390     		str	r0, [sp, #76]	@ float
+ 247 0100 D4E90201 		ldrd	r0, [r4, #8]
+ 248 0104 FFF7FEFF 		bl	__aeabi_d2f
+ 249              	.LVL23:
+ 250 0108 08EE900A 		fmsr	s17, r0
+ 251 010c 1490     		str	r0, [sp, #80]	@ float
+ 252              	.LBB14:
+ 253              	.LBB15:
+ 254              	.LBB16:
+ 255              	.LBB17:
+ 256              	.LBB18:
+ 257              	.LBB19:
+ 258              		.file 2 "./math/pprz_algebra_float.h"
+   1:./math/pprz_algebra_float.h **** /*
+   2:./math/pprz_algebra_float.h ****  * Copyright (C) 2008-2014 The Paparazzi Team
+   3:./math/pprz_algebra_float.h ****  *
+   4:./math/pprz_algebra_float.h ****  * This file is part of paparazzi.
+   5:./math/pprz_algebra_float.h ****  *
+   6:./math/pprz_algebra_float.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:./math/pprz_algebra_float.h ****  * it under the terms of the GNU General Public License as published by
+   8:./math/pprz_algebra_float.h ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:./math/pprz_algebra_float.h ****  * any later version.
+  10:./math/pprz_algebra_float.h ****  *
+  11:./math/pprz_algebra_float.h ****  * paparazzi is distributed in the hope that it will be useful,
+  12:./math/pprz_algebra_float.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:./math/pprz_algebra_float.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:./math/pprz_algebra_float.h ****  * GNU General Public License for more details.
+  15:./math/pprz_algebra_float.h ****  *
+  16:./math/pprz_algebra_float.h ****  * You should have received a copy of the GNU General Public License
+  17:./math/pprz_algebra_float.h ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:./math/pprz_algebra_float.h ****  * <http://www.gnu.org/licenses/>.
+  19:./math/pprz_algebra_float.h ****  */
+  20:./math/pprz_algebra_float.h **** 
+  21:./math/pprz_algebra_float.h **** /**
+  22:./math/pprz_algebra_float.h ****  * @file pprz_algebra_float.h
+  23:./math/pprz_algebra_float.h ****  * @brief Paparazzi floating point algebra.
+  24:./math/pprz_algebra_float.h ****  *
+  25:./math/pprz_algebra_float.h ****  * @addtogroup math_algebra
+  26:./math/pprz_algebra_float.h ****  * @{
+  27:./math/pprz_algebra_float.h ****  * @defgroup math_algebra_float Float Algebra
+  28:./math/pprz_algebra_float.h ****  * @{
+  29:./math/pprz_algebra_float.h ****  */
+  30:./math/pprz_algebra_float.h **** 
+  31:./math/pprz_algebra_float.h **** #ifndef PPRZ_ALGEBRA_FLOAT_H
+  32:./math/pprz_algebra_float.h **** #define PPRZ_ALGEBRA_FLOAT_H
+  33:./math/pprz_algebra_float.h **** 
+  34:./math/pprz_algebra_float.h **** #ifdef __cplusplus
+  35:./math/pprz_algebra_float.h **** extern "C" {
+  36:./math/pprz_algebra_float.h **** #endif
+  37:./math/pprz_algebra_float.h **** 
+  38:./math/pprz_algebra_float.h **** #include "pprz_algebra.h"
+  39:./math/pprz_algebra_float.h **** 
+  40:./math/pprz_algebra_float.h **** #include <math.h>
+  41:./math/pprz_algebra_float.h **** #include <float.h> // for FLT_MIN
+  42:./math/pprz_algebra_float.h **** 
+  43:./math/pprz_algebra_float.h **** /* this seems to be missing for some arch */
+  44:./math/pprz_algebra_float.h **** #ifndef M_SQRT2
+  45:./math/pprz_algebra_float.h **** #define M_SQRT2         1.41421356237309504880
+  46:./math/pprz_algebra_float.h **** #endif
+  47:./math/pprz_algebra_float.h **** 
+  48:./math/pprz_algebra_float.h **** struct FloatVect2 {
+  49:./math/pprz_algebra_float.h ****   float x;
+  50:./math/pprz_algebra_float.h ****   float y;
+  51:./math/pprz_algebra_float.h **** };
+  52:./math/pprz_algebra_float.h **** 
+  53:./math/pprz_algebra_float.h **** struct FloatVect3 {
+  54:./math/pprz_algebra_float.h ****   float x;
+  55:./math/pprz_algebra_float.h ****   float y;
+  56:./math/pprz_algebra_float.h ****   float z;
+  57:./math/pprz_algebra_float.h **** };
+  58:./math/pprz_algebra_float.h **** 
+  59:./math/pprz_algebra_float.h **** /**
+  60:./math/pprz_algebra_float.h ****  * @brief Roation quaternion
+  61:./math/pprz_algebra_float.h ****  */
+  62:./math/pprz_algebra_float.h **** struct FloatQuat {
+  63:./math/pprz_algebra_float.h ****   float qi;
+  64:./math/pprz_algebra_float.h ****   float qx;
+  65:./math/pprz_algebra_float.h ****   float qy;
+  66:./math/pprz_algebra_float.h ****   float qz;
+  67:./math/pprz_algebra_float.h **** };
+  68:./math/pprz_algebra_float.h **** 
+  69:./math/pprz_algebra_float.h **** struct FloatMat33 {
+  70:./math/pprz_algebra_float.h ****   float m[3 * 3];
+  71:./math/pprz_algebra_float.h **** };
+  72:./math/pprz_algebra_float.h **** 
+  73:./math/pprz_algebra_float.h **** /**
+  74:./math/pprz_algebra_float.h ****  * @brief rotation matrix
+  75:./math/pprz_algebra_float.h ****  */
+  76:./math/pprz_algebra_float.h **** struct FloatRMat {
+  77:./math/pprz_algebra_float.h ****   float m[3 * 3];
+  78:./math/pprz_algebra_float.h **** };
+  79:./math/pprz_algebra_float.h **** 
+  80:./math/pprz_algebra_float.h **** /**
+  81:./math/pprz_algebra_float.h ****  * @brief euler angles
+  82:./math/pprz_algebra_float.h ****  * @details Units: radians */
+  83:./math/pprz_algebra_float.h **** struct FloatEulers {
+  84:./math/pprz_algebra_float.h ****   float phi; ///< in radians
+  85:./math/pprz_algebra_float.h ****   float theta; ///< in radians
+  86:./math/pprz_algebra_float.h ****   float psi; ///< in radians
+  87:./math/pprz_algebra_float.h **** };
+  88:./math/pprz_algebra_float.h **** 
+  89:./math/pprz_algebra_float.h **** /**
+  90:./math/pprz_algebra_float.h ****  * @brief angular rates
+  91:./math/pprz_algebra_float.h ****  * @details Units: rad/s */
+  92:./math/pprz_algebra_float.h **** struct FloatRates {
+  93:./math/pprz_algebra_float.h ****   float p; ///< in rad/s
+  94:./math/pprz_algebra_float.h ****   float q; ///< in rad/s
+  95:./math/pprz_algebra_float.h ****   float r; ///< in rad/s
+  96:./math/pprz_algebra_float.h **** };
+  97:./math/pprz_algebra_float.h **** 
+  98:./math/pprz_algebra_float.h **** #define FLOAT_ANGLE_NORMALIZE(_a) {             \
+  99:./math/pprz_algebra_float.h ****     while (_a >  M_PI) _a -= (2.*M_PI);             \
+ 100:./math/pprz_algebra_float.h ****     while (_a < -M_PI) _a += (2.*M_PI);             \
+ 101:./math/pprz_algebra_float.h ****   }
+ 102:./math/pprz_algebra_float.h **** 
+ 103:./math/pprz_algebra_float.h **** //
+ 104:./math/pprz_algebra_float.h **** //
+ 105:./math/pprz_algebra_float.h **** // Vector algebra
+ 106:./math/pprz_algebra_float.h **** //
+ 107:./math/pprz_algebra_float.h **** //
+ 108:./math/pprz_algebra_float.h **** 
+ 109:./math/pprz_algebra_float.h **** 
+ 110:./math/pprz_algebra_float.h **** /*
+ 111:./math/pprz_algebra_float.h ****  * Dimension 2 Vectors
+ 112:./math/pprz_algebra_float.h ****  */
+ 113:./math/pprz_algebra_float.h **** 
+ 114:./math/pprz_algebra_float.h **** #define FLOAT_VECT2_ZERO(_v) VECT2_ASSIGN(_v, 0., 0.)
+ 115:./math/pprz_algebra_float.h **** 
+ 116:./math/pprz_algebra_float.h **** /* macros also usable if _v is not a FloatVect2, but a different struct with x,y members */
+ 117:./math/pprz_algebra_float.h **** #define FLOAT_VECT2_NORM(_v) sqrtf(VECT2_NORM2(_v))
+ 118:./math/pprz_algebra_float.h **** 
+ 119:./math/pprz_algebra_float.h **** static inline float float_vect2_norm2(struct FloatVect2 *v)
+ 120:./math/pprz_algebra_float.h **** {
+ 121:./math/pprz_algebra_float.h ****   return v->x * v->x + v->y * v->y;
+ 122:./math/pprz_algebra_float.h **** }
+ 123:./math/pprz_algebra_float.h **** 
+ 124:./math/pprz_algebra_float.h **** static inline float float_vect2_norm(struct FloatVect2 *v)
+ 125:./math/pprz_algebra_float.h **** {
+ 126:./math/pprz_algebra_float.h ****   return sqrtf(float_vect2_norm2(v));
+ 127:./math/pprz_algebra_float.h **** }
+ 128:./math/pprz_algebra_float.h **** 
+ 129:./math/pprz_algebra_float.h **** /** normalize 2D vector in place */
+ 130:./math/pprz_algebra_float.h **** static inline void float_vect2_normalize(struct FloatVect2 *v)
+ 131:./math/pprz_algebra_float.h **** {
+ 132:./math/pprz_algebra_float.h ****   const float n = float_vect2_norm(v);
+ 133:./math/pprz_algebra_float.h ****   if (n > 0) {
+ 134:./math/pprz_algebra_float.h ****     v->x /= n;
+ 135:./math/pprz_algebra_float.h ****     v->y /= n;
+ 136:./math/pprz_algebra_float.h ****   }
+ 137:./math/pprz_algebra_float.h **** }
+ 138:./math/pprz_algebra_float.h **** 
+ 139:./math/pprz_algebra_float.h **** #define FLOAT_VECT2_NORMALIZE(_v) float_vect2_normalize(&(_v))
+ 140:./math/pprz_algebra_float.h **** 
+ 141:./math/pprz_algebra_float.h **** 
+ 142:./math/pprz_algebra_float.h **** /*
+ 143:./math/pprz_algebra_float.h ****  * Dimension 3 Vectors
+ 144:./math/pprz_algebra_float.h ****  */
+ 145:./math/pprz_algebra_float.h **** 
+ 146:./math/pprz_algebra_float.h **** #define FLOAT_VECT3_ZERO(_v) VECT3_ASSIGN(_v, 0., 0., 0.)
+ 147:./math/pprz_algebra_float.h **** 
+ 148:./math/pprz_algebra_float.h **** /* macros also usable if _v is not a FloatVect3, but a different struct with x,y,z members */
+ 149:./math/pprz_algebra_float.h **** #define FLOAT_VECT3_NORM(_v) sqrtf(VECT3_NORM2(_v))
+ 150:./math/pprz_algebra_float.h **** 
+ 151:./math/pprz_algebra_float.h **** static inline float float_vect3_norm2(struct FloatVect3 *v)
+ 152:./math/pprz_algebra_float.h **** {
+ 153:./math/pprz_algebra_float.h ****   return v->x * v->x + v->y * v->y + v->z * v->z;
+ 259              		.loc 2 153 0
+ 260 010e 68EEA88A 		fmuls	s17, s17, s17
+ 261              	.LBE19:
+ 262              	.LBE18:
+ 263              	.LBE17:
+ 264              	.LBE16:
+ 265              	.LBE15:
+ 266              	.LBE14:
+ 267              		.loc 1 82 0
+ 268 0112 D4E90401 		ldrd	r0, [r4, #16]
+ 269 0116 FFF7FEFF 		bl	__aeabi_d2f
+ 270              	.LVL24:
+ 271              	.LBB28:
+ 272              	.LBB26:
+ 273              	.LBB24:
+ 274              	.LBB22:
+ 275              	.LBB21:
+ 276              	.LBB20:
+ 277              		.loc 2 153 0
+ 278 011a E8EE088A 		vfma.f32	s17, s16, s16
+ 279              	.LBE20:
+ 280              	.LBE21:
+ 281              	.LBE22:
+ 282              	.LBE24:
+ 283              	.LBE26:
+ 284              	.LBE28:
+ 285              		.loc 1 82 0
+ 286 011e 1590     		str	r0, [sp, #84]	@ float
+ 287              	.LVL25:
+ 288 0120 07EE900A 		fmsr	s15, r0
+ 289              	.LBB29:
+ 290              	.LBB27:
+ 291              	.LBB25:
+ 292              	.LBB23:
+ 154:./math/pprz_algebra_float.h **** }
+ 155:./math/pprz_algebra_float.h **** 
+ 156:./math/pprz_algebra_float.h **** static inline float float_vect3_norm(struct FloatVect3 *v)
+ 157:./math/pprz_algebra_float.h **** {
+ 158:./math/pprz_algebra_float.h ****   return sqrtf(float_vect3_norm2(v));
+ 293              		.loc 2 158 0
+ 294 0124 E7EEA78A 		vfma.f32	s17, s15, s15
+ 295 0128 18EE900A 		fmrs	r0, s17
+ 296 012c FFF7FEFF 		bl	sqrtf
+ 297              	.LVL26:
+ 298 0130 07EE900A 		fmsr	s15, r0
+ 299              	.LBE23:
+ 300              	.LBE25:
+ 159:./math/pprz_algebra_float.h **** }
+ 160:./math/pprz_algebra_float.h **** 
+ 161:./math/pprz_algebra_float.h **** /** normalize 3D vector in place */
+ 162:./math/pprz_algebra_float.h **** static inline void float_vect3_normalize(struct FloatVect3 *v)
+ 163:./math/pprz_algebra_float.h **** {
+ 164:./math/pprz_algebra_float.h ****   const float n = float_vect3_norm(v);
+ 165:./math/pprz_algebra_float.h ****   if (n > 0) {
+ 301              		.loc 2 165 0
+ 302 0134 F5EEC07A 		fcmpezs	s15
+ 303 0138 F1EE10FA 		fmstat
+ 304 013c 11DD     		ble	.L14
+ 166:./math/pprz_algebra_float.h ****     v->x /= n;
+ 305              		.loc 2 166 0
+ 306 013e 9DED137A 		flds	s14, [sp, #76]
+ 307 0142 87EE277A 		fdivs	s14, s14, s15
+ 308 0146 8DED137A 		fsts	s14, [sp, #76]
+ 167:./math/pprz_algebra_float.h ****     v->y /= n;
+ 309              		.loc 2 167 0
+ 310 014a 9DED147A 		flds	s14, [sp, #80]
+ 311 014e 87EE277A 		fdivs	s14, s14, s15
+ 312 0152 8DED147A 		fsts	s14, [sp, #80]
+ 168:./math/pprz_algebra_float.h ****     v->z /= n;
+ 313              		.loc 2 168 0
+ 314 0156 9DED157A 		flds	s14, [sp, #84]
+ 315 015a C7EE277A 		fdivs	s15, s14, s15
+ 316 015e CDED157A 		fsts	s15, [sp, #84]
+ 317              	.L14:
+ 318              	.LVL27:
+ 319              	.LBE27:
+ 320              	.LBE29:
+ 321              	.LBB30:
+ 322              	.LBB31:
+ 323              		.file 3 "/home/lsk/paparazzi/var/include/abi_messages.h"
+   1:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Automatically generated by gen_abi from /home/lsk/paparazzi/conf/abi.xml */
+   2:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Please DO NOT EDIT */
+   3:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+   4:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Onboard middleware library ABI
+   5:/home/lsk/paparazzi/var/include/abi_messages.h ****  * send and receive messages of class airborne
+   6:/home/lsk/paparazzi/var/include/abi_messages.h ****  */
+   7:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+   8:/home/lsk/paparazzi/var/include/abi_messages.h **** #ifndef ABI_MESSAGES_H
+   9:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGES_H
+  10:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  11:/home/lsk/paparazzi/var/include/abi_messages.h **** #include "subsystems/abi_common.h"
+  12:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  13:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Messages IDs */
+  14:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_ABS_ID 0
+  15:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_DIFF_ID 1
+  16:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_AGL_ID 2
+  17:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_TEMPERATURE_ID 3
+  18:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_GYRO_INT32_ID 4
+  19:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_ACCEL_INT32_ID 5
+  20:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_MAG_INT32_ID 6
+  21:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_LOWPASSED_ID 7
+  22:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BODY_TO_IMU_QUAT_ID 8
+  23:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_GEO_MAG_ID 9
+  24:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_GPS_ID 10
+  25:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  26:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Array and linked list structure */
+  27:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGE_NB 11
+  28:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  29:/home/lsk/paparazzi/var/include/abi_messages.h **** ABI_EXTERN abi_event* abi_queues[ABI_MESSAGE_NB];
+  30:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  31:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Callbacks */
+  32:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_ABS)(uint8_t sender_id, float pressure);
+  33:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_DIFF)(uint8_t sender_id, float pressure);
+  34:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackAGL)(uint8_t sender_id, float distance);
+  35:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackTEMPERATURE)(uint8_t sender_id, float temp);
+  36:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_GYRO_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * g
+  37:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_ACCEL_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * 
+  38:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_MAG_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * ma
+  39:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_LOWPASSED)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * gy
+  40:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBODY_TO_IMU_QUAT)(uint8_t sender_id, struct FloatQuat * q_b2i_f);
+  41:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGEO_MAG)(uint8_t sender_id, struct FloatVect3 * h);
+  42:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGPS)(uint8_t sender_id, uint32_t stamp, struct GpsState * gps_s);
+  43:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  44:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Bind and Send functions */
+  45:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  46:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_ABS(uint8_t sender_id, abi_event * ev, abi_callbackBARO_ABS cb) {
+  47:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  48:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  49:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_ABS_ID],ev);
+  50:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  51:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  52:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_ABS(uint8_t sender_id, float pressure) {
+  53:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  54:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_ABS_ID],e) {
+  55:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  56:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_ABS cb = (abi_callbackBARO_ABS)(e->cb);
+  57:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+  58:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  59:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  60:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  61:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  62:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_DIFF(uint8_t sender_id, abi_event * ev, abi_callbackBARO_DIFF cb)
+  63:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  64:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  65:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_DIFF_ID],ev);
+  66:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  67:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  68:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_DIFF(uint8_t sender_id, float pressure) {
+  69:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  70:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_DIFF_ID],e) {
+  71:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  72:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_DIFF cb = (abi_callbackBARO_DIFF)(e->cb);
+  73:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+  74:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  75:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  76:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  77:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  78:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgAGL(uint8_t sender_id, abi_event * ev, abi_callbackAGL cb) {
+  79:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  80:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  81:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_AGL_ID],ev);
+  82:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  83:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  84:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgAGL(uint8_t sender_id, float distance) {
+  85:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  86:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_AGL_ID],e) {
+  87:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  88:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackAGL cb = (abi_callbackAGL)(e->cb);
+  89:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, distance);
+  90:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  91:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  92:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  93:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  94:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgTEMPERATURE(uint8_t sender_id, abi_event * ev, abi_callbackTEMPERATURE
+  95:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  96:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  97:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_TEMPERATURE_ID],ev);
+  98:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  99:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 100:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgTEMPERATURE(uint8_t sender_id, float temp) {
+ 101:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 102:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_TEMPERATURE_ID],e) {
+ 103:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 104:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackTEMPERATURE cb = (abi_callbackTEMPERATURE)(e->cb);
+ 105:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, temp);
+ 106:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 107:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 108:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 109:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 110:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_GYRO_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_GYRO
+ 111:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 112:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 113:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_GYRO_INT32_ID],ev);
+ 114:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 115:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 116:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_GYRO_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Rates * 
+ 117:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 118:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_GYRO_INT32_ID],e) {
+ 119:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 120:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_GYRO_INT32 cb = (abi_callbackIMU_GYRO_INT32)(e->cb);
+ 121:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, gyro);
+ 122:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 123:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 124:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 125:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 126:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_ACCEL_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_ACC
+ 127:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 128:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 129:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_ACCEL_INT32_ID],ev);
+ 130:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 131:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 132:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_ACCEL_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 *
+ 133:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 134:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_ACCEL_INT32_ID],e) {
+ 135:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 136:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_ACCEL_INT32 cb = (abi_callbackIMU_ACCEL_INT32)(e->cb);
+ 137:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, accel);
+ 138:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 139:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 140:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 141:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 142:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_MAG_INT32(uint8_t sender_id, abi_event * ev, abi_callbackIMU_MAG_I
+ 143:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 144:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 145:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_MAG_INT32_ID],ev);
+ 146:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 147:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 148:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_MAG_INT32(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * m
+ 149:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 150:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_MAG_INT32_ID],e) {
+ 151:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 152:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_MAG_INT32 cb = (abi_callbackIMU_MAG_INT32)(e->cb);
+ 153:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, mag);
+ 154:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 155:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 156:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 157:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 158:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgIMU_LOWPASSED(uint8_t sender_id, abi_event * ev, abi_callbackIMU_LOWPA
+ 159:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 160:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 161:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_IMU_LOWPASSED_ID],ev);
+ 162:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 163:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 164:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgIMU_LOWPASSED(uint8_t sender_id, uint32_t stamp, struct Int32Rates * g
+ 165:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 166:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_IMU_LOWPASSED_ID],e) {
+ 167:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 168:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackIMU_LOWPASSED cb = (abi_callbackIMU_LOWPASSED)(e->cb);
+ 169:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, stamp, gyro, accel, mag);
+ 170:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 171:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 172:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 173:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 174:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBODY_TO_IMU_QUAT(uint8_t sender_id, abi_event * ev, abi_callbackBODY_T
+ 175:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 176:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 177:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BODY_TO_IMU_QUAT_ID],ev);
+ 178:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 179:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 180:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBODY_TO_IMU_QUAT(uint8_t sender_id, struct FloatQuat * q_b2i_f) {
+ 181:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 182:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BODY_TO_IMU_QUAT_ID],e) {
+ 183:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 184:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackBODY_TO_IMU_QUAT cb = (abi_callbackBODY_TO_IMU_QUAT)(e->cb);
+ 185:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, q_b2i_f);
+ 186:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+ 187:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+ 188:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 189:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 190:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgGEO_MAG(uint8_t sender_id, abi_event * ev, abi_callbackGEO_MAG cb) {
+ 191:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+ 192:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+ 193:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_GEO_MAG_ID],ev);
+ 194:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+ 195:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 196:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgGEO_MAG(uint8_t sender_id, struct FloatVect3 * h) {
+ 197:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 198:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_GEO_MAG_ID],e) {
+ 324              		.loc 3 198 0
+ 325 0162 1A4B     		ldr	r3, .L24+60
+ 326 0164 5D6A     		ldr	r5, [r3, #36]
+ 327              	.LVL28:
+ 328              	.L16:
+ 329 0166 45B1     		cbz	r5, .L23
+ 199:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 330              		.loc 3 199 0
+ 331 0168 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 332 016a 012B     		cmp	r3, #1
+ 333 016c 03D8     		bhi	.L17
+ 334              	.LVL29:
+ 335              	.LBB32:
+ 200:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackGEO_MAG cb = (abi_callbackGEO_MAG)(e->cb);
+ 201:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, h);
+ 336              		.loc 3 201 0
+ 337 016e 6B68     		ldr	r3, [r5, #4]
+ 338 0170 0120     		movs	r0, #1
+ 339 0172 13A9     		add	r1, sp, #76
+ 340              	.LVL30:
+ 341 0174 9847     		blx	r3
+ 342              	.LVL31:
+ 343              	.L17:
+ 344              	.LBE32:
+ 198:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_GEO_MAG_ID],e) {
+ 345              		.loc 3 198 0
+ 346 0176 AD68     		ldr	r5, [r5, #8]
+ 347              	.LVL32:
+ 348 0178 F5E7     		b	.L16
+ 349              	.L23:
+ 350              	.LBE31:
+ 351              	.LBE30:
+  83:modules/geo_mag/geo_mag.c ****                             .y = geo_mag.vect.y,
+  84:modules/geo_mag/geo_mag.c ****                             .z = geo_mag.vect.z };
+  85:modules/geo_mag/geo_mag.c ****     float_vect3_normalize(&h);
+  86:modules/geo_mag/geo_mag.c ****     AbiSendMsgGEO_MAG(GEO_MAG_SENDER_ID, &h);
+  87:modules/geo_mag/geo_mag.c **** 
+  88:modules/geo_mag/geo_mag.c ****     geo_mag.ready = TRUE;
+ 352              		.loc 1 88 0
+ 353 017a 0123     		movs	r3, #1
+ 354 017c 2376     		strb	r3, [r4, #24]
+ 355              	.LVL33:
+ 356              	.L13:
+ 357              	.LBE13:
+  89:modules/geo_mag/geo_mag.c ****   }
+  90:modules/geo_mag/geo_mag.c ****   geo_mag_calc_flag = FALSE;
+ 358              		.loc 1 90 0
+ 359 017e 0023     		movs	r3, #0
+ 360 0180 8BF80030 		strb	r3, [fp]
+  91:modules/geo_mag/geo_mag.c **** }
+ 361              		.loc 1 91 0
+ 362 0184 0DF27C6D 		addw	sp, sp, #1660
+ 363              		@ sp needed
+ 364 0188 BDEC028B 		fldmfdd	sp!, {d8}
+ 365 018c BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 366              	.L25:
+ 367              		.align	3
+ 368              	.L24:
+ 369 0190 00000000 		.word	0
+ 370 0194 D0126341 		.word	1097011920
+ 371 0198 00000000 		.word	0
+ 372 019c 80842E41 		.word	1093567616
+ 373 01a0 FCA9F1D2 		.word	-755914244
+ 374 01a4 4D124A40 		.word	1078596173
+ 375 01a8 BD4F71C9 		.word	-915320899
+ 376 01ac 10F09E40 		.word	1084157968
+ 377 01b0 00000000 		.word	0
+ 378 01b4 38137E41 		.word	1098781496
+ 379 01b8 00000000 		.word	0
+ 380 01bc 00689F40 		.word	1084188672
+ 381 01c0 00000000 		.word	.LANCHOR0
+ 382 01c4 00408F40 		.word	1083129856
+ 383 01c8 00000000 		.word	.LANCHOR1
+ 384 01cc 00000000 		.word	abi_queues
+ 385 01d0 00000000 		.word	gps
+ 386              		.cfi_endproc
+ 387              	.LFE197:
+ 389              		.global	geo_mag
+ 390              		.global	geo_mag_calc_flag
+ 391 01d4 AFF30080 		.section	.bss.geo_mag,"aw",%nobits
+ 392              		.align	3
+ 393              		.set	.LANCHOR1,. + 0
+ 396              	geo_mag:
+ 397 0000 00000000 		.space	32
+ 397      00000000 
+ 397      00000000 
+ 397      00000000 
+ 397      00000000 
+ 398              		.section	.bss.geo_mag_calc_flag,"aw",%nobits
+ 399              		.set	.LANCHOR0,. + 0
+ 402              	geo_mag_calc_flag:
+ 403 0000 00       		.space	1
+ 404              		.text
+ 405              	.Letext0:
+ 406              		.file 4 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 407              		.file 5 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 408              		.file 6 "/home/lsk/paparazzi/sw/include/std.h"
+ 409              		.file 7 "./math/pprz_algebra_double.h"
+ 410              		.file 8 "./modules/geo_mag/geo_mag.h"
+ 411              		.file 9 "./math/pprz_algebra_int.h"
+ 412              		.file 10 "./math/pprz_geodetic_int.h"
+ 413              		.file 11 "./mcu_periph/sys_time.h"
+ 414              		.file 12 "./mcu_periph/link_device.h"
+ 415              		.file 13 "./mcu_periph/uart.h"
+ 416              		.file 14 "./subsystems/gps/gps_ubx.h"
+ 417              		.file 15 "./subsystems/gps.h"
+ 418              		.file 16 "./subsystems/abi_common.h"
+ 419              		.file 17 "./math/pprz_geodetic_float.h"
+ 420              		.file 18 "./math/pprz_orientation_conversion.h"
+ 421              		.file 19 "./state.h"
+ 422              		.file 20 "firmwares/rotorcraft/autopilot.h"
+ 423              		.file 21 "./subsystems/settings.h"
+ 424              		.file 22 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/math.h"
+ 425              		.file 23 "./math/pprz_geodetic_wmm2010.h"
+ 426              		.file 24 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 geo_mag.c
+     /tmp/cc5VOtEc.s:20     .text.geo_mag_init:00000000 $t
+     /tmp/cc5VOtEc.s:25     .text.geo_mag_init:00000000 geo_mag_init
+     /tmp/cc5VOtEc.s:44     .text.geo_mag_init:0000000c $d
+     /tmp/cc5VOtEc.s:50     .text.geo_mag_periodic:00000000 $t
+     /tmp/cc5VOtEc.s:55     .text.geo_mag_periodic:00000000 geo_mag_periodic
+     /tmp/cc5VOtEc.s:83     .text.geo_mag_periodic:00000020 $d
+     /tmp/cc5VOtEc.s:96     .text.geo_mag_event:00000000 $t
+     /tmp/cc5VOtEc.s:101    .text.geo_mag_event:00000000 geo_mag_event
+     /tmp/cc5VOtEc.s:369    .text.geo_mag_event:00000190 $d
+     /tmp/cc5VOtEc.s:396    .bss.geo_mag:00000000 geo_mag
+     /tmp/cc5VOtEc.s:402    .bss.geo_mag_calc_flag:00000000 geo_mag_calc_flag
+     /tmp/cc5VOtEc.s:392    .bss.geo_mag:00000000 $d
+     /tmp/cc5VOtEc.s:403    .bss.geo_mag_calc_flag:00000000 $d
+                     .debug_frame:00000010 $d
+     /tmp/cc5VOtEc.s:391    .text.geo_mag_event:000001d4 $t
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_algebra_float.h.32.544614e70075e1ed5693f00f6a441312
+                           .group:00000000 wm4.pprz_algebra_double.h.91.82ca62ae962f4b4f295322d977f2dad5
+                           .group:00000000 wm4.pprz_geodetic_wmm2010.h.34.0f94b510283a5e7540716d0af5fc5813
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.gps.h.41.79d1c69e44dd427f855100ff8e932fbe
+                           .group:00000000 wm4.abi_sender_ids.h.29.e18315036ac250e614ad78ed4bcb93da
+                           .group:00000000 wm4.abi_common.h.46.0bb6611719a01752e88980049d8d5177
+                           .group:00000000 wm4.abi_messages.h.14.a63139ccdcd5241f8ab897fe12fc8134
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.274c2fe245167861139e341fd233f9ea
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.pprz_orientation_conversion.h.57.c0c8f5187bc056807e507011653281f4
+                           .group:00000000 wm4.state.h.65.b18954aacb3801ec3e27b4e857d620d3
+                           .group:00000000 wm4.autopilot.h.36.9b09e2729fba5543f2a96f85ca588c23
+                           .group:00000000 wm4.settings.h.29.dff4b7c685fcd0dfb04f9f8de0a69e75
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+
+UNDEFINED SYMBOLS
+gps
+kill_throttle
+__aeabi_i2d
+__aeabi_ddiv
+__aeabi_ui2d
+__aeabi_dadd
+__aeabi_d2f
+extrapsh
+mag_calc
+sqrtf
+abi_queues

@@ -1,0 +1,279 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"radio_control.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.radio_control_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	radio_control_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	radio_control_init:
+  26              	.LFB6:
+  27              		.file 1 "subsystems/radio_control.c"
+   1:subsystems/radio_control.c **** /*
+   2:subsystems/radio_control.c ****  * Copyright (C) 2006-2014 The Paparazzi Team
+   3:subsystems/radio_control.c ****  *
+   4:subsystems/radio_control.c ****  * This file is part of paparazzi.
+   5:subsystems/radio_control.c ****  *
+   6:subsystems/radio_control.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/radio_control.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/radio_control.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/radio_control.c ****  * any later version.
+  10:subsystems/radio_control.c ****  *
+  11:subsystems/radio_control.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/radio_control.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/radio_control.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/radio_control.c ****  * GNU General Public License for more details.
+  15:subsystems/radio_control.c ****  *
+  16:subsystems/radio_control.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/radio_control.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:subsystems/radio_control.c ****  * <http://www.gnu.org/licenses/>.
+  19:subsystems/radio_control.c ****  */
+  20:subsystems/radio_control.c **** 
+  21:subsystems/radio_control.c **** /**
+  22:subsystems/radio_control.c ****  * @file subsystems/radio_control.c
+  23:subsystems/radio_control.c ****  *
+  24:subsystems/radio_control.c ****  * Implementation independant radio control handing.
+  25:subsystems/radio_control.c ****  *
+  26:subsystems/radio_control.c ****  */
+  27:subsystems/radio_control.c **** 
+  28:subsystems/radio_control.c **** #include "subsystems/radio_control.h"
+  29:subsystems/radio_control.c **** 
+  30:subsystems/radio_control.c **** struct RadioControl radio_control;
+  31:subsystems/radio_control.c **** 
+  32:subsystems/radio_control.c **** void radio_control_init(void)
+  33:subsystems/radio_control.c **** {
+  28              		.loc 1 33 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 10B5     		push	{r4, lr}
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 4, -8
+  36              		.cfi_offset 14, -4
+  37              		.loc 1 33 0
+  38 0002 0022     		movs	r2, #0
+  39              	.LVL1:
+  40              	.L3:
+  41 0004 084B     		ldr	r3, .L6
+  42 0006 9C18     		adds	r4, r3, r2
+  43 0008 0232     		adds	r2, r2, #2
+  34:subsystems/radio_control.c ****   uint8_t i;
+  35:subsystems/radio_control.c ****   for (i = 0; i < RADIO_CONTROL_NB_CHANNEL; i++) {
+  36:subsystems/radio_control.c ****     radio_control.values[i] = 0;
+  44              		.loc 1 36 0 discriminator 2
+  45 000a 0021     		movs	r1, #0
+  35:subsystems/radio_control.c ****   for (i = 0; i < RADIO_CONTROL_NB_CHANNEL; i++) {
+  46              		.loc 1 35 0 discriminator 2
+  47 000c 102A     		cmp	r2, #16
+  48              		.loc 1 36 0 discriminator 2
+  49 000e E180     		strh	r1, [r4, #6]	@ movhi
+  35:subsystems/radio_control.c ****   for (i = 0; i < RADIO_CONTROL_NB_CHANNEL; i++) {
+  50              		.loc 1 35 0 discriminator 2
+  51 0010 F8D1     		bne	.L3
+  37:subsystems/radio_control.c ****   }
+  38:subsystems/radio_control.c ****   radio_control.status = RC_REALLY_LOST;
+  52              		.loc 1 38 0
+  53 0012 0222     		movs	r2, #2
+  54 0014 1A70     		strb	r2, [r3]
+  39:subsystems/radio_control.c ****   radio_control.time_since_last_frame = RC_REALLY_LOST_TIME;
+  55              		.loc 1 39 0
+  56 0016 3C22     		movs	r2, #60
+  57 0018 5A70     		strb	r2, [r3, #1]
+  40:subsystems/radio_control.c ****   radio_control.radio_ok_cpt = 0;
+  58              		.loc 1 40 0
+  59 001a 9970     		strb	r1, [r3, #2]
+  41:subsystems/radio_control.c ****   radio_control.frame_rate = 0;
+  60              		.loc 1 41 0
+  61 001c D970     		strb	r1, [r3, #3]
+  42:subsystems/radio_control.c ****   radio_control.frame_cpt = 0;
+  62              		.loc 1 42 0
+  63 001e 1971     		strb	r1, [r3, #4]
+  43:subsystems/radio_control.c ****   radio_control_impl_init();
+  44:subsystems/radio_control.c **** }
+  64              		.loc 1 44 0
+  65 0020 BDE81040 		pop	{r4, lr}
+  43:subsystems/radio_control.c ****   radio_control_impl_init();
+  66              		.loc 1 43 0
+  67 0024 FFF7FEBF 		b	radio_control_impl_init
+  68              	.LVL2:
+  69              	.L7:
+  70              		.align	2
+  71              	.L6:
+  72 0028 00000000 		.word	.LANCHOR0
+  73              		.cfi_endproc
+  74              	.LFE6:
+  76              		.section	.text.radio_control_periodic_task,"ax",%progbits
+  77              		.align	1
+  78              		.global	radio_control_periodic_task
+  79              		.thumb
+  80              		.thumb_func
+  82              	radio_control_periodic_task:
+  83              	.LFB7:
+  45:subsystems/radio_control.c **** 
+  46:subsystems/radio_control.c **** void radio_control_periodic_task(void)
+  47:subsystems/radio_control.c **** {
+  84              		.loc 1 47 0
+  85              		.cfi_startproc
+  86              		@ args = 0, pretend = 0, frame = 0
+  87              		@ frame_needed = 0, uses_anonymous_args = 0
+  88              		@ link register save eliminated.
+  48:subsystems/radio_control.c ****   static uint8_t _1Hz;
+  49:subsystems/radio_control.c ****   _1Hz++;
+  89              		.loc 1 49 0
+  90 0000 0E4A     		ldr	r2, .L14
+  91 0002 0F4B     		ldr	r3, .L14+4
+  92 0004 1178     		ldrb	r1, [r2]	@ zero_extendqisi2
+  93 0006 0131     		adds	r1, r1, #1
+  94 0008 C9B2     		uxtb	r1, r1
+  50:subsystems/radio_control.c **** 
+  51:subsystems/radio_control.c ****   if (_1Hz >= 60) {
+  95              		.loc 1 51 0
+  96 000a 3B29     		cmp	r1, #59
+  97 000c 01D8     		bhi	.L9
+  49:subsystems/radio_control.c ****   _1Hz++;
+  98              		.loc 1 49 0
+  99 000e 1170     		strb	r1, [r2]
+ 100 0010 04E0     		b	.L10
+ 101              	.L9:
+  52:subsystems/radio_control.c ****     _1Hz = 0;
+ 102              		.loc 1 52 0
+ 103 0012 0021     		movs	r1, #0
+ 104 0014 1170     		strb	r1, [r2]
+  53:subsystems/radio_control.c ****     radio_control.frame_rate = radio_control.frame_cpt;
+ 105              		.loc 1 53 0
+ 106 0016 1A79     		ldrb	r2, [r3, #4]	@ zero_extendqisi2
+ 107 0018 DA70     		strb	r2, [r3, #3]
+  54:subsystems/radio_control.c ****     radio_control.frame_cpt = 0;
+ 108              		.loc 1 54 0
+ 109 001a 1971     		strb	r1, [r3, #4]
+ 110              	.L10:
+  55:subsystems/radio_control.c ****   }
+  56:subsystems/radio_control.c **** 
+  57:subsystems/radio_control.c ****   if (radio_control.time_since_last_frame >= RC_REALLY_LOST_TIME) {
+ 111              		.loc 1 57 0
+ 112 001c 5A78     		ldrb	r2, [r3, #1]	@ zero_extendqisi2
+ 113 001e 0849     		ldr	r1, .L14+4
+ 114 0020 3B2A     		cmp	r2, #59
+ 115 0022 02D9     		bls	.L11
+  58:subsystems/radio_control.c ****     radio_control.status = RC_REALLY_LOST;
+ 116              		.loc 1 58 0
+ 117 0024 0223     		movs	r3, #2
+ 118 0026 0B70     		strb	r3, [r1]
+ 119 0028 7047     		bx	lr
+ 120              	.L11:
+  59:subsystems/radio_control.c ****   } else {
+  60:subsystems/radio_control.c ****     if (radio_control.time_since_last_frame >= RC_LOST_TIME) {
+ 121              		.loc 1 60 0
+ 122 002a 1D2A     		cmp	r2, #29
+ 123 002c 03D9     		bls	.L13
+  61:subsystems/radio_control.c ****       radio_control.status = RC_LOST;
+ 124              		.loc 1 61 0
+ 125 002e 0120     		movs	r0, #1
+ 126 0030 0870     		strb	r0, [r1]
+  62:subsystems/radio_control.c ****       radio_control.radio_ok_cpt = RC_OK_CPT;
+ 127              		.loc 1 62 0
+ 128 0032 0F20     		movs	r0, #15
+ 129 0034 8870     		strb	r0, [r1, #2]
+ 130              	.L13:
+  63:subsystems/radio_control.c ****     }
+  64:subsystems/radio_control.c ****     radio_control.time_since_last_frame++;
+ 131              		.loc 1 64 0
+ 132 0036 0132     		adds	r2, r2, #1
+ 133 0038 5A70     		strb	r2, [r3, #1]
+ 134 003a 7047     		bx	lr
+ 135              	.L15:
+ 136              		.align	2
+ 137              	.L14:
+ 138 003c 00000000 		.word	.LANCHOR1
+ 139 0040 00000000 		.word	.LANCHOR0
+ 140              		.cfi_endproc
+ 141              	.LFE7:
+ 143              		.global	radio_control
+ 144              		.section	.bss._1Hz.5231,"aw",%nobits
+ 145              		.set	.LANCHOR1,. + 0
+ 148              	_1Hz.5231:
+ 149 0000 00       		.space	1
+ 150              		.section	.bss.radio_control,"aw",%nobits
+ 151              		.align	1
+ 152              		.set	.LANCHOR0,. + 0
+ 155              	radio_control:
+ 156 0000 00000000 		.space	22
+ 156      00000000 
+ 156      00000000 
+ 156      00000000 
+ 156      00000000 
+ 157              		.text
+ 158              	.Letext0:
+ 159              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 160              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 161              		.file 4 "./paparazzi.h"
+ 162              		.file 5 "./subsystems/radio_control.h"
+ 163              		.file 6 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 radio_control.c
+     /tmp/ccnqc8D9.s:20     .text.radio_control_init:00000000 $t
+     /tmp/ccnqc8D9.s:25     .text.radio_control_init:00000000 radio_control_init
+     /tmp/ccnqc8D9.s:72     .text.radio_control_init:00000028 $d
+     /tmp/ccnqc8D9.s:77     .text.radio_control_periodic_task:00000000 $t
+     /tmp/ccnqc8D9.s:82     .text.radio_control_periodic_task:00000000 radio_control_periodic_task
+     /tmp/ccnqc8D9.s:138    .text.radio_control_periodic_task:0000003c $d
+     /tmp/ccnqc8D9.s:155    .bss.radio_control:00000000 radio_control
+     /tmp/ccnqc8D9.s:148    .bss._1Hz.5231:00000000 _1Hz.5231
+     /tmp/ccnqc8D9.s:149    .bss._1Hz.5231:00000000 $d
+     /tmp/ccnqc8D9.s:151    .bss.radio_control:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.led_hw.h.40.8014fb3594847a9d275099fc6ed94641
+                           .group:00000000 wm4.led.h.99.0116146560b22524df8538874a4f60bf
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.274c2fe245167861139e341fd233f9ea
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.paparazzi.h.2.903792c4429b74b43ba66cc0d2531abd
+                           .group:00000000 wm4.ppm_arch.h.30.0c8951ed5389d834f3146640146f52ff
+                           .group:00000000 wm4.radio.h.5.656a6ddaf975d68fb12fc1808da140b2
+                           .group:00000000 wm4.ppm.h.47.0149fce522ef0e315e524566a6409a2a
+                           .group:00000000 wm4.radio_control.h.42.d43f9142844e08da852d6ed343ba2de3
+
+UNDEFINED SYMBOLS
+radio_control_impl_init

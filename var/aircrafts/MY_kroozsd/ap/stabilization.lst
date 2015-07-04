@@ -1,0 +1,130 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"stabilization.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.stabilization_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	stabilization_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	stabilization_init:
+  26              	.LFB1:
+  27              		.file 1 "firmwares/rotorcraft/stabilization.c"
+   1:firmwares/rotorcraft/stabilization.c **** /*
+   2:firmwares/rotorcraft/stabilization.c ****  * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+   3:firmwares/rotorcraft/stabilization.c ****  *
+   4:firmwares/rotorcraft/stabilization.c ****  * This file is part of paparazzi.
+   5:firmwares/rotorcraft/stabilization.c ****  *
+   6:firmwares/rotorcraft/stabilization.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:firmwares/rotorcraft/stabilization.c ****  * it under the terms of the GNU General Public License as published by
+   8:firmwares/rotorcraft/stabilization.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:firmwares/rotorcraft/stabilization.c ****  * any later version.
+  10:firmwares/rotorcraft/stabilization.c ****  *
+  11:firmwares/rotorcraft/stabilization.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:firmwares/rotorcraft/stabilization.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:firmwares/rotorcraft/stabilization.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:firmwares/rotorcraft/stabilization.c ****  * GNU General Public License for more details.
+  15:firmwares/rotorcraft/stabilization.c ****  *
+  16:firmwares/rotorcraft/stabilization.c ****  * You should have received a copy of the GNU General Public License
+  17:firmwares/rotorcraft/stabilization.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:firmwares/rotorcraft/stabilization.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:firmwares/rotorcraft/stabilization.c ****  * Boston, MA 02111-1307, USA.
+  20:firmwares/rotorcraft/stabilization.c ****  */
+  21:firmwares/rotorcraft/stabilization.c **** 
+  22:firmwares/rotorcraft/stabilization.c **** /** @file firmwares/rotorcraft/stabilization.c
+  23:firmwares/rotorcraft/stabilization.c ****  *  General stabilization interface for rotorcrafts.
+  24:firmwares/rotorcraft/stabilization.c ****  */
+  25:firmwares/rotorcraft/stabilization.c **** 
+  26:firmwares/rotorcraft/stabilization.c **** #include "firmwares/rotorcraft/stabilization.h"
+  27:firmwares/rotorcraft/stabilization.c **** 
+  28:firmwares/rotorcraft/stabilization.c **** int32_t stabilization_cmd[COMMANDS_NB];
+  29:firmwares/rotorcraft/stabilization.c **** 
+  30:firmwares/rotorcraft/stabilization.c **** void stabilization_init(void)
+  31:firmwares/rotorcraft/stabilization.c **** {
+  28              		.loc 1 31 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  34              	.LBB2:
+  32:firmwares/rotorcraft/stabilization.c ****   for (uint8_t i = 0; i < COMMANDS_NB; i++) {
+  33:firmwares/rotorcraft/stabilization.c ****     stabilization_cmd[i] = 0;
+  35              		.loc 1 33 0
+  36 0000 034B     		ldr	r3, .L2
+  37 0002 0022     		movs	r2, #0
+  38 0004 1A60     		str	r2, [r3]
+  39              	.LVL1:
+  40 0006 5A60     		str	r2, [r3, #4]
+  41              	.LVL2:
+  42 0008 9A60     		str	r2, [r3, #8]
+  43              	.LVL3:
+  44 000a DA60     		str	r2, [r3, #12]
+  45              	.LVL4:
+  46 000c 7047     		bx	lr
+  47              	.L3:
+  48 000e 00BF     		.align	2
+  49              	.L2:
+  50 0010 00000000 		.word	.LANCHOR0
+  51              	.LBE2:
+  52              		.cfi_endproc
+  53              	.LFE1:
+  55              		.global	stabilization_cmd
+  56              		.section	.bss.stabilization_cmd,"aw",%nobits
+  57              		.align	2
+  58              		.set	.LANCHOR0,. + 0
+  61              	stabilization_cmd:
+  62 0000 00000000 		.space	16
+  62      00000000 
+  62      00000000 
+  62      00000000 
+  63              		.text
+  64              	.Letext0:
+  65              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+  66              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 stabilization.c
+     /tmp/cc9PiIxW.s:20     .text.stabilization_init:00000000 $t
+     /tmp/cc9PiIxW.s:25     .text.stabilization_init:00000000 stabilization_init
+     /tmp/cc9PiIxW.s:50     .text.stabilization_init:00000010 $d
+     /tmp/cc9PiIxW.s:61     .bss.stabilization_cmd:00000000 stabilization_cmd
+     /tmp/cc9PiIxW.s:57     .bss.stabilization_cmd:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+
+NO UNDEFINED SYMBOLS

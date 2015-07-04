@@ -1,0 +1,411 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"mcu_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.mcu_arch_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	mcu_arch_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	mcu_arch_init:
+  26              	.LFB5:
+  27              		.file 1 "arch/stm32/mcu_arch.c"
+   1:arch/stm32/mcu_arch.c **** /*
+   2:arch/stm32/mcu_arch.c ****  * Copyright (C) 2010-2012 The Paparazzi team
+   3:arch/stm32/mcu_arch.c ****  *
+   4:arch/stm32/mcu_arch.c ****  * This file is part of Paparazzi.
+   5:arch/stm32/mcu_arch.c ****  *
+   6:arch/stm32/mcu_arch.c ****  * Paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/mcu_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/mcu_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/mcu_arch.c ****  * any later version.
+  10:arch/stm32/mcu_arch.c ****  *
+  11:arch/stm32/mcu_arch.c ****  * Paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/mcu_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/mcu_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/mcu_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/mcu_arch.c ****  *
+  16:arch/stm32/mcu_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/mcu_arch.c ****  * along with Paparazzi; see the file COPYING.  If not, write to
+  18:arch/stm32/mcu_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:arch/stm32/mcu_arch.c ****  * Boston, MA 02111-1307, USA.
+  20:arch/stm32/mcu_arch.c ****  *
+  21:arch/stm32/mcu_arch.c ****  */
+  22:arch/stm32/mcu_arch.c **** 
+  23:arch/stm32/mcu_arch.c **** /**
+  24:arch/stm32/mcu_arch.c ****  * @file arch/stm32/mcu_arch.c
+  25:arch/stm32/mcu_arch.c ****  * @brief stm32 arch dependant microcontroller initialisation functions.
+  26:arch/stm32/mcu_arch.c ****  * @ingroup stm32_arch
+  27:arch/stm32/mcu_arch.c ****  */
+  28:arch/stm32/mcu_arch.c **** 
+  29:arch/stm32/mcu_arch.c **** #include "mcu.h"
+  30:arch/stm32/mcu_arch.c **** 
+  31:arch/stm32/mcu_arch.c **** #include BOARD_CONFIG
+  32:arch/stm32/mcu_arch.c **** 
+  33:arch/stm32/mcu_arch.c **** #include <inttypes.h>
+  34:arch/stm32/mcu_arch.c **** #include <libopencm3/stm32/gpio.h>
+  35:arch/stm32/mcu_arch.c **** #include <libopencm3/stm32/rcc.h>
+  36:arch/stm32/mcu_arch.c **** #include <libopencm3/stm32/timer.h>
+  37:arch/stm32/mcu_arch.c **** #include <libopencm3/stm32/flash.h>
+  38:arch/stm32/mcu_arch.c **** #include <libopencm3/cm3/scb.h>
+  39:arch/stm32/mcu_arch.c **** 
+  40:arch/stm32/mcu_arch.c **** #include "std.h"
+  41:arch/stm32/mcu_arch.c **** 
+  42:arch/stm32/mcu_arch.c **** void mcu_arch_init(void)
+  43:arch/stm32/mcu_arch.c **** {
+  28              		.loc 1 43 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 08B5     		push	{r3, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 3, -8
+  35              		.cfi_offset 14, -4
+  44:arch/stm32/mcu_arch.c **** #if LUFTBOOT
+  45:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("We are running luftboot, the interrupt vector is being relocated.")
+  46:arch/stm32/mcu_arch.c **** #if defined STM32F4
+  47:arch/stm32/mcu_arch.c ****   SCB_VTOR = 0x00004000;
+  48:arch/stm32/mcu_arch.c **** #else
+  49:arch/stm32/mcu_arch.c ****   SCB_VTOR = 0x00002000;
+  50:arch/stm32/mcu_arch.c **** #endif
+  51:arch/stm32/mcu_arch.c **** #endif
+  52:arch/stm32/mcu_arch.c **** #if EXT_CLK == 8000000
+  53:arch/stm32/mcu_arch.c **** #if defined(STM32F1)
+  54:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 8MHz external clock to PLL it to 72MHz.")
+  55:arch/stm32/mcu_arch.c ****   rcc_clock_setup_in_hse_8mhz_out_72mhz();
+  56:arch/stm32/mcu_arch.c **** #elif defined(STM32F4)
+  57:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 8MHz external clock to PLL it to 168MHz.")
+  58:arch/stm32/mcu_arch.c ****   rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
+  59:arch/stm32/mcu_arch.c **** #endif
+  60:arch/stm32/mcu_arch.c **** #elif EXT_CLK == 12000000
+  61:arch/stm32/mcu_arch.c **** #if defined(STM32F1)
+  62:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 12MHz external clock to PLL it to 72MHz.")
+  63:arch/stm32/mcu_arch.c ****   rcc_clock_setup_in_hse_12mhz_out_72mhz();
+  64:arch/stm32/mcu_arch.c **** #elif defined(STM32F4)
+  65:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 12MHz external clock to PLL it to 168MHz.")
+  66:arch/stm32/mcu_arch.c ****   rcc_clock_setup_hse_3v3(&hse_12mhz_3v3[CLOCK_3V3_168MHZ]);
+  36              		.loc 1 66 0
+  37 0002 0448     		ldr	r0, .L2
+  38 0004 FFF7FEFF 		bl	rcc_clock_setup_hse_3v3
+  39              	.LVL0:
+  67:arch/stm32/mcu_arch.c **** #endif
+  68:arch/stm32/mcu_arch.c **** #elif EXT_CLK == 16000000
+  69:arch/stm32/mcu_arch.c **** #if defined(STM32F4)
+  70:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 16MHz external clock to PLL it to 168MHz.")
+  71:arch/stm32/mcu_arch.c ****   rcc_clock_setup_hse_3v3(&hse_16mhz_3v3[CLOCK_3V3_168MHZ]);
+  72:arch/stm32/mcu_arch.c **** #endif
+  73:arch/stm32/mcu_arch.c **** #elif EXT_CLK == 25000000
+  74:arch/stm32/mcu_arch.c **** #if defined(STM32F4)
+  75:arch/stm32/mcu_arch.c ****   PRINT_CONFIG_MSG("Using 25MHz external clock to PLL it to 168MHz.")
+  76:arch/stm32/mcu_arch.c ****   rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[CLOCK_3V3_168MHZ]);
+  77:arch/stm32/mcu_arch.c **** #endif
+  78:arch/stm32/mcu_arch.c **** #else
+  79:arch/stm32/mcu_arch.c **** #error EXT_CLK is either set to an unsupported frequency or not defined at all. Please check!
+  80:arch/stm32/mcu_arch.c **** #endif
+  81:arch/stm32/mcu_arch.c **** 
+  82:arch/stm32/mcu_arch.c ****   /* Configure priority grouping 0 bits for pre-emption priority and 4 bits for sub-priority.
+  83:arch/stm32/mcu_arch.c ****    * this was previously in i2c driver
+  84:arch/stm32/mcu_arch.c ****    * FIXME is it really needed ?
+  85:arch/stm32/mcu_arch.c ****    */
+  86:arch/stm32/mcu_arch.c **** #ifndef RTOS_IS_CHIBIOS
+  87:arch/stm32/mcu_arch.c ****   scb_set_priority_grouping(SCB_AIRCR_PRIGROUP_NOGROUP_SUB16);
+  40              		.loc 1 87 0
+  41 0008 4FF4E060 		mov	r0, #1792
+  88:arch/stm32/mcu_arch.c **** #endif
+  89:arch/stm32/mcu_arch.c **** 
+  90:arch/stm32/mcu_arch.c **** }
+  42              		.loc 1 90 0
+  43 000c BDE80840 		pop	{r3, lr}
+  87:arch/stm32/mcu_arch.c ****   scb_set_priority_grouping(SCB_AIRCR_PRIGROUP_NOGROUP_SUB16);
+  44              		.loc 1 87 0
+  45 0010 FFF7FEBF 		b	scb_set_priority_grouping
+  46              	.LVL1:
+  47              	.L3:
+  48              		.align	2
+  49              	.L2:
+  50 0014 30000000 		.word	hse_12mhz_3v3+48
+  51              		.cfi_endproc
+  52              	.LFE5:
+  54              		.section	.text.timer_get_frequency,"ax",%progbits
+  55              		.align	1
+  56              		.global	timer_get_frequency
+  57              		.thumb
+  58              		.thumb_func
+  60              	timer_get_frequency:
+  61              	.LFB8:
+  91:arch/stm32/mcu_arch.c **** 
+  92:arch/stm32/mcu_arch.c **** #if defined(STM32F1)
+  93:arch/stm32/mcu_arch.c **** #define RCC_CFGR_PPRE2_SHIFT      11
+  94:arch/stm32/mcu_arch.c **** #define RCC_CFGR_PPRE2        (7 << RCC_CFGR_PPRE2_SHIFT)
+  95:arch/stm32/mcu_arch.c **** 
+  96:arch/stm32/mcu_arch.c **** #define RCC_CFGR_PPRE1_SHIFT      8
+  97:arch/stm32/mcu_arch.c **** #define RCC_CFGR_PPRE1        (7 << RCC_CFGR_PPRE1_SHIFT)
+  98:arch/stm32/mcu_arch.c **** 
+  99:arch/stm32/mcu_arch.c **** static inline uint32_t rcc_get_ppre1(void)
+ 100:arch/stm32/mcu_arch.c **** {
+ 101:arch/stm32/mcu_arch.c ****   return RCC_CFGR & RCC_CFGR_PPRE1;
+ 102:arch/stm32/mcu_arch.c **** }
+ 103:arch/stm32/mcu_arch.c **** 
+ 104:arch/stm32/mcu_arch.c **** static inline uint32_t rcc_get_ppre2(void)
+ 105:arch/stm32/mcu_arch.c **** {
+ 106:arch/stm32/mcu_arch.c ****   return RCC_CFGR & RCC_CFGR_PPRE2;
+ 107:arch/stm32/mcu_arch.c **** }
+ 108:arch/stm32/mcu_arch.c **** #elif defined(STM32F4)
+ 109:arch/stm32/mcu_arch.c **** static inline uint32_t rcc_get_ppre1(void)
+ 110:arch/stm32/mcu_arch.c **** {
+ 111:arch/stm32/mcu_arch.c ****   return RCC_CFGR & ((1 << 10) | (1 << 11) | (1 << 12));
+ 112:arch/stm32/mcu_arch.c **** }
+ 113:arch/stm32/mcu_arch.c **** 
+ 114:arch/stm32/mcu_arch.c **** static inline uint32_t rcc_get_ppre2(void)
+ 115:arch/stm32/mcu_arch.c **** {
+ 116:arch/stm32/mcu_arch.c ****   return RCC_CFGR & ((1 << 13) | (1 << 14) | (1 << 15));
+ 117:arch/stm32/mcu_arch.c **** }
+ 118:arch/stm32/mcu_arch.c **** #endif
+ 119:arch/stm32/mcu_arch.c **** 
+ 120:arch/stm32/mcu_arch.c **** /** @brief Get Timer clock frequency (before prescaling)
+ 121:arch/stm32/mcu_arch.c ****  * Only valid if using the internal clock for the timer.
+ 122:arch/stm32/mcu_arch.c ****  * Currently implemented for STM32F1x and STM32F405xx/407xx STM32F415xx/417xx.
+ 123:arch/stm32/mcu_arch.c ****  * Not valid for STM32F42xxx and STM32F43xxx.
+ 124:arch/stm32/mcu_arch.c ****  * @param[in] timer_peripheral Unsigned int32. Timer register address base
+ 125:arch/stm32/mcu_arch.c ****  * @return Unsigned int32. Timer base frequency
+ 126:arch/stm32/mcu_arch.c ****  */
+ 127:arch/stm32/mcu_arch.c **** uint32_t timer_get_frequency(uint32_t timer_peripheral)
+ 128:arch/stm32/mcu_arch.c **** {
+  62              		.loc 1 128 0
+  63              		.cfi_startproc
+  64              		@ args = 0, pretend = 0, frame = 0
+  65              		@ frame_needed = 0, uses_anonymous_args = 0
+  66              		@ link register save eliminated.
+  67              	.LVL2:
+ 129:arch/stm32/mcu_arch.c ****   switch (timer_peripheral) {
+  68              		.loc 1 129 0
+  69 0000 244B     		ldr	r3, .L21
+  70 0002 9842     		cmp	r0, r3
+  71 0004 39D0     		beq	.L6
+  72 0006 14D8     		bhi	.L7
+  73 0008 A3F58053 		sub	r3, r3, #4096
+  74 000c 9842     		cmp	r0, r3
+  75 000e 34D0     		beq	.L6
+  76 0010 05D8     		bhi	.L8
+  77 0012 B0F1804F 		cmp	r0, #1073741824
+  78 0016 30D0     		beq	.L6
+  79 0018 A3F58063 		sub	r3, r3, #1024
+  80 001c 17E0     		b	.L18
+  81              	.L8:
+  82 001e 1E4B     		ldr	r3, .L21+4
+  83 0020 9842     		cmp	r0, r3
+  84 0022 2AD0     		beq	.L6
+  85 0024 03F58063 		add	r3, r3, #1024
+  86 0028 9842     		cmp	r0, r3
+  87 002a 26D0     		beq	.L6
+  88 002c A3F50063 		sub	r3, r3, #2048
+  89 0030 0DE0     		b	.L18
+  90              	.L7:
+  91 0032 1A4B     		ldr	r3, .L21+8
+  92 0034 9842     		cmp	r0, r3
+  93 0036 18D0     		beq	.L9
+  94 0038 0CD8     		bhi	.L10
+  95 003a A3F56443 		sub	r3, r3, #58368
+  96 003e 9842     		cmp	r0, r3
+  97 0040 1BD0     		beq	.L6
+  98 0042 03F56043 		add	r3, r3, #57344
+  99 0046 9842     		cmp	r0, r3
+ 100 0048 0FD0     		beq	.L9
+ 101 004a A3F56443 		sub	r3, r3, #58368
+ 102              	.L18:
+ 103 004e 9842     		cmp	r0, r3
+ 104 0050 1DD1     		bne	.L13
+ 105 0052 12E0     		b	.L6
+ 106              	.L10:
+ 107 0054 124B     		ldr	r3, .L21+12
+ 108 0056 9842     		cmp	r0, r3
+ 109 0058 07D0     		beq	.L9
+ 110 005a 03F58063 		add	r3, r3, #1024
+ 111 005e 9842     		cmp	r0, r3
+ 112 0060 03D0     		beq	.L9
+ 113 0062 A3F50063 		sub	r3, r3, #2048
+ 114 0066 9842     		cmp	r0, r3
+ 115 0068 11D1     		bne	.L13
+ 116              	.L9:
+ 117              	.LBB6:
+ 118              	.LBB7:
+ 116:arch/stm32/mcu_arch.c ****   return RCC_CFGR & ((1 << 13) | (1 << 14) | (1 << 15));
+ 119              		.loc 1 116 0
+ 120 006a 0E4B     		ldr	r3, .L21+16
+ 121 006c 1B68     		ldr	r3, [r3]
+ 122              	.LBE7:
+ 123              	.LBE6:
+ 130:arch/stm32/mcu_arch.c ****       // Timers on high speed APB2
+ 131:arch/stm32/mcu_arch.c ****     case TIM1:
+ 132:arch/stm32/mcu_arch.c ****     case TIM8:
+ 133:arch/stm32/mcu_arch.c **** #ifdef TIM9
+ 134:arch/stm32/mcu_arch.c ****     case TIM9:
+ 135:arch/stm32/mcu_arch.c **** #endif
+ 136:arch/stm32/mcu_arch.c **** #ifdef TIM10
+ 137:arch/stm32/mcu_arch.c ****     case TIM10:
+ 138:arch/stm32/mcu_arch.c **** #endif
+ 139:arch/stm32/mcu_arch.c **** #ifdef TIM11
+ 140:arch/stm32/mcu_arch.c ****     case TIM11:
+ 141:arch/stm32/mcu_arch.c **** #endif
+ 142:arch/stm32/mcu_arch.c ****       if (!rcc_get_ppre2())
+ 124              		.loc 1 142 0
+ 125 006e 13F4604F 		tst	r3, #57344
+ 126 0072 0D4B     		ldr	r3, .L21+20
+ 143:arch/stm32/mcu_arch.c ****       {
+ 144:arch/stm32/mcu_arch.c ****         /* without APB2 prescaler, runs at APB2 freq */
+ 145:arch/stm32/mcu_arch.c ****         return rcc_apb2_frequency;
+ 127              		.loc 1 145 0
+ 128 0074 1868     		ldr	r0, [r3]
+ 129              	.LVL3:
+ 142:arch/stm32/mcu_arch.c ****       if (!rcc_get_ppre2())
+ 130              		.loc 1 142 0
+ 131 0076 08D1     		bne	.L12
+ 132              		.loc 1 145 0
+ 133 0078 7047     		bx	lr
+ 134              	.LVL4:
+ 135              	.L6:
+ 136              	.LBB8:
+ 137              	.LBB9:
+ 111:arch/stm32/mcu_arch.c ****   return RCC_CFGR & ((1 << 10) | (1 << 11) | (1 << 12));
+ 138              		.loc 1 111 0
+ 139 007a 0A4B     		ldr	r3, .L21+16
+ 140 007c 1B68     		ldr	r3, [r3]
+ 141              	.LBE9:
+ 142              	.LBE8:
+ 146:arch/stm32/mcu_arch.c ****       } else {
+ 147:arch/stm32/mcu_arch.c ****         /* with any ABP2 prescaler, runs at 2 * APB2 freq */
+ 148:arch/stm32/mcu_arch.c ****         return rcc_apb2_frequency * 2;
+ 149:arch/stm32/mcu_arch.c ****       }
+ 150:arch/stm32/mcu_arch.c **** 
+ 151:arch/stm32/mcu_arch.c ****       // timers on low speed APB1
+ 152:arch/stm32/mcu_arch.c ****     case TIM2:
+ 153:arch/stm32/mcu_arch.c ****     case TIM3:
+ 154:arch/stm32/mcu_arch.c ****     case TIM4:
+ 155:arch/stm32/mcu_arch.c ****     case TIM5:
+ 156:arch/stm32/mcu_arch.c ****     case TIM6:
+ 157:arch/stm32/mcu_arch.c ****     case TIM7:
+ 158:arch/stm32/mcu_arch.c **** #ifdef TIM12
+ 159:arch/stm32/mcu_arch.c ****     case TIM12:
+ 160:arch/stm32/mcu_arch.c **** #endif
+ 161:arch/stm32/mcu_arch.c **** #ifdef TIM13
+ 162:arch/stm32/mcu_arch.c ****     case TIM13:
+ 163:arch/stm32/mcu_arch.c **** #endif
+ 164:arch/stm32/mcu_arch.c **** #ifdef TIM14
+ 165:arch/stm32/mcu_arch.c ****     case TIM14:
+ 166:arch/stm32/mcu_arch.c **** #endif
+ 167:arch/stm32/mcu_arch.c ****       if (!rcc_get_ppre1())
+ 143              		.loc 1 167 0
+ 144 007e 13F4E05F 		tst	r3, #7168
+ 145 0082 0A4B     		ldr	r3, .L21+24
+ 168:arch/stm32/mcu_arch.c ****       {
+ 169:arch/stm32/mcu_arch.c ****         /* without APB1 prescaler, runs at APB1 freq */
+ 170:arch/stm32/mcu_arch.c ****         return rcc_apb1_frequency;
+ 146              		.loc 1 170 0
+ 147 0084 1868     		ldr	r0, [r3]
+ 148              	.LVL5:
+ 167:arch/stm32/mcu_arch.c ****       if (!rcc_get_ppre1())
+ 149              		.loc 1 167 0
+ 150 0086 00D1     		bne	.L12
+ 151              		.loc 1 170 0
+ 152 0088 7047     		bx	lr
+ 153              	.L12:
+ 171:arch/stm32/mcu_arch.c ****       } else {
+ 172:arch/stm32/mcu_arch.c ****         /* with any ABP1 prescaler, runs at 2 * APB1 freq */
+ 173:arch/stm32/mcu_arch.c ****         return rcc_apb1_frequency * 2;
+ 154              		.loc 1 173 0
+ 155 008a 4000     		lsls	r0, r0, #1
+ 156 008c 7047     		bx	lr
+ 157              	.LVL6:
+ 158              	.L13:
+ 174:arch/stm32/mcu_arch.c ****       }
+ 175:arch/stm32/mcu_arch.c ****     default:
+ 176:arch/stm32/mcu_arch.c ****       // other timers currently not supported
+ 177:arch/stm32/mcu_arch.c ****       break;
+ 178:arch/stm32/mcu_arch.c ****   }
+ 179:arch/stm32/mcu_arch.c ****   return 0;
+ 159              		.loc 1 179 0
+ 160 008e 0020     		movs	r0, #0
+ 161              	.LVL7:
+ 180:arch/stm32/mcu_arch.c **** }
+ 162              		.loc 1 180 0
+ 163 0090 7047     		bx	lr
+ 164              	.L22:
+ 165 0092 00BF     		.align	2
+ 166              	.L21:
+ 167 0094 00180040 		.word	1073747968
+ 168 0098 00100040 		.word	1073745920
+ 169 009c 00040140 		.word	1073808384
+ 170 00a0 00440140 		.word	1073824768
+ 171 00a4 08380240 		.word	1073887240
+ 172 00a8 00000000 		.word	rcc_apb2_frequency
+ 173 00ac 00000000 		.word	rcc_apb1_frequency
+ 174              		.cfi_endproc
+ 175              	.LFE8:
+ 177              		.text
+ 178              	.Letext0:
+ 179              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 180              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 181              		.file 4 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 182              		.file 5 "../ext/libopencm3/include/libopencm3/cm3/scb.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 mcu_arch.c
+     /tmp/ccrvQPg3.s:20     .text.mcu_arch_init:00000000 $t
+     /tmp/ccrvQPg3.s:25     .text.mcu_arch_init:00000000 mcu_arch_init
+     /tmp/ccrvQPg3.s:50     .text.mcu_arch_init:00000014 $d
+     /tmp/ccrvQPg3.s:55     .text.timer_get_frequency:00000000 $t
+     /tmp/ccrvQPg3.s:60     .text.timer_get_frequency:00000000 timer_get_frequency
+     /tmp/ccrvQPg3.s:167    .text.timer_get_frequency:00000094 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.mcu_arch.h.40.71694bb2df9860c9d8824bb71314a473
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.timer_common_all.h.35.b42b09af17c21cc72e25b3b2ba1809d2
+                           .group:00000000 wm4.timer_common_f24.h.44.de6aabe29f6c3596e141b760d97b2482
+                           .group:00000000 wm4.flash_common_f234.h.40.bf02f225fee35f5d1cbfc62f3291a97d
+                           .group:00000000 wm4.flash_common_f24.h.47.a1c9a841c1e95113004d90ebbc91bc11
+                           .group:00000000 wm4.scb.h.22.290c4c25c761b65def084c067920a0d2
+
+UNDEFINED SYMBOLS
+rcc_clock_setup_hse_3v3
+scb_set_priority_grouping
+hse_12mhz_3v3
+rcc_apb2_frequency
+rcc_apb1_frequency

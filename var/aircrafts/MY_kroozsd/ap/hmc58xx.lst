@@ -1,0 +1,863 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"hmc58xx.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.hmc58xx_send_config,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	hmc58xx_send_config:
+  25              	.LFB35:
+  26              		.file 1 "peripherals/hmc58xx.c"
+   1:peripherals/hmc58xx.c **** /*
+   2:peripherals/hmc58xx.c ****  * Copyright (C) 2011 Gautier Hattenberger <gautier.hattenberger@enac.fr>
+   3:peripherals/hmc58xx.c ****  *               2013 Felix Ruess <felix.ruess@gmail.com>
+   4:peripherals/hmc58xx.c ****  *
+   5:peripherals/hmc58xx.c ****  * This file is part of paparazzi.
+   6:peripherals/hmc58xx.c ****  *
+   7:peripherals/hmc58xx.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:peripherals/hmc58xx.c ****  * it under the terms of the GNU General Public License as published by
+   9:peripherals/hmc58xx.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:peripherals/hmc58xx.c ****  * any later version.
+  11:peripherals/hmc58xx.c ****  *
+  12:peripherals/hmc58xx.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:peripherals/hmc58xx.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:peripherals/hmc58xx.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:peripherals/hmc58xx.c ****  * GNU General Public License for more details.
+  16:peripherals/hmc58xx.c ****  *
+  17:peripherals/hmc58xx.c ****  * You should have received a copy of the GNU General Public License
+  18:peripherals/hmc58xx.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:peripherals/hmc58xx.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:peripherals/hmc58xx.c ****  * Boston, MA 02111-1307, USA.
+  21:peripherals/hmc58xx.c ****  */
+  22:peripherals/hmc58xx.c **** 
+  23:peripherals/hmc58xx.c **** /**
+  24:peripherals/hmc58xx.c ****  * @file peripherals/hmc58xx.c
+  25:peripherals/hmc58xx.c ****  *
+  26:peripherals/hmc58xx.c ****  * Driver for Honeywell HMC5843 and HMC5883 magnetometers.
+  27:peripherals/hmc58xx.c ****  * @todo DRDY/IRQ handling
+  28:peripherals/hmc58xx.c ****  */
+  29:peripherals/hmc58xx.c **** 
+  30:peripherals/hmc58xx.c **** #include "peripherals/hmc58xx.h"
+  31:peripherals/hmc58xx.c **** #include "mcu_periph/sys_time.h"
+  32:peripherals/hmc58xx.c **** #include "std.h"
+  33:peripherals/hmc58xx.c **** 
+  34:peripherals/hmc58xx.c **** 
+  35:peripherals/hmc58xx.c **** /* HMC58XX default conf */
+  36:peripherals/hmc58xx.c **** #ifndef HMC58XX_DEFAULT_DO
+  37:peripherals/hmc58xx.c **** #define HMC58XX_DEFAULT_DO 0x6 // Data Output Rate (6 -> 50Hz with HMC5843, 75Hz with HMC5883)
+  38:peripherals/hmc58xx.c **** #endif
+  39:peripherals/hmc58xx.c **** #ifndef HMC58XX_DEFAULT_MS
+  40:peripherals/hmc58xx.c **** #define HMC58XX_DEFAULT_MS 0x0 // Measurement configuration
+  41:peripherals/hmc58xx.c **** #endif
+  42:peripherals/hmc58xx.c **** #ifndef HMC58XX_DEFAULT_GN
+  43:peripherals/hmc58xx.c **** #define HMC58XX_DEFAULT_GN 0x1 // Gain configuration (1 -> +- 1 Gauss)
+  44:peripherals/hmc58xx.c **** #endif
+  45:peripherals/hmc58xx.c **** #ifndef HMC58XX_DEFAULT_MD
+  46:peripherals/hmc58xx.c **** #define HMC58XX_DEFAULT_MD 0x0 // Continious measurement mode
+  47:peripherals/hmc58xx.c **** #endif
+  48:peripherals/hmc58xx.c **** 
+  49:peripherals/hmc58xx.c **** /** HMC58XX startup delay
+  50:peripherals/hmc58xx.c ****  *
+  51:peripherals/hmc58xx.c ****  *  On startup, the hmc is making a first conversion in single mode.
+  52:peripherals/hmc58xx.c ****  *  Trying to configure the mode register before the end of this conversion
+  53:peripherals/hmc58xx.c ****  *  seems to void the configuration.
+  54:peripherals/hmc58xx.c ****  *  Default conversion rate is 15 Hz (66ms) and worst case is O.75Hz (1.3s).
+  55:peripherals/hmc58xx.c ****  *  Let set the default delay to 1.5s afer boot time.
+  56:peripherals/hmc58xx.c ****  */
+  57:peripherals/hmc58xx.c **** #ifndef HMC58XX_STARTUP_DELAY
+  58:peripherals/hmc58xx.c **** #define HMC58XX_STARTUP_DELAY 1.5
+  59:peripherals/hmc58xx.c **** #endif
+  60:peripherals/hmc58xx.c **** 
+  61:peripherals/hmc58xx.c **** static void hmc58xx_set_default_config(struct Hmc58xxConfig *c)
+  62:peripherals/hmc58xx.c **** {
+  63:peripherals/hmc58xx.c ****   c->rate = HMC58XX_DEFAULT_DO;
+  64:peripherals/hmc58xx.c ****   c->meas = HMC58XX_DEFAULT_MS;
+  65:peripherals/hmc58xx.c ****   c->gain = HMC58XX_DEFAULT_GN;
+  66:peripherals/hmc58xx.c ****   c->mode = HMC58XX_DEFAULT_MD;
+  67:peripherals/hmc58xx.c **** }
+  68:peripherals/hmc58xx.c **** 
+  69:peripherals/hmc58xx.c **** /**
+  70:peripherals/hmc58xx.c ****  * Initialize Hmc58xx struct and set default config options.
+  71:peripherals/hmc58xx.c ****  * @param hmc   Hmc58xx struct
+  72:peripherals/hmc58xx.c ****  * @param i2c_p I2C periperal to use
+  73:peripherals/hmc58xx.c ****  * @param addr  I2C address of HMC58xx
+  74:peripherals/hmc58xx.c ****  */
+  75:peripherals/hmc58xx.c **** void hmc58xx_init(struct Hmc58xx *hmc, struct i2c_periph *i2c_p, uint8_t addr)
+  76:peripherals/hmc58xx.c **** {
+  77:peripherals/hmc58xx.c ****   /* set i2c_peripheral */
+  78:peripherals/hmc58xx.c ****   hmc->i2c_p = i2c_p;
+  79:peripherals/hmc58xx.c ****   /* set i2c address */
+  80:peripherals/hmc58xx.c ****   hmc->i2c_trans.slave_addr = addr;
+  81:peripherals/hmc58xx.c ****   hmc->i2c_trans.status = I2CTransDone;
+  82:peripherals/hmc58xx.c ****   /* set default config options */
+  83:peripherals/hmc58xx.c ****   hmc58xx_set_default_config(&(hmc->config));
+  84:peripherals/hmc58xx.c ****   hmc->type = HMC_TYPE_5883;
+  85:peripherals/hmc58xx.c ****   hmc->initialized = FALSE;
+  86:peripherals/hmc58xx.c ****   hmc->init_status = HMC_CONF_UNINIT;
+  87:peripherals/hmc58xx.c **** }
+  88:peripherals/hmc58xx.c **** 
+  89:peripherals/hmc58xx.c **** static void hmc58xx_i2c_tx_reg(struct Hmc58xx *hmc, uint8_t reg, uint8_t val)
+  90:peripherals/hmc58xx.c **** {
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+  92:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[0] = reg;
+  93:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[1] = val;
+  94:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_r = 0;
+  95:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_w = 2;
+  96:peripherals/hmc58xx.c ****   i2c_submit(hmc->i2c_p, &(hmc->i2c_trans));
+  97:peripherals/hmc58xx.c **** }
+  98:peripherals/hmc58xx.c **** 
+  99:peripherals/hmc58xx.c **** /// Configuration function called once before normal use
+ 100:peripherals/hmc58xx.c **** static void hmc58xx_send_config(struct Hmc58xx *hmc)
+ 101:peripherals/hmc58xx.c **** {
+  27              		.loc 1 101 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+ 102:peripherals/hmc58xx.c ****   switch (hmc->init_status) {
+  32              		.loc 1 102 0
+  33 0000 90F82B30 		ldrb	r3, [r0, #43]	@ zero_extendqisi2
+  34 0004 013B     		subs	r3, r3, #1
+ 101:peripherals/hmc58xx.c **** {
+  35              		.loc 1 101 0
+  36 0006 10B5     		push	{r4, lr}
+  37              		.cfi_def_cfa_offset 8
+  38              		.cfi_offset 4, -8
+  39              		.cfi_offset 14, -4
+ 101:peripherals/hmc58xx.c **** {
+  40              		.loc 1 101 0
+  41 0008 0446     		mov	r4, r0
+  42              		.loc 1 102 0
+  43 000a 032B     		cmp	r3, #3
+  44 000c 33D8     		bhi	.L1
+  45 000e DFE803F0 		tbb	[pc, r3]
+  46              	.L4:
+  47 0012 02       		.byte	(.L3-.L4)/2
+  48 0013 0D       		.byte	(.L5-.L4)/2
+  49 0014 19       		.byte	(.L6-.L4)/2
+  50 0015 2C       		.byte	(.L7-.L4)/2
+  51              		.p2align 1
+  52              	.L3:
+  53              	.LVL1:
+  54              	.LBB12:
+  55              	.LBB13:
+ 103:peripherals/hmc58xx.c ****     case HMC_CONF_CRA:
+ 104:peripherals/hmc58xx.c ****       hmc58xx_i2c_tx_reg(hmc, HMC58XX_REG_CFGA, (hmc->config.rate << 2) | (hmc->config.meas));
+  56              		.loc 1 104 0
+  57 0016 90F83530 		ldrb	r3, [r0, #53]	@ zero_extendqisi2
+  58 001a 90F83420 		ldrb	r2, [r0, #52]	@ zero_extendqisi2
+  59 001e 43EA8202 		orr	r2, r3, r2, lsl #2
+  60              	.LBB14:
+  61              	.LBB15:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+  62              		.loc 1 91 0
+  63 0022 0023     		movs	r3, #0
+  64              	.LBE15:
+  65              	.LBE14:
+  66              		.loc 1 104 0
+  67 0024 D2B2     		uxtb	r2, r2
+  68              	.LVL2:
+  69              	.LBB17:
+  70              	.LBB16:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+  71              		.loc 1 91 0
+  72 0026 0371     		strb	r3, [r0, #4]
+  92:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[0] = reg;
+  73              		.loc 1 92 0
+  74 0028 4372     		strb	r3, [r0, #9]
+  75 002a 07E0     		b	.L9
+  76              	.LVL3:
+  77              	.L5:
+  78              	.LBE16:
+  79              	.LBE17:
+  80              	.LBE13:
+  81              	.LBE12:
+ 105:peripherals/hmc58xx.c ****       hmc->init_status++;
+ 106:peripherals/hmc58xx.c ****       break;
+ 107:peripherals/hmc58xx.c ****     case HMC_CONF_CRB:
+ 108:peripherals/hmc58xx.c ****       hmc58xx_i2c_tx_reg(hmc, HMC58XX_REG_CFGB, (hmc->config.gain << 5));
+  82              		.loc 1 108 0
+  83 002c 90F83620 		ldrb	r2, [r0, #54]	@ zero_extendqisi2
+  84              	.LBB18:
+  85              	.LBB19:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+  86              		.loc 1 91 0
+  87 0030 0023     		movs	r3, #0
+  88              	.LBE19:
+  89              	.LBE18:
+  90              		.loc 1 108 0
+  91 0032 5201     		lsls	r2, r2, #5
+  92              	.LBB22:
+  93              	.LBB20:
+  92:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[0] = reg;
+  94              		.loc 1 92 0
+  95 0034 0121     		movs	r1, #1
+  96              	.LBE20:
+  97              	.LBE22:
+  98              		.loc 1 108 0
+  99 0036 D2B2     		uxtb	r2, r2
+ 100              	.LVL4:
+ 101              	.LBB23:
+ 102              	.LBB21:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+ 103              		.loc 1 91 0
+ 104 0038 0371     		strb	r3, [r0, #4]
+  92:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[0] = reg;
+ 105              		.loc 1 92 0
+ 106 003a 4172     		strb	r1, [r0, #9]
+ 107              	.LVL5:
+ 108              	.L9:
+  94:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_r = 0;
+ 109              		.loc 1 94 0
+ 110 003c E380     		strh	r3, [r4, #6]	@ movhi
+  93:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[1] = val;
+ 111              		.loc 1 93 0
+ 112 003e A272     		strb	r2, [r4, #10]
+  95:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_w = 2;
+ 113              		.loc 1 95 0
+ 114 0040 0223     		movs	r3, #2
+ 115 0042 07E0     		b	.L8
+ 116              	.L6:
+ 117              	.LBE21:
+ 118              	.LBE23:
+ 119              	.LBB24:
+ 120              	.LBB25:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+ 121              		.loc 1 91 0
+ 122 0044 0022     		movs	r2, #0
+ 123              	.LBE25:
+ 124              	.LBE24:
+ 109:peripherals/hmc58xx.c ****       hmc->init_status++;
+ 110:peripherals/hmc58xx.c ****       break;
+ 111:peripherals/hmc58xx.c ****     case HMC_CONF_MODE:
+ 112:peripherals/hmc58xx.c ****       hmc58xx_i2c_tx_reg(hmc, HMC58XX_REG_MODE, hmc->config.mode);
+ 125              		.loc 1 112 0
+ 126 0046 90F83710 		ldrb	r1, [r0, #55]	@ zero_extendqisi2
+ 127              	.LVL6:
+ 128              	.LBB27:
+ 129              	.LBB26:
+  91:peripherals/hmc58xx.c ****   hmc->i2c_trans.type = I2CTransTx;
+ 130              		.loc 1 91 0
+ 131 004a 0271     		strb	r2, [r0, #4]
+  92:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[0] = reg;
+ 132              		.loc 1 92 0
+ 133 004c 0223     		movs	r3, #2
+ 134 004e 4372     		strb	r3, [r0, #9]
+  94:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_r = 0;
+ 135              		.loc 1 94 0
+ 136 0050 C280     		strh	r2, [r0, #6]	@ movhi
+  93:peripherals/hmc58xx.c ****   hmc->i2c_trans.buf[1] = val;
+ 137              		.loc 1 93 0
+ 138 0052 8172     		strb	r1, [r0, #10]
+ 139              	.LVL7:
+ 140              	.L8:
+  95:peripherals/hmc58xx.c ****   hmc->i2c_trans.len_w = 2;
+ 141              		.loc 1 95 0
+ 142 0054 2372     		strb	r3, [r4, #8]
+  96:peripherals/hmc58xx.c ****   i2c_submit(hmc->i2c_p, &(hmc->i2c_trans));
+ 143              		.loc 1 96 0
+ 144 0056 2068     		ldr	r0, [r4]
+ 145              	.LVL8:
+ 146 0058 211D     		adds	r1, r4, #4
+ 147 005a FFF7FEFF 		bl	i2c_submit
+ 148              	.LVL9:
+ 149              	.LBE26:
+ 150              	.LBE27:
+ 113:peripherals/hmc58xx.c ****       hmc->init_status++;
+ 151              		.loc 1 113 0
+ 152 005e 94F82B30 		ldrb	r3, [r4, #43]	@ zero_extendqisi2
+ 153 0062 0133     		adds	r3, r3, #1
+ 154 0064 84F82B30 		strb	r3, [r4, #43]
+ 114:peripherals/hmc58xx.c ****       break;
+ 155              		.loc 1 114 0
+ 156 0068 10BD     		pop	{r4, pc}
+ 157              	.LVL10:
+ 158              	.L7:
+ 115:peripherals/hmc58xx.c ****     case HMC_CONF_DONE:
+ 116:peripherals/hmc58xx.c ****       hmc->initialized = TRUE;
+ 159              		.loc 1 116 0
+ 160 006a 0123     		movs	r3, #1
+ 161 006c 80F82A30 		strb	r3, [r0, #42]
+ 117:peripherals/hmc58xx.c ****       hmc->i2c_trans.status = I2CTransDone;
+ 162              		.loc 1 117 0
+ 163 0070 0423     		movs	r3, #4
+ 164 0072 80F82930 		strb	r3, [r0, #41]
+ 165              	.L1:
+ 166 0076 10BD     		pop	{r4, pc}
+ 167              		.cfi_endproc
+ 168              	.LFE35:
+ 170              		.section	.text.hmc58xx_init,"ax",%progbits
+ 171              		.align	1
+ 172              		.global	hmc58xx_init
+ 173              		.thumb
+ 174              		.thumb_func
+ 176              	hmc58xx_init:
+ 177              	.LFB33:
+  76:peripherals/hmc58xx.c **** {
+ 178              		.loc 1 76 0
+ 179              		.cfi_startproc
+ 180              		@ args = 0, pretend = 0, frame = 0
+ 181              		@ frame_needed = 0, uses_anonymous_args = 0
+ 182              		@ link register save eliminated.
+ 183              	.LVL11:
+  81:peripherals/hmc58xx.c ****   hmc->i2c_trans.status = I2CTransDone;
+ 184              		.loc 1 81 0
+ 185 0000 0423     		movs	r3, #4
+ 186 0002 80F82930 		strb	r3, [r0, #41]
+ 187              	.LVL12:
+ 188              	.LBB28:
+ 189              	.LBB29:
+  63:peripherals/hmc58xx.c ****   c->rate = HMC58XX_DEFAULT_DO;
+ 190              		.loc 1 63 0
+ 191 0006 0623     		movs	r3, #6
+ 192              	.LBE29:
+ 193              	.LBE28:
+  80:peripherals/hmc58xx.c ****   hmc->i2c_trans.slave_addr = addr;
+ 194              		.loc 1 80 0
+ 195 0008 4271     		strb	r2, [r0, #5]
+ 196              	.LBB32:
+ 197              	.LBB30:
+  63:peripherals/hmc58xx.c ****   c->rate = HMC58XX_DEFAULT_DO;
+ 198              		.loc 1 63 0
+ 199 000a 80F83430 		strb	r3, [r0, #52]
+  65:peripherals/hmc58xx.c ****   c->gain = HMC58XX_DEFAULT_GN;
+ 200              		.loc 1 65 0
+ 201 000e 0122     		movs	r2, #1
+ 202              	.LVL13:
+  64:peripherals/hmc58xx.c ****   c->meas = HMC58XX_DEFAULT_MS;
+ 203              		.loc 1 64 0
+ 204 0010 0023     		movs	r3, #0
+ 205              	.LBE30:
+ 206              	.LBE32:
+  78:peripherals/hmc58xx.c ****   hmc->i2c_p = i2c_p;
+ 207              		.loc 1 78 0
+ 208 0012 0160     		str	r1, [r0]
+ 209              	.LBB33:
+ 210              	.LBB31:
+  64:peripherals/hmc58xx.c ****   c->meas = HMC58XX_DEFAULT_MS;
+ 211              		.loc 1 64 0
+ 212 0014 80F83530 		strb	r3, [r0, #53]
+  65:peripherals/hmc58xx.c ****   c->gain = HMC58XX_DEFAULT_GN;
+ 213              		.loc 1 65 0
+ 214 0018 80F83620 		strb	r2, [r0, #54]
+  66:peripherals/hmc58xx.c ****   c->mode = HMC58XX_DEFAULT_MD;
+ 215              		.loc 1 66 0
+ 216 001c 80F83730 		strb	r3, [r0, #55]
+ 217              	.LBE31:
+ 218              	.LBE33:
+  84:peripherals/hmc58xx.c ****   hmc->type = HMC_TYPE_5883;
+ 219              		.loc 1 84 0
+ 220 0020 80F83820 		strb	r2, [r0, #56]
+  85:peripherals/hmc58xx.c ****   hmc->initialized = FALSE;
+ 221              		.loc 1 85 0
+ 222 0024 80F82A30 		strb	r3, [r0, #42]
+  86:peripherals/hmc58xx.c ****   hmc->init_status = HMC_CONF_UNINIT;
+ 223              		.loc 1 86 0
+ 224 0028 80F82B30 		strb	r3, [r0, #43]
+ 225 002c 7047     		bx	lr
+ 226              		.cfi_endproc
+ 227              	.LFE33:
+ 229              		.section	.text.hmc58xx_start_configure,"ax",%progbits
+ 230              		.align	1
+ 231              		.global	hmc58xx_start_configure
+ 232              		.thumb
+ 233              		.thumb_func
+ 235              	hmc58xx_start_configure:
+ 236              	.LFB36:
+ 118:peripherals/hmc58xx.c ****       break;
+ 119:peripherals/hmc58xx.c ****     default:
+ 120:peripherals/hmc58xx.c ****       break;
+ 121:peripherals/hmc58xx.c ****   }
+ 122:peripherals/hmc58xx.c **** }
+ 123:peripherals/hmc58xx.c **** 
+ 124:peripherals/hmc58xx.c **** // Configure
+ 125:peripherals/hmc58xx.c **** void hmc58xx_start_configure(struct Hmc58xx *hmc)
+ 126:peripherals/hmc58xx.c **** {
+ 237              		.loc 1 126 0
+ 238              		.cfi_startproc
+ 239              		@ args = 0, pretend = 0, frame = 0
+ 240              		@ frame_needed = 0, uses_anonymous_args = 0
+ 241              		@ link register save eliminated.
+ 242              	.LVL14:
+ 127:peripherals/hmc58xx.c ****   // wait before starting the configuration
+ 128:peripherals/hmc58xx.c ****   // doing to early may void the mode configuration
+ 129:peripherals/hmc58xx.c ****   if (hmc->init_status == HMC_CONF_UNINIT && get_sys_time_float() > HMC58XX_STARTUP_DELAY) {
+ 243              		.loc 1 129 0
+ 244 0000 90F82B30 		ldrb	r3, [r0, #43]	@ zero_extendqisi2
+ 245 0004 23BB     		cbnz	r3, .L12
+ 246              	.LBB36:
+ 247              	.LBB37:
+ 248              		.file 2 "./mcu_periph/sys_time.h"
+   1:./mcu_periph/sys_time.h **** /*
+   2:./mcu_periph/sys_time.h ****  *
+   3:./mcu_periph/sys_time.h ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   4:./mcu_periph/sys_time.h ****  *
+   5:./mcu_periph/sys_time.h ****  * This file is part of paparazzi.
+   6:./mcu_periph/sys_time.h ****  *
+   7:./mcu_periph/sys_time.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:./mcu_periph/sys_time.h ****  * it under the terms of the GNU General Public License as published by
+   9:./mcu_periph/sys_time.h ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:./mcu_periph/sys_time.h ****  * any later version.
+  11:./mcu_periph/sys_time.h ****  *
+  12:./mcu_periph/sys_time.h ****  * paparazzi is distributed in the hope that it will be useful,
+  13:./mcu_periph/sys_time.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:./mcu_periph/sys_time.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:./mcu_periph/sys_time.h ****  * GNU General Public License for more details.
+  16:./mcu_periph/sys_time.h ****  *
+  17:./mcu_periph/sys_time.h ****  * You should have received a copy of the GNU General Public License
+  18:./mcu_periph/sys_time.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:./mcu_periph/sys_time.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:./mcu_periph/sys_time.h ****  * Boston, MA 02111-1307, USA.
+  21:./mcu_periph/sys_time.h ****  *
+  22:./mcu_periph/sys_time.h ****  */
+  23:./mcu_periph/sys_time.h **** 
+  24:./mcu_periph/sys_time.h **** /**
+  25:./mcu_periph/sys_time.h ****  * @file mcu_periph/sys_time.h
+  26:./mcu_periph/sys_time.h ****  * @brief Architecture independent timing functions.
+  27:./mcu_periph/sys_time.h ****  *
+  28:./mcu_periph/sys_time.h ****  */
+  29:./mcu_periph/sys_time.h **** 
+  30:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_H
+  31:./mcu_periph/sys_time.h **** #define SYS_TIME_H
+  32:./mcu_periph/sys_time.h **** 
+  33:./mcu_periph/sys_time.h **** #include <inttypes.h>
+  34:./mcu_periph/sys_time.h **** #include <stdlib.h>
+  35:./mcu_periph/sys_time.h **** #include "std.h"
+  36:./mcu_periph/sys_time.h **** 
+  37:./mcu_periph/sys_time.h **** #include BOARD_CONFIG
+  38:./mcu_periph/sys_time.h **** 
+  39:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_NB_TIMER
+  40:./mcu_periph/sys_time.h **** #define SYS_TIME_NB_TIMER 16
+  41:./mcu_periph/sys_time.h **** #endif
+  42:./mcu_periph/sys_time.h **** 
+  43:./mcu_periph/sys_time.h **** 
+  44:./mcu_periph/sys_time.h **** /**
+  45:./mcu_periph/sys_time.h ****  * (Default) sys_time timer frequency in Hz.
+  46:./mcu_periph/sys_time.h ****  * sys_time.resolution is set from this define.
+  47:./mcu_periph/sys_time.h ****  */
+  48:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_FREQUENCY
+  49:./mcu_periph/sys_time.h **** #if defined PERIODIC_FREQUENCY
+  50:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY (2 * PERIODIC_FREQUENCY)
+  51:./mcu_periph/sys_time.h **** #else
+  52:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY 1000
+  53:./mcu_periph/sys_time.h **** #endif
+  54:./mcu_periph/sys_time.h **** #endif
+  55:./mcu_periph/sys_time.h **** 
+  56:./mcu_periph/sys_time.h **** 
+  57:./mcu_periph/sys_time.h **** typedef uint8_t tid_t; ///< sys_time timer id type
+  58:./mcu_periph/sys_time.h **** typedef void (*sys_time_cb)(uint8_t id);
+  59:./mcu_periph/sys_time.h **** 
+  60:./mcu_periph/sys_time.h **** struct sys_time_timer {
+  61:./mcu_periph/sys_time.h ****   bool_t          in_use;
+  62:./mcu_periph/sys_time.h ****   sys_time_cb     cb;
+  63:./mcu_periph/sys_time.h ****   volatile bool_t elapsed;
+  64:./mcu_periph/sys_time.h ****   uint32_t        end_time; ///< in SYS_TIME_TICKS
+  65:./mcu_periph/sys_time.h ****   uint32_t        duration; ///< in SYS_TIME_TICKS
+  66:./mcu_periph/sys_time.h **** };
+  67:./mcu_periph/sys_time.h **** 
+  68:./mcu_periph/sys_time.h **** struct sys_time {
+  69:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec;       ///< full seconds since startup
+  70:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec_rem;   ///< remainder of seconds since startup in CPU_TICKS
+  71:./mcu_periph/sys_time.h ****   volatile uint32_t nb_tick;      ///< SYS_TIME_TICKS since startup
+  72:./mcu_periph/sys_time.h ****   struct sys_time_timer timer[SYS_TIME_NB_TIMER];
+  73:./mcu_periph/sys_time.h **** 
+  74:./mcu_periph/sys_time.h ****   float resolution;               ///< sys_time_timer resolution in seconds
+  75:./mcu_periph/sys_time.h ****   uint32_t ticks_per_sec;         ///< sys_time ticks per second (SYS_TIME_FREQUENCY)
+  76:./mcu_periph/sys_time.h ****   uint32_t resolution_cpu_ticks;  ///< sys_time_timer resolution in cpu ticks
+  77:./mcu_periph/sys_time.h ****   uint32_t cpu_ticks_per_sec;     ///< cpu ticks per second
+  78:./mcu_periph/sys_time.h **** };
+  79:./mcu_periph/sys_time.h **** 
+  80:./mcu_periph/sys_time.h **** extern struct sys_time sys_time;
+  81:./mcu_periph/sys_time.h **** 
+  82:./mcu_periph/sys_time.h **** 
+  83:./mcu_periph/sys_time.h **** extern void sys_time_init(void);
+  84:./mcu_periph/sys_time.h **** 
+  85:./mcu_periph/sys_time.h **** /**
+  86:./mcu_periph/sys_time.h ****  * Register a new system timer.
+  87:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+  88:./mcu_periph/sys_time.h ****  * @param cb Callback function that is called from the ISR when timer elapses, or NULL
+  89:./mcu_periph/sys_time.h ****  * @return -1 if it failed, the timer id otherwise
+  90:./mcu_periph/sys_time.h ****  */
+  91:./mcu_periph/sys_time.h **** extern int sys_time_register_timer(float duration, sys_time_cb cb);
+  92:./mcu_periph/sys_time.h **** 
+  93:./mcu_periph/sys_time.h **** /**
+  94:./mcu_periph/sys_time.h ****  * Cancel a system timer by id.
+  95:./mcu_periph/sys_time.h ****  * @param id Timer id.
+  96:./mcu_periph/sys_time.h ****  */
+  97:./mcu_periph/sys_time.h **** extern void sys_time_cancel_timer(tid_t id);
+  98:./mcu_periph/sys_time.h **** 
+  99:./mcu_periph/sys_time.h **** /**
+ 100:./mcu_periph/sys_time.h ****  * Update the duration until a timer elapses.
+ 101:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 102:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+ 103:./mcu_periph/sys_time.h ****  */
+ 104:./mcu_periph/sys_time.h **** extern void sys_time_update_timer(tid_t id, float duration);
+ 105:./mcu_periph/sys_time.h **** 
+ 106:./mcu_periph/sys_time.h **** /**
+ 107:./mcu_periph/sys_time.h ****  * Check if timer has elapsed.
+ 108:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 109:./mcu_periph/sys_time.h ****  * @return TRUE if timer has elapsed
+ 110:./mcu_periph/sys_time.h ****  */
+ 111:./mcu_periph/sys_time.h **** static inline bool_t sys_time_check_and_ack_timer(tid_t id)
+ 112:./mcu_periph/sys_time.h **** {
+ 113:./mcu_periph/sys_time.h ****   if (sys_time.timer[id].elapsed) {
+ 114:./mcu_periph/sys_time.h ****     sys_time.timer[id].elapsed = FALSE;
+ 115:./mcu_periph/sys_time.h ****     return TRUE;
+ 116:./mcu_periph/sys_time.h ****   }
+ 117:./mcu_periph/sys_time.h ****   return FALSE;
+ 118:./mcu_periph/sys_time.h **** }
+ 119:./mcu_periph/sys_time.h **** 
+ 120:./mcu_periph/sys_time.h **** /**
+ 121:./mcu_periph/sys_time.h ****  * Get the time in seconds since startup.
+ 122:./mcu_periph/sys_time.h ****  * @return current system time as float with sys_time.resolution
+ 123:./mcu_periph/sys_time.h ****  */
+ 124:./mcu_periph/sys_time.h **** static inline float get_sys_time_float(void)
+ 125:./mcu_periph/sys_time.h **** {
+ 126:./mcu_periph/sys_time.h ****   return (float)(sys_time.nb_sec + (float)(sys_time.nb_sec_rem) / sys_time.cpu_ticks_per_sec);
+ 249              		.loc 2 126 0
+ 250 0006 134B     		ldr	r3, .L22
+ 251 0008 D3ED007A 		flds	s15, [r3]	@ int
+ 252 000c 93ED567A 		flds	s14, [r3, #344]	@ int
+ 253 0010 D3ED016A 		flds	s13, [r3, #4]	@ int
+ 254 0014 B8EE477A 		fuitos	s14, s14
+ 255 0018 F8EE666A 		fuitos	s13, s13
+ 256 001c F8EE677A 		fuitos	s15, s15
+ 257 0020 86EE877A 		fdivs	s14, s13, s14
+ 258 0024 37EE877A 		fadds	s14, s15, s14
+ 259              	.LBE37:
+ 260              	.LBE36:
+ 261              		.loc 1 129 0
+ 262 0028 F7EE087A 		fconsts	s15, #120
+ 263 002c B4EEE77A 		fcmpes	s14, s15
+ 264 0030 F1EE10FA 		fmstat
+ 265 0034 0CDD     		ble	.L12
+ 130:peripherals/hmc58xx.c ****     hmc->init_status++;
+ 266              		.loc 1 130 0
+ 267 0036 0123     		movs	r3, #1
+ 268 0038 80F82B30 		strb	r3, [r0, #43]
+ 131:peripherals/hmc58xx.c ****     if (hmc->i2c_trans.status == I2CTransSuccess || hmc->i2c_trans.status == I2CTransDone) {
+ 269              		.loc 1 131 0
+ 270 003c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 271 0040 022B     		cmp	r3, #2
+ 272 0042 03D0     		beq	.L17
+ 273              		.loc 1 131 0 is_stmt 0 discriminator 1
+ 274 0044 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 275 0048 042B     		cmp	r3, #4
+ 276 004a 01D1     		bne	.L12
+ 277              	.L17:
+ 132:peripherals/hmc58xx.c ****       hmc58xx_send_config(hmc);
+ 278              		.loc 1 132 0 is_stmt 1
+ 279 004c FFF7FEBF 		b	hmc58xx_send_config
+ 280              	.LVL15:
+ 281              	.L12:
+ 282 0050 7047     		bx	lr
+ 283              	.L23:
+ 284 0052 00BF     		.align	2
+ 285              	.L22:
+ 286 0054 00000000 		.word	sys_time
+ 287              		.cfi_endproc
+ 288              	.LFE36:
+ 290              		.section	.text.hmc58xx_read,"ax",%progbits
+ 291              		.align	1
+ 292              		.global	hmc58xx_read
+ 293              		.thumb
+ 294              		.thumb_func
+ 296              	hmc58xx_read:
+ 297              	.LFB37:
+ 133:peripherals/hmc58xx.c ****     }
+ 134:peripherals/hmc58xx.c ****   }
+ 135:peripherals/hmc58xx.c **** }
+ 136:peripherals/hmc58xx.c **** 
+ 137:peripherals/hmc58xx.c **** // Normal reading
+ 138:peripherals/hmc58xx.c **** void hmc58xx_read(struct Hmc58xx *hmc)
+ 139:peripherals/hmc58xx.c **** {
+ 298              		.loc 1 139 0
+ 299              		.cfi_startproc
+ 300              		@ args = 0, pretend = 0, frame = 0
+ 301              		@ frame_needed = 0, uses_anonymous_args = 0
+ 302              		@ link register save eliminated.
+ 303              	.LVL16:
+ 140:peripherals/hmc58xx.c ****   if (hmc->initialized && hmc->i2c_trans.status == I2CTransDone) {
+ 304              		.loc 1 140 0
+ 305 0000 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 139:peripherals/hmc58xx.c **** {
+ 306              		.loc 1 139 0
+ 307 0004 0146     		mov	r1, r0
+ 308              		.loc 1 140 0
+ 309 0006 7BB1     		cbz	r3, .L24
+ 310              		.loc 1 140 0 is_stmt 0 discriminator 1
+ 311 0008 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 312 000c 042B     		cmp	r3, #4
+ 313 000e 0BD1     		bne	.L24
+ 141:peripherals/hmc58xx.c ****     hmc->i2c_trans.buf[0] = HMC58XX_REG_DATXM;
+ 314              		.loc 1 141 0 is_stmt 1
+ 315 0010 0323     		movs	r3, #3
+ 316 0012 4372     		strb	r3, [r0, #9]
+ 142:peripherals/hmc58xx.c ****     hmc->i2c_trans.type = I2CTransTxRx;
+ 317              		.loc 1 142 0
+ 318 0014 0223     		movs	r3, #2
+ 319 0016 0371     		strb	r3, [r0, #4]
+ 143:peripherals/hmc58xx.c ****     hmc->i2c_trans.len_r = 6;
+ 320              		.loc 1 143 0
+ 321 0018 0623     		movs	r3, #6
+ 322 001a C380     		strh	r3, [r0, #6]	@ movhi
+ 144:peripherals/hmc58xx.c ****     hmc->i2c_trans.len_w = 1;
+ 323              		.loc 1 144 0
+ 324 001c 0123     		movs	r3, #1
+ 325 001e 0372     		strb	r3, [r0, #8]
+ 145:peripherals/hmc58xx.c ****     i2c_submit(hmc->i2c_p, &(hmc->i2c_trans));
+ 326              		.loc 1 145 0
+ 327 0020 0431     		adds	r1, r1, #4
+ 328 0022 0068     		ldr	r0, [r0]
+ 329              	.LVL17:
+ 330 0024 FFF7FEBF 		b	i2c_submit
+ 331              	.LVL18:
+ 332              	.L24:
+ 333 0028 7047     		bx	lr
+ 334              		.cfi_endproc
+ 335              	.LFE37:
+ 337              		.section	.text.hmc58xx_event,"ax",%progbits
+ 338              		.align	1
+ 339              		.global	hmc58xx_event
+ 340              		.thumb
+ 341              		.thumb_func
+ 343              	hmc58xx_event:
+ 344              	.LFB38:
+ 146:peripherals/hmc58xx.c ****   }
+ 147:peripherals/hmc58xx.c **** }
+ 148:peripherals/hmc58xx.c **** 
+ 149:peripherals/hmc58xx.c **** #define Int16FromBuf(_buf,_idx) ((int16_t)((_buf[_idx]<<8) | _buf[_idx+1]))
+ 150:peripherals/hmc58xx.c **** 
+ 151:peripherals/hmc58xx.c **** void hmc58xx_event(struct Hmc58xx *hmc)
+ 152:peripherals/hmc58xx.c **** {
+ 345              		.loc 1 152 0
+ 346              		.cfi_startproc
+ 347              		@ args = 0, pretend = 0, frame = 0
+ 348              		@ frame_needed = 0, uses_anonymous_args = 0
+ 349              	.LVL19:
+ 350 0000 10B5     		push	{r4, lr}
+ 351              		.cfi_def_cfa_offset 8
+ 352              		.cfi_offset 4, -8
+ 353              		.cfi_offset 14, -4
+ 153:peripherals/hmc58xx.c ****   if (hmc->initialized) {
+ 354              		.loc 1 153 0
+ 355 0002 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 152:peripherals/hmc58xx.c **** {
+ 356              		.loc 1 152 0
+ 357 0006 0446     		mov	r4, r0
+ 358              		.loc 1 153 0
+ 359 0008 63B3     		cbz	r3, .L30
+ 154:peripherals/hmc58xx.c ****     if (hmc->i2c_trans.status == I2CTransFailed) {
+ 360              		.loc 1 154 0
+ 361 000a 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 362 000e 032B     		cmp	r3, #3
+ 363 0010 24D0     		beq	.L46
+ 155:peripherals/hmc58xx.c ****       hmc->i2c_trans.status = I2CTransDone;
+ 156:peripherals/hmc58xx.c ****     } else if (hmc->i2c_trans.status == I2CTransSuccess) {
+ 364              		.loc 1 156 0
+ 365 0012 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 366 0016 022B     		cmp	r3, #2
+ 367 0018 46D1     		bne	.L29
+ 157:peripherals/hmc58xx.c ****       if (hmc->type == HMC_TYPE_5843) {
+ 368              		.loc 1 157 0
+ 369 001a 90F83830 		ldrb	r3, [r0, #56]	@ zero_extendqisi2
+ 158:peripherals/hmc58xx.c ****         hmc->data.vect.x = Int16FromBuf(hmc->i2c_trans.buf, 0);
+ 370              		.loc 1 158 0
+ 371 001e 427A     		ldrb	r2, [r0, #9]	@ zero_extendqisi2
+ 157:peripherals/hmc58xx.c ****       if (hmc->type == HMC_TYPE_5843) {
+ 372              		.loc 1 157 0
+ 373 0020 5BB9     		cbnz	r3, .L34
+ 374              		.loc 1 158 0
+ 375 0022 837A     		ldrb	r3, [r0, #10]	@ zero_extendqisi2
+ 376 0024 43EA0223 		orr	r3, r3, r2, lsl #8
+ 377 0028 C385     		strh	r3, [r0, #46]	@ movhi
+ 159:peripherals/hmc58xx.c ****         hmc->data.vect.y = Int16FromBuf(hmc->i2c_trans.buf, 2);
+ 378              		.loc 1 159 0
+ 379 002a C27A     		ldrb	r2, [r0, #11]	@ zero_extendqisi2
+ 380 002c 037B     		ldrb	r3, [r0, #12]	@ zero_extendqisi2
+ 381 002e 43EA0223 		orr	r3, r3, r2, lsl #8
+ 382 0032 0386     		strh	r3, [r0, #48]	@ movhi
+ 160:peripherals/hmc58xx.c ****         hmc->data.vect.z = Int16FromBuf(hmc->i2c_trans.buf, 4);
+ 383              		.loc 1 160 0
+ 384 0034 427B     		ldrb	r2, [r0, #13]	@ zero_extendqisi2
+ 385 0036 837B     		ldrb	r3, [r0, #14]	@ zero_extendqisi2
+ 386 0038 0AE0     		b	.L45
+ 387              	.L34:
+ 161:peripherals/hmc58xx.c ****       }
+ 162:peripherals/hmc58xx.c ****       /* HMC5883 has xzy order of axes in returned data */
+ 163:peripherals/hmc58xx.c ****       else {
+ 164:peripherals/hmc58xx.c ****         hmc->data.vect.x = Int16FromBuf(hmc->i2c_trans.buf, 0);
+ 388              		.loc 1 164 0
+ 389 003a 837A     		ldrb	r3, [r0, #10]	@ zero_extendqisi2
+ 390 003c 43EA0223 		orr	r3, r3, r2, lsl #8
+ 391 0040 C385     		strh	r3, [r0, #46]	@ movhi
+ 165:peripherals/hmc58xx.c ****         hmc->data.vect.y = Int16FromBuf(hmc->i2c_trans.buf, 4);
+ 392              		.loc 1 165 0
+ 393 0042 427B     		ldrb	r2, [r0, #13]	@ zero_extendqisi2
+ 394 0044 837B     		ldrb	r3, [r0, #14]	@ zero_extendqisi2
+ 395 0046 43EA0223 		orr	r3, r3, r2, lsl #8
+ 396 004a 0386     		strh	r3, [r0, #48]	@ movhi
+ 166:peripherals/hmc58xx.c ****         hmc->data.vect.z = Int16FromBuf(hmc->i2c_trans.buf, 2);
+ 397              		.loc 1 166 0
+ 398 004c C27A     		ldrb	r2, [r0, #11]	@ zero_extendqisi2
+ 399 004e 037B     		ldrb	r3, [r0, #12]	@ zero_extendqisi2
+ 400              	.L45:
+ 401 0050 43EA0223 		orr	r3, r3, r2, lsl #8
+ 402 0054 6386     		strh	r3, [r4, #50]	@ movhi
+ 167:peripherals/hmc58xx.c ****       }
+ 168:peripherals/hmc58xx.c ****       hmc->data_available = TRUE;
+ 403              		.loc 1 168 0
+ 404 0056 0123     		movs	r3, #1
+ 405 0058 84F82C30 		strb	r3, [r4, #44]
+ 406              	.L46:
+ 169:peripherals/hmc58xx.c ****       hmc->i2c_trans.status = I2CTransDone;
+ 407              		.loc 1 169 0
+ 408 005c 0423     		movs	r3, #4
+ 409 005e 84F82930 		strb	r3, [r4, #41]
+ 410 0062 10BD     		pop	{r4, pc}
+ 411              	.L30:
+ 170:peripherals/hmc58xx.c ****     }
+ 171:peripherals/hmc58xx.c ****   } else if (hmc->init_status != HMC_CONF_UNINIT) { // Configuring but not yet initialized
+ 412              		.loc 1 171 0
+ 413 0064 90F82B30 		ldrb	r3, [r0, #43]	@ zero_extendqisi2
+ 414 0068 F3B1     		cbz	r3, .L29
+ 172:peripherals/hmc58xx.c ****     if (hmc->i2c_trans.status == I2CTransSuccess || hmc->i2c_trans.status == I2CTransDone) {
+ 415              		.loc 1 172 0
+ 416 006a 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 417 006e 022B     		cmp	r3, #2
+ 418 0070 03D0     		beq	.L37
+ 419              		.loc 1 172 0 is_stmt 0 discriminator 1
+ 420 0072 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 421 0076 042B     		cmp	r3, #4
+ 422 0078 05D1     		bne	.L38
+ 423              	.L37:
+ 173:peripherals/hmc58xx.c ****       hmc->i2c_trans.status = I2CTransDone;
+ 424              		.loc 1 173 0 is_stmt 1
+ 425 007a 0423     		movs	r3, #4
+ 426 007c 84F82930 		strb	r3, [r4, #41]
+ 174:peripherals/hmc58xx.c ****       hmc58xx_send_config(hmc);
+ 427              		.loc 1 174 0
+ 428 0080 2046     		mov	r0, r4
+ 429              	.LVL20:
+ 430 0082 FFF7FEFF 		bl	hmc58xx_send_config
+ 431              	.LVL21:
+ 432              	.L38:
+ 175:peripherals/hmc58xx.c ****     }
+ 176:peripherals/hmc58xx.c ****     if (hmc->i2c_trans.status == I2CTransFailed) {
+ 433              		.loc 1 176 0
+ 434 0086 94F82930 		ldrb	r3, [r4, #41]	@ zero_extendqisi2
+ 435 008a 032B     		cmp	r3, #3
+ 436 008c 0CD1     		bne	.L29
+ 177:peripherals/hmc58xx.c ****       hmc->init_status--;
+ 437              		.loc 1 177 0
+ 438 008e 94F82B30 		ldrb	r3, [r4, #43]	@ zero_extendqisi2
+ 439 0092 013B     		subs	r3, r3, #1
+ 440 0094 84F82B30 		strb	r3, [r4, #43]
+ 178:peripherals/hmc58xx.c ****       hmc->i2c_trans.status = I2CTransDone;
+ 441              		.loc 1 178 0
+ 442 0098 0423     		movs	r3, #4
+ 443 009a 84F82930 		strb	r3, [r4, #41]
+ 179:peripherals/hmc58xx.c ****       hmc58xx_send_config(hmc); // Retry config (TODO max retry)
+ 444              		.loc 1 179 0
+ 445 009e 2046     		mov	r0, r4
+ 180:peripherals/hmc58xx.c ****     }
+ 181:peripherals/hmc58xx.c ****   }
+ 182:peripherals/hmc58xx.c **** }
+ 446              		.loc 1 182 0
+ 447 00a0 BDE81040 		pop	{r4, lr}
+ 448              	.LVL22:
+ 179:peripherals/hmc58xx.c ****       hmc58xx_send_config(hmc); // Retry config (TODO max retry)
+ 449              		.loc 1 179 0
+ 450 00a4 FFF7FEBF 		b	hmc58xx_send_config
+ 451              	.LVL23:
+ 452              	.L29:
+ 453 00a8 10BD     		pop	{r4, pc}
+ 454              		.cfi_endproc
+ 455              	.LFE38:
+ 457              		.text
+ 458              	.Letext0:
+ 459              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 460              		.file 4 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 461              		.file 5 "/home/lsk/paparazzi/sw/include/std.h"
+ 462              		.file 6 "./mcu_periph/i2c.h"
+ 463              		.file 7 "./math/pprz_algebra_int.h"
+ 464              		.file 8 "./peripherals/hmc58xx.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 hmc58xx.c
+     /tmp/ccTmF9BR.s:20     .text.hmc58xx_send_config:00000000 $t
+     /tmp/ccTmF9BR.s:24     .text.hmc58xx_send_config:00000000 hmc58xx_send_config
+     /tmp/ccTmF9BR.s:47     .text.hmc58xx_send_config:00000012 $d
+     /tmp/ccTmF9BR.s:51     .text.hmc58xx_send_config:00000016 $t
+     /tmp/ccTmF9BR.s:171    .text.hmc58xx_init:00000000 $t
+     /tmp/ccTmF9BR.s:176    .text.hmc58xx_init:00000000 hmc58xx_init
+     /tmp/ccTmF9BR.s:230    .text.hmc58xx_start_configure:00000000 $t
+     /tmp/ccTmF9BR.s:235    .text.hmc58xx_start_configure:00000000 hmc58xx_start_configure
+     /tmp/ccTmF9BR.s:286    .text.hmc58xx_start_configure:00000054 $d
+     /tmp/ccTmF9BR.s:291    .text.hmc58xx_read:00000000 $t
+     /tmp/ccTmF9BR.s:296    .text.hmc58xx_read:00000000 hmc58xx_read
+     /tmp/ccTmF9BR.s:338    .text.hmc58xx_event:00000000 $t
+     /tmp/ccTmF9BR.s:343    .text.hmc58xx_event:00000000 hmc58xx_event
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.34a7bcc5d6061ae04ce49649a64c2253
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.i2c.h.173.edf41ec62e7796285c1333ff32983d5f
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.hmc58xx_regs.h.28.26f847f5969d95027ba278c81a388e81
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+
+UNDEFINED SYMBOLS
+i2c_submit
+sys_time

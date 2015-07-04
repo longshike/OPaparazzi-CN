@@ -1,0 +1,354 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"stabilization_attitude_ref_euler_int.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.stabilization_attitude_ref_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	stabilization_attitude_ref_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	stabilization_attitude_ref_init:
+  26              	.LFB9:
+  27              		.file 1 "firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c"
+   1:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** /*
+   2:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+   3:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *
+   4:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * This file is part of paparazzi.
+   5:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *
+   6:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * it under the terms of the GNU General Public License as published by
+   8:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * any later version.
+  10:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *
+  11:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * GNU General Public License for more details.
+  15:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *
+  16:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * You should have received a copy of the GNU General Public License
+  17:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  * Boston, MA 02111-1307, USA.
+  20:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  */
+  21:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  22:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** /** @file stabilization_attitude_ref_euler_int.c
+  23:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *  Rotorcraft attitude reference generation (euler int version)
+  24:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  *
+  25:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****  */
+  26:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  27:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #include "firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.h"
+  28:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #include "firmwares/rotorcraft/stabilization/stabilization_attitude_ref_saturate.h"
+  29:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #include "generated/airframe.h"
+  30:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  31:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** struct Int32Eulers stab_att_sp_euler;
+  32:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** struct Int32Eulers stab_att_ref_euler;  ///< with #REF_ANGLE_FRAC
+  33:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** struct Int32Rates  stab_att_ref_rate;
+  34:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** struct Int32Rates  stab_att_ref_accel;
+  35:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  36:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** void stabilization_attitude_ref_init(void)
+  37:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** {
+  28              		.loc 1 37 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  38:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  39:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_EULERS_ZERO(stab_att_sp_euler);
+  33              		.loc 1 39 0
+  34 0000 084A     		ldr	r2, .L2
+  35 0002 0023     		movs	r3, #0
+  36 0004 1360     		str	r3, [r2]
+  37 0006 5360     		str	r3, [r2, #4]
+  38 0008 9360     		str	r3, [r2, #8]
+  40:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_EULERS_ZERO(stab_att_ref_euler);
+  39              		.loc 1 40 0
+  40 000a 074A     		ldr	r2, .L2+4
+  41 000c 1360     		str	r3, [r2]
+  42 000e 5360     		str	r3, [r2, #4]
+  43 0010 9360     		str	r3, [r2, #8]
+  41:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_RATES_ZERO(stab_att_ref_rate);
+  44              		.loc 1 41 0
+  45 0012 064A     		ldr	r2, .L2+8
+  46 0014 1360     		str	r3, [r2]
+  47 0016 5360     		str	r3, [r2, #4]
+  48 0018 9360     		str	r3, [r2, #8]
+  42:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_RATES_ZERO(stab_att_ref_accel);
+  49              		.loc 1 42 0
+  50 001a 054A     		ldr	r2, .L2+12
+  51 001c 1360     		str	r3, [r2]
+  52 001e 5360     		str	r3, [r2, #4]
+  53 0020 9360     		str	r3, [r2, #8]
+  54 0022 7047     		bx	lr
+  55              	.L3:
+  56              		.align	2
+  57              	.L2:
+  58 0024 00000000 		.word	.LANCHOR0
+  59 0028 00000000 		.word	.LANCHOR1
+  60 002c 00000000 		.word	.LANCHOR2
+  61 0030 00000000 		.word	.LANCHOR3
+  62              		.cfi_endproc
+  63              	.LFE9:
+  65              		.section	.text.stabilization_attitude_ref_update,"ax",%progbits
+  66              		.align	1
+  67              		.global	stabilization_attitude_ref_update
+  68              		.thumb
+  69              		.thumb_func
+  71              	stabilization_attitude_ref_update:
+  72              	.LFB10:
+  43:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  44:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** }
+  45:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  46:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define F_UPDATE_RES 9
+  47:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define F_UPDATE   (1<<F_UPDATE_RES)
+  48:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  49:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_ACCEL_MAX_P BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_PDOT, REF_ACCEL_FRAC)
+  50:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_ACCEL_MAX_Q BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_QDOT, REF_ACCEL_FRAC)
+  51:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_ACCEL_MAX_R BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_RDOT, REF_ACCEL_FRAC)
+  52:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  53:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_RATE_MAX_P BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_P, REF_RATE_FRAC)
+  54:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_RATE_MAX_Q BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_Q, REF_RATE_FRAC)
+  55:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_RATE_MAX_R BFP_OF_REAL(STABILIZATION_ATTITUDE_REF_MAX_R, REF_RATE_FRAC)
+  56:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  57:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_P   STABILIZATION_ATTITUDE_REF_OMEGA_P
+  58:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_P    STABILIZATION_ATTITUDE_REF_ZETA_P
+  59:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_P_RES 10
+  60:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_P BFP_OF_REAL((ZETA_P*OMEGA_P), ZETA_OMEGA_P_RES)
+  61:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_P_RES 7
+  62:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_P    BFP_OF_REAL((OMEGA_P*OMEGA_P), OMEGA_2_P_RES)
+  63:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  64:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_Q   STABILIZATION_ATTITUDE_REF_OMEGA_Q
+  65:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_Q    STABILIZATION_ATTITUDE_REF_ZETA_Q
+  66:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_Q_RES 10
+  67:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_Q BFP_OF_REAL((ZETA_Q*OMEGA_Q), ZETA_OMEGA_Q_RES)
+  68:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_Q_RES 7
+  69:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_Q    BFP_OF_REAL((OMEGA_Q*OMEGA_Q), OMEGA_2_Q_RES)
+  70:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  71:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_R   STABILIZATION_ATTITUDE_REF_OMEGA_R
+  72:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_R    STABILIZATION_ATTITUDE_REF_ZETA_R
+  73:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_R_RES 10
+  74:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ZETA_OMEGA_R BFP_OF_REAL((ZETA_R*OMEGA_R), ZETA_OMEGA_R_RES)
+  75:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_R_RES 7
+  76:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define OMEGA_2_R    BFP_OF_REAL((OMEGA_R*OMEGA_R), OMEGA_2_R_RES)
+  77:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  78:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  79:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_ANGLE_PI      BFP_OF_REAL(3.1415926535897932384626433832795029, REF_ANGLE_FRAC)
+  80:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define REF_ANGLE_TWO_PI  BFP_OF_REAL(2.*3.1415926535897932384626433832795029, REF_ANGLE_FRAC)
+  81:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define ANGLE_REF_NORMALIZE(_a) {                       \
+  82:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     while (_a >  REF_ANGLE_PI)  _a -= REF_ANGLE_TWO_PI; \
+  83:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     while (_a < -REF_ANGLE_PI)  _a += REF_ANGLE_TWO_PI; \
+  84:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   }
+  85:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  86:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  87:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** /** explicitly define to zero to disable attitude reference generation */
+  88:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #ifndef USE_ATTITUDE_REF
+  89:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #define USE_ATTITUDE_REF 1
+  90:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #endif
+  91:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  92:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** void stabilization_attitude_ref_update()
+  93:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** {
+  73              		.loc 1 93 0
+  74              		.cfi_startproc
+  75              		@ args = 0, pretend = 0, frame = 0
+  76              		@ frame_needed = 0, uses_anonymous_args = 0
+  77              		@ link register save eliminated.
+  94:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  95:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #if USE_ATTITUDE_REF
+  96:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+  97:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* dumb integrate reference attitude        */
+  98:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Eulers d_angle = {
+  99:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_rate.p >> (F_UPDATE_RES + REF_RATE_FRAC - REF_ANGLE_FRAC),
+ 100:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_rate.q >> (F_UPDATE_RES + REF_RATE_FRAC - REF_ANGLE_FRAC),
+ 101:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_rate.r >> (F_UPDATE_RES + REF_RATE_FRAC - REF_ANGLE_FRAC)
+ 102:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   };
+ 103:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   EULERS_ADD(stab_att_ref_euler, d_angle);
+ 104:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   ANGLE_REF_NORMALIZE(stab_att_ref_euler.psi);
+ 105:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 106:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* integrate reference rotational speeds   */
+ 107:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Rates d_rate = {
+ 108:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_accel.p >> (F_UPDATE_RES + REF_ACCEL_FRAC - REF_RATE_FRAC),
+ 109:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_accel.q >> (F_UPDATE_RES + REF_ACCEL_FRAC - REF_RATE_FRAC),
+ 110:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     stab_att_ref_accel.r >> (F_UPDATE_RES + REF_ACCEL_FRAC - REF_RATE_FRAC)
+ 111:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   };
+ 112:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   RATES_ADD(stab_att_ref_rate, d_rate);
+ 113:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 114:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* attitude setpoint with REF_ANGLE_FRAC   */
+ 115:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   struct Int32Eulers sp_ref;
+ 116:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT32_EULERS_LSHIFT(sp_ref, stab_att_sp_euler, (REF_ANGLE_FRAC - INT32_ANGLE_FRAC));
+ 117:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 118:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* compute reference attitude error        */
+ 119:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   struct Int32Eulers ref_err;
+ 120:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   EULERS_DIFF(ref_err, stab_att_ref_euler, sp_ref);
+ 121:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* wrap it in the shortest direction       */
+ 122:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   ANGLE_REF_NORMALIZE(ref_err.psi);
+ 123:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 124:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* compute reference angular accelerations */
+ 125:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Rates accel_rate = {
+ 126:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-2.*ZETA_OMEGA_P) * (stab_att_ref_rate.p >> (REF_RATE_FRAC - REF_ACCEL_FRAC)))
+ 127:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****         >> (ZETA_OMEGA_P_RES),
+ 128:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-2.*ZETA_OMEGA_Q) * (stab_att_ref_rate.q >> (REF_RATE_FRAC - REF_ACCEL_FRAC)))
+ 129:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     >> (ZETA_OMEGA_Q_RES),
+ 130:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-2.*ZETA_OMEGA_R) * (stab_att_ref_rate.r >> (REF_RATE_FRAC - REF_ACCEL_FRAC)))
+ 131:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     >> (ZETA_OMEGA_R_RES)
+ 132:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   };
+ 133:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 134:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Rates accel_angle = {
+ 135:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-OMEGA_2_P) * (ref_err.phi   >> (REF_ANGLE_FRAC - REF_ACCEL_FRAC))) >> (OMEGA_2_P_RE
+ 136:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-OMEGA_2_Q) * (ref_err.theta >> (REF_ANGLE_FRAC - REF_ACCEL_FRAC))) >> (OMEGA_2_Q_RE
+ 137:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****     ((int32_t)(-OMEGA_2_R) * (ref_err.psi   >> (REF_ANGLE_FRAC - REF_ACCEL_FRAC))) >> (OMEGA_2_R_RE
+ 138:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   };
+ 139:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 140:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   RATES_SUM(stab_att_ref_accel, accel_rate, accel_angle);
+ 141:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 142:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /*  saturate acceleration */
+ 143:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Rates MIN_ACCEL = { -REF_ACCEL_MAX_P, -REF_ACCEL_MAX_Q, -REF_ACCEL_MAX_R };
+ 144:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   const struct Int32Rates MAX_ACCEL = {  REF_ACCEL_MAX_P,  REF_ACCEL_MAX_Q,  REF_ACCEL_MAX_R };
+ 145:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   RATES_BOUND_BOX(stab_att_ref_accel, MIN_ACCEL, MAX_ACCEL);
+ 146:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 147:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   /* saturate speed and trim accel accordingly */
+ 148:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   SATURATE_SPEED_TRIM_ACCEL();
+ 149:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** 
+ 150:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c **** #else  /* !USE_ATTITUDE_REF  */
+ 151:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT32_EULERS_LSHIFT(stab_att_ref_euler, stab_att_sp_euler, (REF_ANGLE_FRAC - INT32_ANGLE_FRAC));
+  78              		.loc 1 151 0
+  79 0000 0A4A     		ldr	r2, .L5
+  80 0002 0B4B     		ldr	r3, .L5+4
+  81 0004 1168     		ldr	r1, [r2]
+  82 0006 0902     		lsls	r1, r1, #8
+  83 0008 1960     		str	r1, [r3]
+  84 000a 5168     		ldr	r1, [r2, #4]
+  85 000c 9268     		ldr	r2, [r2, #8]
+  86 000e 1202     		lsls	r2, r2, #8
+  87 0010 9A60     		str	r2, [r3, #8]
+  88 0012 0902     		lsls	r1, r1, #8
+ 152:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_RATES_ZERO(stab_att_ref_rate);
+  89              		.loc 1 152 0
+  90 0014 074A     		ldr	r2, .L5+8
+ 151:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT32_EULERS_LSHIFT(stab_att_ref_euler, stab_att_sp_euler, (REF_ANGLE_FRAC - INT32_ANGLE_FRAC));
+  91              		.loc 1 151 0
+  92 0016 5960     		str	r1, [r3, #4]
+  93              		.loc 1 152 0
+  94 0018 0023     		movs	r3, #0
+  95 001a 1360     		str	r3, [r2]
+  96 001c 5360     		str	r3, [r2, #4]
+  97 001e 9360     		str	r3, [r2, #8]
+ 153:firmwares/rotorcraft/stabilization/stabilization_attitude_ref_euler_int.c ****   INT_RATES_ZERO(stab_att_ref_accel);
+  98              		.loc 1 153 0
+  99 0020 054A     		ldr	r2, .L5+12
+ 100 0022 1360     		str	r3, [r2]
+ 101 0024 5360     		str	r3, [r2, #4]
+ 102 0026 9360     		str	r3, [r2, #8]
+ 103 0028 7047     		bx	lr
+ 104              	.L6:
+ 105 002a 00BF     		.align	2
+ 106              	.L5:
+ 107 002c 00000000 		.word	.LANCHOR0
+ 108 0030 00000000 		.word	.LANCHOR1
+ 109 0034 00000000 		.word	.LANCHOR2
+ 110 0038 00000000 		.word	.LANCHOR3
+ 111              		.cfi_endproc
+ 112              	.LFE10:
+ 114              		.global	stab_att_ref_accel
+ 115              		.global	stab_att_ref_rate
+ 116              		.global	stab_att_ref_euler
+ 117              		.global	stab_att_sp_euler
+ 118              		.section	.bss.stab_att_ref_rate,"aw",%nobits
+ 119              		.align	2
+ 120              		.set	.LANCHOR2,. + 0
+ 123              	stab_att_ref_rate:
+ 124 0000 00000000 		.space	12
+ 124      00000000 
+ 124      00000000 
+ 125              		.section	.bss.stab_att_sp_euler,"aw",%nobits
+ 126              		.align	2
+ 127              		.set	.LANCHOR0,. + 0
+ 130              	stab_att_sp_euler:
+ 131 0000 00000000 		.space	12
+ 131      00000000 
+ 131      00000000 
+ 132              		.section	.bss.stab_att_ref_euler,"aw",%nobits
+ 133              		.align	2
+ 134              		.set	.LANCHOR1,. + 0
+ 137              	stab_att_ref_euler:
+ 138 0000 00000000 		.space	12
+ 138      00000000 
+ 138      00000000 
+ 139              		.section	.bss.stab_att_ref_accel,"aw",%nobits
+ 140              		.align	2
+ 141              		.set	.LANCHOR3,. + 0
+ 144              	stab_att_ref_accel:
+ 145 0000 00000000 		.space	12
+ 145      00000000 
+ 145      00000000 
+ 146              		.text
+ 147              	.Letext0:
+ 148              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 149              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 150              		.file 4 "./math/pprz_algebra_int.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 stabilization_attitude_ref_euler_int.c
+     /tmp/cc5l14rc.s:20     .text.stabilization_attitude_ref_init:00000000 $t
+     /tmp/cc5l14rc.s:25     .text.stabilization_attitude_ref_init:00000000 stabilization_attitude_ref_init
+     /tmp/cc5l14rc.s:58     .text.stabilization_attitude_ref_init:00000024 $d
+     /tmp/cc5l14rc.s:66     .text.stabilization_attitude_ref_update:00000000 $t
+     /tmp/cc5l14rc.s:71     .text.stabilization_attitude_ref_update:00000000 stabilization_attitude_ref_update
+     /tmp/cc5l14rc.s:107    .text.stabilization_attitude_ref_update:0000002c $d
+     /tmp/cc5l14rc.s:144    .bss.stab_att_ref_accel:00000000 stab_att_ref_accel
+     /tmp/cc5l14rc.s:123    .bss.stab_att_ref_rate:00000000 stab_att_ref_rate
+     /tmp/cc5l14rc.s:137    .bss.stab_att_ref_euler:00000000 stab_att_ref_euler
+     /tmp/cc5l14rc.s:130    .bss.stab_att_sp_euler:00000000 stab_att_sp_euler
+     /tmp/cc5l14rc.s:119    .bss.stab_att_ref_rate:00000000 $d
+     /tmp/cc5l14rc.s:126    .bss.stab_att_sp_euler:00000000 $d
+     /tmp/cc5l14rc.s:133    .bss.stab_att_ref_euler:00000000 $d
+     /tmp/cc5l14rc.s:140    .bss.stab_att_ref_accel:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.stabilization_attitude_ref_int.h.32.c9308d2a67f76b23ef92e62a60aca7d1
+                           .group:00000000 wm4.stabilization_attitude_ref_saturate.h.27.f9637760683e049573792b41356c0b43
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+
+NO UNDEFINED SYMBOLS
