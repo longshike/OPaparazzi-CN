@@ -1,0 +1,1295 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"pprz_orientation_conversion.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.orientationCalcQuat_i,"ax",%progbits
+  20              		.align	1
+  21              		.global	orientationCalcQuat_i
+  22              		.thumb
+  23              		.thumb_func
+  25              	orientationCalcQuat_i:
+  26              	.LFB54:
+  27              		.file 1 "math/pprz_orientation_conversion.c"
+   1:math/pprz_orientation_conversion.c **** /*
+   2:math/pprz_orientation_conversion.c ****  * Copyright (C) 2011-2012 The Paparazzi Team
+   3:math/pprz_orientation_conversion.c ****  *
+   4:math/pprz_orientation_conversion.c ****  * This file is part of paparazzi.
+   5:math/pprz_orientation_conversion.c ****  *
+   6:math/pprz_orientation_conversion.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:math/pprz_orientation_conversion.c ****  * it under the terms of the GNU General Public License as published by
+   8:math/pprz_orientation_conversion.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:math/pprz_orientation_conversion.c ****  * any later version.
+  10:math/pprz_orientation_conversion.c ****  *
+  11:math/pprz_orientation_conversion.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:math/pprz_orientation_conversion.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:math/pprz_orientation_conversion.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:math/pprz_orientation_conversion.c ****  * GNU General Public License for more details.
+  15:math/pprz_orientation_conversion.c ****  *
+  16:math/pprz_orientation_conversion.c ****  * You should have received a copy of the GNU General Public License
+  17:math/pprz_orientation_conversion.c ****  * along with paparazzi; see the file COPYING.  If not, see
+  18:math/pprz_orientation_conversion.c ****  * <http://www.gnu.org/licenses/>.
+  19:math/pprz_orientation_conversion.c ****  */
+  20:math/pprz_orientation_conversion.c **** 
+  21:math/pprz_orientation_conversion.c **** /**
+  22:math/pprz_orientation_conversion.c ****  * @file math/pprz_orientation_conversion.c
+  23:math/pprz_orientation_conversion.c ****  *
+  24:math/pprz_orientation_conversion.c ****  * Generic orientation representation and conversion.
+  25:math/pprz_orientation_conversion.c ****  *
+  26:math/pprz_orientation_conversion.c ****  * This is for example used in the @ref state_interface "state interface".
+  27:math/pprz_orientation_conversion.c ****  *
+  28:math/pprz_orientation_conversion.c ****  * @author Felix Ruess <felix.ruess@gmail.com>
+  29:math/pprz_orientation_conversion.c ****  */
+  30:math/pprz_orientation_conversion.c **** 
+  31:math/pprz_orientation_conversion.c **** /**
+  32:math/pprz_orientation_conversion.c ****  * @addtogroup math
+  33:math/pprz_orientation_conversion.c ****  * @{
+  34:math/pprz_orientation_conversion.c ****  */
+  35:math/pprz_orientation_conversion.c **** /**
+  36:math/pprz_orientation_conversion.c ****  * @addtogroup math_orientation_representation Generic Orientation Representations
+  37:math/pprz_orientation_conversion.c ****  * @{
+  38:math/pprz_orientation_conversion.c ****  */
+  39:math/pprz_orientation_conversion.c **** #include "pprz_orientation_conversion.h"
+  40:math/pprz_orientation_conversion.c **** 
+  41:math/pprz_orientation_conversion.c **** 
+  42:math/pprz_orientation_conversion.c **** /******************************************************************************
+  43:math/pprz_orientation_conversion.c ****  *                                                                            *
+  44:math/pprz_orientation_conversion.c ****  * Transformation functions for the ORIENTATION representations               *
+  45:math/pprz_orientation_conversion.c ****  *                                                                            *
+  46:math/pprz_orientation_conversion.c ****  *****************************************************************************/
+  47:math/pprz_orientation_conversion.c **** 
+  48:math/pprz_orientation_conversion.c **** void orientationCalcQuat_i(struct OrientationReps *orientation)
+  49:math/pprz_orientation_conversion.c **** {
+  28              		.loc 1 49 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 10B5     		push	{r4, lr}
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 4, -8
+  36              		.cfi_offset 14, -4
+  50:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+  37              		.loc 1 50 0
+  38 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+  49:math/pprz_orientation_conversion.c **** {
+  39              		.loc 1 49 0
+  40 0004 0446     		mov	r4, r0
+  41              		.loc 1 50 0
+  42 0006 D807     		lsls	r0, r3, #31
+  43              	.LVL1:
+  44 0008 00F1AC80 		bmi	.L1
+  51:math/pprz_orientation_conversion.c ****     return;
+  52:math/pprz_orientation_conversion.c ****   }
+  53:math/pprz_orientation_conversion.c **** 
+  54:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+  45              		.loc 1 54 0
+  46 000c 1907     		lsls	r1, r3, #28
+  47 000e 22D5     		bpl	.L3
+  55:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+  48              		.loc 1 55 0
+  49 0010 DFED557A 		flds	s15, .L14
+  50 0014 94ED117A 		flds	s14, [r4, #68]
+  51 0018 27EE277A 		fmuls	s14, s14, s15
+  52 001c BDEEC77A 		ftosizs	s14, s14
+  53 0020 84ED017A 		fsts	s14, [r4, #4]	@ int
+  54 0024 94ED127A 		flds	s14, [r4, #72]
+  55 0028 27EE277A 		fmuls	s14, s14, s15
+  56 002c BDEEC77A 		ftosizs	s14, s14
+  57 0030 84ED027A 		fsts	s14, [r4, #8]	@ int
+  58 0034 94ED137A 		flds	s14, [r4, #76]
+  59 0038 27EE277A 		fmuls	s14, s14, s15
+  60 003c BDEEC77A 		ftosizs	s14, s14
+  61 0040 84ED037A 		fsts	s14, [r4, #12]	@ int
+  62 0044 94ED147A 		flds	s14, [r4, #80]
+  63 0048 67EE277A 		fmuls	s15, s14, s15
+  64 004c FDEEE77A 		ftosizs	s15, s15
+  65 0050 C4ED047A 		fsts	s15, [r4, #16]	@ int
+  66 0054 82E0     		b	.L4
+  67              	.L3:
+  56:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+  68              		.loc 1 56 0
+  69 0056 5A07     		lsls	r2, r3, #29
+  70 0058 01D5     		bpl	.L5
+  57:math/pprz_orientation_conversion.c ****     int32_quat_of_rmat(&(orientation->quat_i), &(orientation->rmat_i));
+  71              		.loc 1 57 0
+  72 005a 201D     		adds	r0, r4, #4
+  73 005c 54E0     		b	.L11
+  74              	.L5:
+  58:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+  75              		.loc 1 58 0
+  76 005e 9807     		lsls	r0, r3, #30
+  77 0060 01D5     		bpl	.L6
+  59:math/pprz_orientation_conversion.c ****     int32_quat_of_eulers(&(orientation->quat_i), &(orientation->eulers_i));
+  78              		.loc 1 59 0
+  79 0062 201D     		adds	r0, r4, #4
+  80 0064 76E0     		b	.L12
+  81              	.L6:
+  60:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+  82              		.loc 1 60 0
+  83 0066 9906     		lsls	r1, r3, #26
+  84 0068 53D5     		bpl	.L7
+  61:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+  85              		.loc 1 61 0
+  86 006a DFED407A 		flds	s15, .L14+4
+  87 006e 94ED187A 		flds	s14, [r4, #96]
+  88 0072 27EE277A 		fmuls	s14, s14, s15
+  62:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_RMAT_I);
+  89              		.loc 1 62 0
+  90 0076 2046     		mov	r0, r4
+  61:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+  91              		.loc 1 61 0
+  92 0078 BDEEC77A 		ftosizs	s14, s14
+  93              		.loc 1 62 0
+  94 007c 43F00403 		orr	r3, r3, #4
+  61:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+  95              		.loc 1 61 0
+  96 0080 84ED087A 		fsts	s14, [r4, #32]	@ int
+  97 0084 94ED197A 		flds	s14, [r4, #100]
+  98 0088 27EE277A 		fmuls	s14, s14, s15
+  99 008c BDEEC77A 		ftosizs	s14, s14
+ 100 0090 84ED097A 		fsts	s14, [r4, #36]	@ int
+ 101 0094 94ED1A7A 		flds	s14, [r4, #104]
+ 102 0098 27EE277A 		fmuls	s14, s14, s15
+ 103 009c BDEEC77A 		ftosizs	s14, s14
+ 104 00a0 84ED0A7A 		fsts	s14, [r4, #40]	@ int
+ 105 00a4 94ED1B7A 		flds	s14, [r4, #108]
+ 106 00a8 27EE277A 		fmuls	s14, s14, s15
+ 107 00ac BDEEC77A 		ftosizs	s14, s14
+ 108 00b0 84ED0B7A 		fsts	s14, [r4, #44]	@ int
+ 109 00b4 94ED1C7A 		flds	s14, [r4, #112]
+ 110 00b8 27EE277A 		fmuls	s14, s14, s15
+ 111 00bc BDEEC77A 		ftosizs	s14, s14
+ 112 00c0 84ED0C7A 		fsts	s14, [r4, #48]	@ int
+ 113 00c4 94ED1D7A 		flds	s14, [r4, #116]
+ 114 00c8 27EE277A 		fmuls	s14, s14, s15
+ 115 00cc BDEEC77A 		ftosizs	s14, s14
+ 116 00d0 84ED0D7A 		fsts	s14, [r4, #52]	@ int
+ 117 00d4 94ED1E7A 		flds	s14, [r4, #120]
+ 118 00d8 27EE277A 		fmuls	s14, s14, s15
+ 119 00dc BDEEC77A 		ftosizs	s14, s14
+ 120 00e0 84ED0E7A 		fsts	s14, [r4, #56]	@ int
+ 121 00e4 94ED1F7A 		flds	s14, [r4, #124]
+ 122 00e8 27EE277A 		fmuls	s14, s14, s15
+ 123 00ec BDEEC77A 		ftosizs	s14, s14
+ 124 00f0 84ED0F7A 		fsts	s14, [r4, #60]	@ int
+ 125 00f4 94ED207A 		flds	s14, [r4, #128]
+ 126 00f8 67EE277A 		fmuls	s15, s14, s15
+ 127 00fc FDEEE77A 		ftosizs	s15, s15
+ 128 0100 C4ED107A 		fsts	s15, [r4, #64]	@ int
+ 129              		.loc 1 62 0
+ 130 0104 00F8043B 		strb	r3, [r0], #4
+ 131              	.L11:
+  63:math/pprz_orientation_conversion.c ****     int32_quat_of_rmat(&(orientation->quat_i), &(orientation->rmat_i));
+ 132              		.loc 1 63 0
+ 133 0108 04F12001 		add	r1, r4, #32
+ 134 010c FFF7FEFF 		bl	int32_quat_of_rmat
+ 135              	.LVL2:
+ 136 0110 24E0     		b	.L4
+ 137              	.L7:
+  64:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 138              		.loc 1 64 0
+ 139 0112 DA06     		lsls	r2, r3, #27
+ 140 0114 22D5     		bpl	.L4
+  65:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 141              		.loc 1 65 0
+ 142 0116 DFED167A 		flds	s15, .L14+8
+ 143 011a 94ED157A 		flds	s14, [r4, #84]
+ 144 011e 27EE277A 		fmuls	s14, s14, s15
+  66:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_EULER_I);
+ 145              		.loc 1 66 0
+ 146 0122 2046     		mov	r0, r4
+  65:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 147              		.loc 1 65 0
+ 148 0124 BDEEC77A 		ftosizs	s14, s14
+ 149              		.loc 1 66 0
+ 150 0128 43F00203 		orr	r3, r3, #2
+  65:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 151              		.loc 1 65 0
+ 152 012c 84ED057A 		fsts	s14, [r4, #20]	@ int
+ 153 0130 94ED167A 		flds	s14, [r4, #88]
+ 154 0134 27EE277A 		fmuls	s14, s14, s15
+ 155 0138 BDEEC77A 		ftosizs	s14, s14
+ 156 013c 84ED067A 		fsts	s14, [r4, #24]	@ int
+ 157 0140 94ED177A 		flds	s14, [r4, #92]
+ 158 0144 67EE277A 		fmuls	s15, s14, s15
+ 159 0148 FDEEE77A 		ftosizs	s15, s15
+ 160 014c C4ED077A 		fsts	s15, [r4, #28]	@ int
+ 161              		.loc 1 66 0
+ 162 0150 00F8043B 		strb	r3, [r0], #4
+ 163              	.L12:
+  67:math/pprz_orientation_conversion.c ****     int32_quat_of_eulers(&(orientation->quat_i), &(orientation->eulers_i));
+ 164              		.loc 1 67 0
+ 165 0154 04F11401 		add	r1, r4, #20
+ 166 0158 FFF7FEFF 		bl	int32_quat_of_eulers
+ 167              	.LVL3:
+ 168              	.L4:
+  68:math/pprz_orientation_conversion.c ****   }
+  69:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+  70:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_QUAT_I);
+ 169              		.loc 1 70 0
+ 170 015c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 171 015e 43F00103 		orr	r3, r3, #1
+ 172 0162 2370     		strb	r3, [r4]
+ 173              	.L1:
+ 174 0164 10BD     		pop	{r4, pc}
+ 175              	.LVL4:
+ 176              	.L15:
+ 177 0166 00BF     		.align	2
+ 178              	.L14:
+ 179 0168 00000047 		.word	1191182336
+ 180 016c 00008046 		.word	1182793728
+ 181 0170 00008045 		.word	1166016512
+ 182              		.cfi_endproc
+ 183              	.LFE54:
+ 185              		.section	.text.orientationCalcRMat_i,"ax",%progbits
+ 186              		.align	1
+ 187              		.global	orientationCalcRMat_i
+ 188              		.thumb
+ 189              		.thumb_func
+ 191              	orientationCalcRMat_i:
+ 192              	.LFB55:
+  71:math/pprz_orientation_conversion.c **** }
+  72:math/pprz_orientation_conversion.c **** 
+  73:math/pprz_orientation_conversion.c **** void orientationCalcRMat_i(struct OrientationReps *orientation)
+  74:math/pprz_orientation_conversion.c **** {
+ 193              		.loc 1 74 0
+ 194              		.cfi_startproc
+ 195              		@ args = 0, pretend = 0, frame = 0
+ 196              		@ frame_needed = 0, uses_anonymous_args = 0
+ 197              	.LVL5:
+ 198 0000 10B5     		push	{r4, lr}
+ 199              		.cfi_def_cfa_offset 8
+ 200              		.cfi_offset 4, -8
+ 201              		.cfi_offset 14, -4
+  75:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 202              		.loc 1 75 0
+ 203 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+  74:math/pprz_orientation_conversion.c **** {
+ 204              		.loc 1 74 0
+ 205 0004 0446     		mov	r4, r0
+ 206              		.loc 1 75 0
+ 207 0006 5807     		lsls	r0, r3, #29
+ 208              	.LVL6:
+ 209 0008 00F1AD80 		bmi	.L16
+  76:math/pprz_orientation_conversion.c ****     return;
+  77:math/pprz_orientation_conversion.c ****   }
+  78:math/pprz_orientation_conversion.c **** 
+  79:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+ 210              		.loc 1 79 0
+ 211 000c 9906     		lsls	r1, r3, #26
+ 212 000e 4AD5     		bpl	.L18
+  80:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+ 213              		.loc 1 80 0
+ 214 0010 DFED557A 		flds	s15, .L28
+ 215 0014 94ED187A 		flds	s14, [r4, #96]
+ 216 0018 27EE277A 		fmuls	s14, s14, s15
+ 217 001c BDEEC77A 		ftosizs	s14, s14
+ 218 0020 84ED087A 		fsts	s14, [r4, #32]	@ int
+ 219 0024 94ED197A 		flds	s14, [r4, #100]
+ 220 0028 27EE277A 		fmuls	s14, s14, s15
+ 221 002c BDEEC77A 		ftosizs	s14, s14
+ 222 0030 84ED097A 		fsts	s14, [r4, #36]	@ int
+ 223 0034 94ED1A7A 		flds	s14, [r4, #104]
+ 224 0038 27EE277A 		fmuls	s14, s14, s15
+ 225 003c BDEEC77A 		ftosizs	s14, s14
+ 226 0040 84ED0A7A 		fsts	s14, [r4, #40]	@ int
+ 227 0044 94ED1B7A 		flds	s14, [r4, #108]
+ 228 0048 27EE277A 		fmuls	s14, s14, s15
+ 229 004c BDEEC77A 		ftosizs	s14, s14
+ 230 0050 84ED0B7A 		fsts	s14, [r4, #44]	@ int
+ 231 0054 94ED1C7A 		flds	s14, [r4, #112]
+ 232 0058 27EE277A 		fmuls	s14, s14, s15
+ 233 005c BDEEC77A 		ftosizs	s14, s14
+ 234 0060 84ED0C7A 		fsts	s14, [r4, #48]	@ int
+ 235 0064 94ED1D7A 		flds	s14, [r4, #116]
+ 236 0068 27EE277A 		fmuls	s14, s14, s15
+ 237 006c BDEEC77A 		ftosizs	s14, s14
+ 238 0070 84ED0D7A 		fsts	s14, [r4, #52]	@ int
+ 239 0074 94ED1E7A 		flds	s14, [r4, #120]
+ 240 0078 27EE277A 		fmuls	s14, s14, s15
+ 241 007c BDEEC77A 		ftosizs	s14, s14
+ 242 0080 84ED0E7A 		fsts	s14, [r4, #56]	@ int
+ 243 0084 94ED1F7A 		flds	s14, [r4, #124]
+ 244 0088 27EE277A 		fmuls	s14, s14, s15
+ 245 008c BDEEC77A 		ftosizs	s14, s14
+ 246 0090 84ED0F7A 		fsts	s14, [r4, #60]	@ int
+ 247 0094 94ED207A 		flds	s14, [r4, #128]
+ 248 0098 67EE277A 		fmuls	s15, s14, s15
+ 249 009c FDEEE77A 		ftosizs	s15, s15
+ 250 00a0 C4ED107A 		fsts	s15, [r4, #64]	@ int
+ 251 00a4 5BE0     		b	.L19
+ 252              	.L18:
+  81:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 253              		.loc 1 81 0
+ 254 00a6 DA07     		lsls	r2, r3, #31
+ 255 00a8 02D5     		bpl	.L20
+  82:math/pprz_orientation_conversion.c ****     int32_rmat_of_quat(&(orientation->rmat_i), &(orientation->quat_i));
+ 256              		.loc 1 82 0
+ 257 00aa 04F12000 		add	r0, r4, #32
+ 258 00ae 2DE0     		b	.L26
+ 259              	.L20:
+  83:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+ 260              		.loc 1 83 0
+ 261 00b0 9807     		lsls	r0, r3, #30
+ 262 00b2 02D5     		bpl	.L21
+  84:math/pprz_orientation_conversion.c ****     int32_rmat_of_eulers(&(orientation->rmat_i), &(orientation->eulers_i));
+ 263              		.loc 1 84 0
+ 264 00b4 04F12000 		add	r0, r4, #32
+ 265 00b8 4DE0     		b	.L27
+ 266              	.L21:
+  85:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+ 267              		.loc 1 85 0
+ 268 00ba 1907     		lsls	r1, r3, #28
+ 269 00bc 2AD5     		bpl	.L22
+  86:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 270              		.loc 1 86 0
+ 271 00be DFED2B7A 		flds	s15, .L28+4
+ 272 00c2 94ED117A 		flds	s14, [r4, #68]
+ 273 00c6 27EE277A 		fmuls	s14, s14, s15
+  87:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_QUAT_I);
+ 274              		.loc 1 87 0
+ 275 00ca 2046     		mov	r0, r4
+  86:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 276              		.loc 1 86 0
+ 277 00cc BDEEC77A 		ftosizs	s14, s14
+ 278              		.loc 1 87 0
+ 279 00d0 43F00103 		orr	r3, r3, #1
+  86:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 280              		.loc 1 86 0
+ 281 00d4 84ED017A 		fsts	s14, [r4, #4]	@ int
+ 282 00d8 94ED127A 		flds	s14, [r4, #72]
+ 283 00dc 27EE277A 		fmuls	s14, s14, s15
+ 284 00e0 BDEEC77A 		ftosizs	s14, s14
+ 285 00e4 84ED027A 		fsts	s14, [r4, #8]	@ int
+ 286 00e8 94ED137A 		flds	s14, [r4, #76]
+ 287 00ec 27EE277A 		fmuls	s14, s14, s15
+ 288 00f0 BDEEC77A 		ftosizs	s14, s14
+ 289 00f4 84ED037A 		fsts	s14, [r4, #12]	@ int
+ 290 00f8 94ED147A 		flds	s14, [r4, #80]
+ 291 00fc 67EE277A 		fmuls	s15, s14, s15
+ 292 0100 FDEEE77A 		ftosizs	s15, s15
+ 293 0104 C4ED047A 		fsts	s15, [r4, #16]	@ int
+ 294              		.loc 1 87 0
+ 295 0108 00F8203B 		strb	r3, [r0], #32
+ 296              	.L26:
+  88:math/pprz_orientation_conversion.c ****     int32_rmat_of_quat(&(orientation->rmat_i), &(orientation->quat_i));
+ 297              		.loc 1 88 0
+ 298 010c 211D     		adds	r1, r4, #4
+ 299 010e FFF7FEFF 		bl	int32_rmat_of_quat
+ 300              	.LVL7:
+ 301 0112 24E0     		b	.L19
+ 302              	.L22:
+  89:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 303              		.loc 1 89 0
+ 304 0114 DA06     		lsls	r2, r3, #27
+ 305 0116 22D5     		bpl	.L19
+  90:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 306              		.loc 1 90 0
+ 307 0118 DFED157A 		flds	s15, .L28+8
+ 308 011c 94ED157A 		flds	s14, [r4, #84]
+ 309 0120 27EE277A 		fmuls	s14, s14, s15
+  91:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_EULER_I);
+ 310              		.loc 1 91 0
+ 311 0124 2046     		mov	r0, r4
+  90:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 312              		.loc 1 90 0
+ 313 0126 BDEEC77A 		ftosizs	s14, s14
+ 314              		.loc 1 91 0
+ 315 012a 43F00203 		orr	r3, r3, #2
+  90:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 316              		.loc 1 90 0
+ 317 012e 84ED057A 		fsts	s14, [r4, #20]	@ int
+ 318 0132 94ED167A 		flds	s14, [r4, #88]
+ 319 0136 27EE277A 		fmuls	s14, s14, s15
+ 320 013a BDEEC77A 		ftosizs	s14, s14
+ 321 013e 84ED067A 		fsts	s14, [r4, #24]	@ int
+ 322 0142 94ED177A 		flds	s14, [r4, #92]
+ 323 0146 67EE277A 		fmuls	s15, s14, s15
+ 324 014a FDEEE77A 		ftosizs	s15, s15
+ 325 014e C4ED077A 		fsts	s15, [r4, #28]	@ int
+ 326              		.loc 1 91 0
+ 327 0152 00F8203B 		strb	r3, [r0], #32
+ 328              	.L27:
+  92:math/pprz_orientation_conversion.c ****     int32_rmat_of_eulers(&(orientation->rmat_i), &(orientation->eulers_i));
+ 329              		.loc 1 92 0
+ 330 0156 04F11401 		add	r1, r4, #20
+ 331 015a FFF7FEFF 		bl	int32_rmat_of_eulers_321
+ 332              	.LVL8:
+ 333              	.L19:
+  93:math/pprz_orientation_conversion.c ****   }
+  94:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+  95:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_RMAT_I);
+ 334              		.loc 1 95 0
+ 335 015e 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 336 0160 43F00403 		orr	r3, r3, #4
+ 337 0164 2370     		strb	r3, [r4]
+ 338              	.L16:
+ 339 0166 10BD     		pop	{r4, pc}
+ 340              	.LVL9:
+ 341              	.L29:
+ 342              		.align	2
+ 343              	.L28:
+ 344 0168 00008046 		.word	1182793728
+ 345 016c 00000047 		.word	1191182336
+ 346 0170 00008045 		.word	1166016512
+ 347              		.cfi_endproc
+ 348              	.LFE55:
+ 350              		.section	.text.orientationCalcEulers_i,"ax",%progbits
+ 351              		.align	1
+ 352              		.global	orientationCalcEulers_i
+ 353              		.thumb
+ 354              		.thumb_func
+ 356              	orientationCalcEulers_i:
+ 357              	.LFB56:
+  96:math/pprz_orientation_conversion.c **** }
+  97:math/pprz_orientation_conversion.c **** 
+  98:math/pprz_orientation_conversion.c **** void orientationCalcEulers_i(struct OrientationReps *orientation)
+  99:math/pprz_orientation_conversion.c **** {
+ 358              		.loc 1 99 0
+ 359              		.cfi_startproc
+ 360              		@ args = 0, pretend = 0, frame = 0
+ 361              		@ frame_needed = 0, uses_anonymous_args = 0
+ 362              	.LVL10:
+ 363 0000 10B5     		push	{r4, lr}
+ 364              		.cfi_def_cfa_offset 8
+ 365              		.cfi_offset 4, -8
+ 366              		.cfi_offset 14, -4
+ 100:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+ 367              		.loc 1 100 0
+ 368 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+  99:math/pprz_orientation_conversion.c **** {
+ 369              		.loc 1 99 0
+ 370 0004 0446     		mov	r4, r0
+ 371              		.loc 1 100 0
+ 372 0006 9807     		lsls	r0, r3, #30
+ 373              	.LVL11:
+ 374 0008 00F1AD80 		bmi	.L30
+ 101:math/pprz_orientation_conversion.c ****     return;
+ 102:math/pprz_orientation_conversion.c ****   }
+ 103:math/pprz_orientation_conversion.c **** 
+ 104:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 375              		.loc 1 104 0
+ 376 000c D906     		lsls	r1, r3, #27
+ 377 000e 1AD5     		bpl	.L32
+ 105:math/pprz_orientation_conversion.c ****     EULERS_BFP_OF_REAL(orientation->eulers_i, orientation->eulers_f);
+ 378              		.loc 1 105 0
+ 379 0010 DFED557A 		flds	s15, .L42
+ 380 0014 94ED157A 		flds	s14, [r4, #84]
+ 381 0018 27EE277A 		fmuls	s14, s14, s15
+ 382 001c BDEEC77A 		ftosizs	s14, s14
+ 383 0020 84ED057A 		fsts	s14, [r4, #20]	@ int
+ 384 0024 94ED167A 		flds	s14, [r4, #88]
+ 385 0028 27EE277A 		fmuls	s14, s14, s15
+ 386 002c BDEEC77A 		ftosizs	s14, s14
+ 387 0030 84ED067A 		fsts	s14, [r4, #24]	@ int
+ 388 0034 94ED177A 		flds	s14, [r4, #92]
+ 389 0038 67EE277A 		fmuls	s15, s14, s15
+ 390 003c FDEEE77A 		ftosizs	s15, s15
+ 391 0040 C4ED077A 		fsts	s15, [r4, #28]	@ int
+ 392 0044 8BE0     		b	.L33
+ 393              	.L32:
+ 106:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 394              		.loc 1 106 0
+ 395 0046 5A07     		lsls	r2, r3, #29
+ 396 0048 02D5     		bpl	.L34
+ 107:math/pprz_orientation_conversion.c ****     int32_eulers_of_rmat(&(orientation->eulers_i), &(orientation->rmat_i));
+ 397              		.loc 1 107 0
+ 398 004a 04F11400 		add	r0, r4, #20
+ 399 004e 55E0     		b	.L40
+ 400              	.L34:
+ 108:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 401              		.loc 1 108 0
+ 402 0050 D807     		lsls	r0, r3, #31
+ 403 0052 02D5     		bpl	.L35
+ 109:math/pprz_orientation_conversion.c ****     int32_eulers_of_quat(&(orientation->eulers_i), &(orientation->quat_i));
+ 404              		.loc 1 109 0
+ 405 0054 04F11400 		add	r0, r4, #20
+ 406 0058 7EE0     		b	.L41
+ 407              	.L35:
+ 110:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+ 408              		.loc 1 110 0
+ 409 005a 9906     		lsls	r1, r3, #26
+ 410 005c 53D5     		bpl	.L36
+ 111:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+ 411              		.loc 1 111 0
+ 412 005e DFED437A 		flds	s15, .L42+4
+ 413 0062 94ED187A 		flds	s14, [r4, #96]
+ 414 0066 27EE277A 		fmuls	s14, s14, s15
+ 112:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_RMAT_I);
+ 415              		.loc 1 112 0
+ 416 006a 2046     		mov	r0, r4
+ 111:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+ 417              		.loc 1 111 0
+ 418 006c BDEEC77A 		ftosizs	s14, s14
+ 419              		.loc 1 112 0
+ 420 0070 43F00403 		orr	r3, r3, #4
+ 111:math/pprz_orientation_conversion.c ****     RMAT_BFP_OF_REAL(orientation->rmat_i, orientation->rmat_f);
+ 421              		.loc 1 111 0
+ 422 0074 84ED087A 		fsts	s14, [r4, #32]	@ int
+ 423 0078 94ED197A 		flds	s14, [r4, #100]
+ 424 007c 27EE277A 		fmuls	s14, s14, s15
+ 425 0080 BDEEC77A 		ftosizs	s14, s14
+ 426 0084 84ED097A 		fsts	s14, [r4, #36]	@ int
+ 427 0088 94ED1A7A 		flds	s14, [r4, #104]
+ 428 008c 27EE277A 		fmuls	s14, s14, s15
+ 429 0090 BDEEC77A 		ftosizs	s14, s14
+ 430 0094 84ED0A7A 		fsts	s14, [r4, #40]	@ int
+ 431 0098 94ED1B7A 		flds	s14, [r4, #108]
+ 432 009c 27EE277A 		fmuls	s14, s14, s15
+ 433 00a0 BDEEC77A 		ftosizs	s14, s14
+ 434 00a4 84ED0B7A 		fsts	s14, [r4, #44]	@ int
+ 435 00a8 94ED1C7A 		flds	s14, [r4, #112]
+ 436 00ac 27EE277A 		fmuls	s14, s14, s15
+ 437 00b0 BDEEC77A 		ftosizs	s14, s14
+ 438 00b4 84ED0C7A 		fsts	s14, [r4, #48]	@ int
+ 439 00b8 94ED1D7A 		flds	s14, [r4, #116]
+ 440 00bc 27EE277A 		fmuls	s14, s14, s15
+ 441 00c0 BDEEC77A 		ftosizs	s14, s14
+ 442 00c4 84ED0D7A 		fsts	s14, [r4, #52]	@ int
+ 443 00c8 94ED1E7A 		flds	s14, [r4, #120]
+ 444 00cc 27EE277A 		fmuls	s14, s14, s15
+ 445 00d0 BDEEC77A 		ftosizs	s14, s14
+ 446 00d4 84ED0E7A 		fsts	s14, [r4, #56]	@ int
+ 447 00d8 94ED1F7A 		flds	s14, [r4, #124]
+ 448 00dc 27EE277A 		fmuls	s14, s14, s15
+ 449 00e0 BDEEC77A 		ftosizs	s14, s14
+ 450 00e4 84ED0F7A 		fsts	s14, [r4, #60]	@ int
+ 451 00e8 94ED207A 		flds	s14, [r4, #128]
+ 452 00ec 67EE277A 		fmuls	s15, s14, s15
+ 453 00f0 FDEEE77A 		ftosizs	s15, s15
+ 454 00f4 C4ED107A 		fsts	s15, [r4, #64]	@ int
+ 455              		.loc 1 112 0
+ 456 00f8 00F8143B 		strb	r3, [r0], #20
+ 457              	.L40:
+ 113:math/pprz_orientation_conversion.c ****     int32_eulers_of_rmat(&(orientation->eulers_i), &(orientation->rmat_i));
+ 458              		.loc 1 113 0
+ 459 00fc 04F12001 		add	r1, r4, #32
+ 460 0100 FFF7FEFF 		bl	int32_eulers_of_rmat
+ 461              	.LVL12:
+ 462 0104 2BE0     		b	.L33
+ 463              	.L36:
+ 114:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+ 464              		.loc 1 114 0
+ 465 0106 1A07     		lsls	r2, r3, #28
+ 466 0108 29D5     		bpl	.L33
+ 115:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 467              		.loc 1 115 0
+ 468 010a DFED197A 		flds	s15, .L42+8
+ 469 010e 94ED117A 		flds	s14, [r4, #68]
+ 470 0112 27EE277A 		fmuls	s14, s14, s15
+ 116:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_QUAT_I);
+ 471              		.loc 1 116 0
+ 472 0116 2046     		mov	r0, r4
+ 115:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 473              		.loc 1 115 0
+ 474 0118 BDEEC77A 		ftosizs	s14, s14
+ 475              		.loc 1 116 0
+ 476 011c 43F00103 		orr	r3, r3, #1
+ 115:math/pprz_orientation_conversion.c ****     QUAT_BFP_OF_REAL(orientation->quat_i, orientation->quat_f);
+ 477              		.loc 1 115 0
+ 478 0120 84ED017A 		fsts	s14, [r4, #4]	@ int
+ 479 0124 94ED127A 		flds	s14, [r4, #72]
+ 480 0128 27EE277A 		fmuls	s14, s14, s15
+ 481 012c BDEEC77A 		ftosizs	s14, s14
+ 482 0130 84ED027A 		fsts	s14, [r4, #8]	@ int
+ 483 0134 94ED137A 		flds	s14, [r4, #76]
+ 484 0138 27EE277A 		fmuls	s14, s14, s15
+ 485 013c BDEEC77A 		ftosizs	s14, s14
+ 486 0140 84ED037A 		fsts	s14, [r4, #12]	@ int
+ 487 0144 94ED147A 		flds	s14, [r4, #80]
+ 488 0148 67EE277A 		fmuls	s15, s14, s15
+ 489 014c FDEEE77A 		ftosizs	s15, s15
+ 490 0150 C4ED047A 		fsts	s15, [r4, #16]	@ int
+ 491              		.loc 1 116 0
+ 492 0154 00F8143B 		strb	r3, [r0], #20
+ 493              	.L41:
+ 117:math/pprz_orientation_conversion.c ****     int32_eulers_of_quat(&(orientation->eulers_i), &(orientation->quat_i));
+ 494              		.loc 1 117 0
+ 495 0158 211D     		adds	r1, r4, #4
+ 496 015a FFF7FEFF 		bl	int32_eulers_of_quat
+ 497              	.LVL13:
+ 498              	.L33:
+ 118:math/pprz_orientation_conversion.c ****   }
+ 119:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+ 120:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_EULER_I);
+ 499              		.loc 1 120 0
+ 500 015e 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 501 0160 43F00203 		orr	r3, r3, #2
+ 502 0164 2370     		strb	r3, [r4]
+ 503              	.L30:
+ 504 0166 10BD     		pop	{r4, pc}
+ 505              	.LVL14:
+ 506              	.L43:
+ 507              		.align	2
+ 508              	.L42:
+ 509 0168 00008045 		.word	1166016512
+ 510 016c 00008046 		.word	1182793728
+ 511 0170 00000047 		.word	1191182336
+ 512              		.cfi_endproc
+ 513              	.LFE56:
+ 515              		.section	.text.orientationCalcQuat_f,"ax",%progbits
+ 516              		.align	1
+ 517              		.global	orientationCalcQuat_f
+ 518              		.thumb
+ 519              		.thumb_func
+ 521              	orientationCalcQuat_f:
+ 522              	.LFB57:
+ 121:math/pprz_orientation_conversion.c **** }
+ 122:math/pprz_orientation_conversion.c **** 
+ 123:math/pprz_orientation_conversion.c **** void orientationCalcQuat_f(struct OrientationReps *orientation)
+ 124:math/pprz_orientation_conversion.c **** {
+ 523              		.loc 1 124 0
+ 524              		.cfi_startproc
+ 525              		@ args = 0, pretend = 0, frame = 0
+ 526              		@ frame_needed = 0, uses_anonymous_args = 0
+ 527              	.LVL15:
+ 528 0000 10B5     		push	{r4, lr}
+ 529              		.cfi_def_cfa_offset 8
+ 530              		.cfi_offset 4, -8
+ 531              		.cfi_offset 14, -4
+ 125:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+ 532              		.loc 1 125 0
+ 533 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+ 124:math/pprz_orientation_conversion.c **** {
+ 534              		.loc 1 124 0
+ 535 0004 0446     		mov	r4, r0
+ 536              		.loc 1 125 0
+ 537 0006 1807     		lsls	r0, r3, #28
+ 538              	.LVL16:
+ 539 0008 00F1AE80 		bmi	.L44
+ 126:math/pprz_orientation_conversion.c ****     return;
+ 127:math/pprz_orientation_conversion.c ****   }
+ 128:math/pprz_orientation_conversion.c **** 
+ 129:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 540              		.loc 1 129 0
+ 541 000c D907     		lsls	r1, r3, #31
+ 542 000e 22D5     		bpl	.L46
+ 130:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 543              		.loc 1 130 0
+ 544 0010 D4ED016A 		flds	s13, [r4, #4]	@ int
+ 545 0014 DFED557A 		flds	s15, .L56
+ 546 0018 B8EEE67A 		fsitos	s14, s13
+ 547 001c D4ED026A 		flds	s13, [r4, #8]	@ int
+ 548 0020 27EE277A 		fmuls	s14, s14, s15
+ 549 0024 84ED117A 		fsts	s14, [r4, #68]
+ 550 0028 B8EEE67A 		fsitos	s14, s13
+ 551 002c D4ED036A 		flds	s13, [r4, #12]	@ int
+ 552 0030 27EE277A 		fmuls	s14, s14, s15
+ 553 0034 84ED127A 		fsts	s14, [r4, #72]
+ 554 0038 B8EEE67A 		fsitos	s14, s13
+ 555 003c D4ED046A 		flds	s13, [r4, #16]	@ int
+ 556 0040 27EE277A 		fmuls	s14, s14, s15
+ 557 0044 84ED137A 		fsts	s14, [r4, #76]
+ 558 0048 B8EEE67A 		fsitos	s14, s13
+ 559 004c 67EE277A 		fmuls	s15, s14, s15
+ 560 0050 C4ED147A 		fsts	s15, [r4, #80]
+ 561 0054 84E0     		b	.L47
+ 562              	.L46:
+ 131:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+ 563              		.loc 1 131 0
+ 564 0056 9A06     		lsls	r2, r3, #26
+ 565 0058 02D5     		bpl	.L48
+ 132:math/pprz_orientation_conversion.c ****     float_quat_of_rmat(&(orientation->quat_f), &(orientation->rmat_f));
+ 566              		.loc 1 132 0
+ 567 005a 04F14400 		add	r0, r4, #68
+ 568 005e 55E0     		b	.L54
+ 569              	.L48:
+ 133:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 570              		.loc 1 133 0
+ 571 0060 D806     		lsls	r0, r3, #27
+ 572 0062 02D5     		bpl	.L49
+ 134:math/pprz_orientation_conversion.c ****     float_quat_of_eulers(&(orientation->quat_f), &(orientation->eulers_f));
+ 573              		.loc 1 134 0
+ 574 0064 04F14400 		add	r0, r4, #68
+ 575 0068 76E0     		b	.L55
+ 576              	.L49:
+ 135:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 577              		.loc 1 135 0
+ 578 006a 5907     		lsls	r1, r3, #29
+ 579 006c 53D5     		bpl	.L50
+ 136:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 580              		.loc 1 136 0
+ 581 006e D4ED087A 		flds	s15, [r4, #32]	@ int
+ 582 0072 D4ED096A 		flds	s13, [r4, #36]	@ int
+ 583 0076 B8EEE77A 		fsitos	s14, s15
+ 584 007a DFED3D7A 		flds	s15, .L56+4
+ 585 007e 27EE277A 		fmuls	s14, s14, s15
+ 137:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_RMAT_F);
+ 586              		.loc 1 137 0
+ 587 0082 2046     		mov	r0, r4
+ 136:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 588              		.loc 1 136 0
+ 589 0084 84ED187A 		fsts	s14, [r4, #96]
+ 590 0088 B8EEE67A 		fsitos	s14, s13
+ 591 008c D4ED0A6A 		flds	s13, [r4, #40]	@ int
+ 592 0090 27EE277A 		fmuls	s14, s14, s15
+ 593              		.loc 1 137 0
+ 594 0094 43F02003 		orr	r3, r3, #32
+ 136:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 595              		.loc 1 136 0
+ 596 0098 84ED197A 		fsts	s14, [r4, #100]
+ 597 009c B8EEE67A 		fsitos	s14, s13
+ 598 00a0 D4ED0B6A 		flds	s13, [r4, #44]	@ int
+ 599 00a4 27EE277A 		fmuls	s14, s14, s15
+ 600 00a8 84ED1A7A 		fsts	s14, [r4, #104]
+ 601 00ac B8EEE67A 		fsitos	s14, s13
+ 602 00b0 D4ED0C6A 		flds	s13, [r4, #48]	@ int
+ 603 00b4 27EE277A 		fmuls	s14, s14, s15
+ 604 00b8 84ED1B7A 		fsts	s14, [r4, #108]
+ 605 00bc B8EEE67A 		fsitos	s14, s13
+ 606 00c0 D4ED0D6A 		flds	s13, [r4, #52]	@ int
+ 607 00c4 27EE277A 		fmuls	s14, s14, s15
+ 608 00c8 84ED1C7A 		fsts	s14, [r4, #112]
+ 609 00cc B8EEE67A 		fsitos	s14, s13
+ 610 00d0 D4ED0E6A 		flds	s13, [r4, #56]	@ int
+ 611 00d4 27EE277A 		fmuls	s14, s14, s15
+ 612 00d8 84ED1D7A 		fsts	s14, [r4, #116]
+ 613 00dc B8EEE67A 		fsitos	s14, s13
+ 614 00e0 D4ED0F6A 		flds	s13, [r4, #60]	@ int
+ 615 00e4 27EE277A 		fmuls	s14, s14, s15
+ 616 00e8 84ED1E7A 		fsts	s14, [r4, #120]
+ 617 00ec B8EEE67A 		fsitos	s14, s13
+ 618 00f0 D4ED106A 		flds	s13, [r4, #64]	@ int
+ 619 00f4 27EE277A 		fmuls	s14, s14, s15
+ 620 00f8 84ED1F7A 		fsts	s14, [r4, #124]
+ 621 00fc B8EEE67A 		fsitos	s14, s13
+ 622 0100 67EE277A 		fmuls	s15, s14, s15
+ 623 0104 C4ED207A 		fsts	s15, [r4, #128]
+ 624              		.loc 1 137 0
+ 625 0108 00F8443B 		strb	r3, [r0], #68
+ 626              	.L54:
+ 138:math/pprz_orientation_conversion.c ****     float_quat_of_rmat(&(orientation->quat_f), &(orientation->rmat_f));
+ 627              		.loc 1 138 0
+ 628 010c 04F16001 		add	r1, r4, #96
+ 629 0110 FFF7FEFF 		bl	float_quat_of_rmat
+ 630              	.LVL17:
+ 631 0114 24E0     		b	.L47
+ 632              	.L50:
+ 139:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+ 633              		.loc 1 139 0
+ 634 0116 9A07     		lsls	r2, r3, #30
+ 635 0118 22D5     		bpl	.L47
+ 140:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 636              		.loc 1 140 0
+ 637 011a D4ED057A 		flds	s15, [r4, #20]	@ int
+ 638 011e D4ED066A 		flds	s13, [r4, #24]	@ int
+ 639 0122 B8EEE77A 		fsitos	s14, s15
+ 640 0126 DFED137A 		flds	s15, .L56+8
+ 641 012a 27EE277A 		fmuls	s14, s14, s15
+ 141:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_EULER_F);
+ 642              		.loc 1 141 0
+ 643 012e 2046     		mov	r0, r4
+ 140:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 644              		.loc 1 140 0
+ 645 0130 84ED157A 		fsts	s14, [r4, #84]
+ 646 0134 B8EEE67A 		fsitos	s14, s13
+ 647 0138 D4ED076A 		flds	s13, [r4, #28]	@ int
+ 648 013c 27EE277A 		fmuls	s14, s14, s15
+ 649              		.loc 1 141 0
+ 650 0140 43F01003 		orr	r3, r3, #16
+ 140:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 651              		.loc 1 140 0
+ 652 0144 84ED167A 		fsts	s14, [r4, #88]
+ 653 0148 B8EEE67A 		fsitos	s14, s13
+ 654 014c 67EE277A 		fmuls	s15, s14, s15
+ 655 0150 C4ED177A 		fsts	s15, [r4, #92]
+ 656              		.loc 1 141 0
+ 657 0154 00F8443B 		strb	r3, [r0], #68
+ 658              	.L55:
+ 142:math/pprz_orientation_conversion.c ****     float_quat_of_eulers(&(orientation->quat_f), &(orientation->eulers_f));
+ 659              		.loc 1 142 0
+ 660 0158 04F15401 		add	r1, r4, #84
+ 661 015c FFF7FEFF 		bl	float_quat_of_eulers
+ 662              	.LVL18:
+ 663              	.L47:
+ 143:math/pprz_orientation_conversion.c ****   }
+ 144:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+ 145:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_QUAT_F);
+ 664              		.loc 1 145 0
+ 665 0160 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 666 0162 43F00803 		orr	r3, r3, #8
+ 667 0166 2370     		strb	r3, [r4]
+ 668              	.L44:
+ 669 0168 10BD     		pop	{r4, pc}
+ 670              	.LVL19:
+ 671              	.L57:
+ 672 016a 00BF     		.align	2
+ 673              	.L56:
+ 674 016c 00000038 		.word	939524096
+ 675 0170 00008038 		.word	947912704
+ 676 0174 00008039 		.word	964689920
+ 677              		.cfi_endproc
+ 678              	.LFE57:
+ 680              		.section	.text.orientationCalcRMat_f,"ax",%progbits
+ 681              		.align	1
+ 682              		.global	orientationCalcRMat_f
+ 683              		.thumb
+ 684              		.thumb_func
+ 686              	orientationCalcRMat_f:
+ 687              	.LFB58:
+ 146:math/pprz_orientation_conversion.c **** }
+ 147:math/pprz_orientation_conversion.c **** 
+ 148:math/pprz_orientation_conversion.c **** void orientationCalcRMat_f(struct OrientationReps *orientation)
+ 149:math/pprz_orientation_conversion.c **** {
+ 688              		.loc 1 149 0
+ 689              		.cfi_startproc
+ 690              		@ args = 0, pretend = 0, frame = 0
+ 691              		@ frame_needed = 0, uses_anonymous_args = 0
+ 692              	.LVL20:
+ 693 0000 10B5     		push	{r4, lr}
+ 694              		.cfi_def_cfa_offset 8
+ 695              		.cfi_offset 4, -8
+ 696              		.cfi_offset 14, -4
+ 150:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+ 697              		.loc 1 150 0
+ 698 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+ 149:math/pprz_orientation_conversion.c **** {
+ 699              		.loc 1 149 0
+ 700 0004 0446     		mov	r4, r0
+ 701              		.loc 1 150 0
+ 702 0006 9806     		lsls	r0, r3, #26
+ 703              	.LVL21:
+ 704 0008 00F1AE80 		bmi	.L58
+ 151:math/pprz_orientation_conversion.c ****     return;
+ 152:math/pprz_orientation_conversion.c ****   }
+ 153:math/pprz_orientation_conversion.c **** 
+ 154:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 705              		.loc 1 154 0
+ 706 000c 5907     		lsls	r1, r3, #29
+ 707 000e 4AD5     		bpl	.L60
+ 155:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 708              		.loc 1 155 0
+ 709 0010 D4ED086A 		flds	s13, [r4, #32]	@ int
+ 710 0014 DFED557A 		flds	s15, .L70
+ 711 0018 B8EEE67A 		fsitos	s14, s13
+ 712 001c D4ED096A 		flds	s13, [r4, #36]	@ int
+ 713 0020 27EE277A 		fmuls	s14, s14, s15
+ 714 0024 84ED187A 		fsts	s14, [r4, #96]
+ 715 0028 B8EEE67A 		fsitos	s14, s13
+ 716 002c D4ED0A6A 		flds	s13, [r4, #40]	@ int
+ 717 0030 27EE277A 		fmuls	s14, s14, s15
+ 718 0034 84ED197A 		fsts	s14, [r4, #100]
+ 719 0038 B8EEE67A 		fsitos	s14, s13
+ 720 003c D4ED0B6A 		flds	s13, [r4, #44]	@ int
+ 721 0040 27EE277A 		fmuls	s14, s14, s15
+ 722 0044 84ED1A7A 		fsts	s14, [r4, #104]
+ 723 0048 B8EEE67A 		fsitos	s14, s13
+ 724 004c D4ED0C6A 		flds	s13, [r4, #48]	@ int
+ 725 0050 27EE277A 		fmuls	s14, s14, s15
+ 726 0054 84ED1B7A 		fsts	s14, [r4, #108]
+ 727 0058 B8EEE67A 		fsitos	s14, s13
+ 728 005c D4ED0D6A 		flds	s13, [r4, #52]	@ int
+ 729 0060 27EE277A 		fmuls	s14, s14, s15
+ 730 0064 84ED1C7A 		fsts	s14, [r4, #112]
+ 731 0068 B8EEE67A 		fsitos	s14, s13
+ 732 006c D4ED0E6A 		flds	s13, [r4, #56]	@ int
+ 733 0070 27EE277A 		fmuls	s14, s14, s15
+ 734 0074 84ED1D7A 		fsts	s14, [r4, #116]
+ 735 0078 B8EEE67A 		fsitos	s14, s13
+ 736 007c D4ED0F6A 		flds	s13, [r4, #60]	@ int
+ 737 0080 27EE277A 		fmuls	s14, s14, s15
+ 738 0084 84ED1E7A 		fsts	s14, [r4, #120]
+ 739 0088 B8EEE67A 		fsitos	s14, s13
+ 740 008c D4ED106A 		flds	s13, [r4, #64]	@ int
+ 741 0090 27EE277A 		fmuls	s14, s14, s15
+ 742 0094 84ED1F7A 		fsts	s14, [r4, #124]
+ 743 0098 B8EEE67A 		fsitos	s14, s13
+ 744 009c 67EE277A 		fmuls	s15, s14, s15
+ 745 00a0 C4ED207A 		fsts	s15, [r4, #128]
+ 746 00a4 5CE0     		b	.L61
+ 747              	.L60:
+ 156:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+ 748              		.loc 1 156 0
+ 749 00a6 1A07     		lsls	r2, r3, #28
+ 750 00a8 02D5     		bpl	.L62
+ 157:math/pprz_orientation_conversion.c ****     float_rmat_of_quat(&(orientation->rmat_f), &(orientation->quat_f));
+ 751              		.loc 1 157 0
+ 752 00aa 04F16000 		add	r0, r4, #96
+ 753 00ae 2DE0     		b	.L68
+ 754              	.L62:
+ 158:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 755              		.loc 1 158 0
+ 756 00b0 D806     		lsls	r0, r3, #27
+ 757 00b2 02D5     		bpl	.L63
+ 159:math/pprz_orientation_conversion.c ****     float_rmat_of_eulers(&(orientation->rmat_f), &(orientation->eulers_f));
+ 758              		.loc 1 159 0
+ 759 00b4 04F16000 		add	r0, r4, #96
+ 760 00b8 4EE0     		b	.L69
+ 761              	.L63:
+ 160:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 762              		.loc 1 160 0
+ 763 00ba D907     		lsls	r1, r3, #31
+ 764 00bc 2BD5     		bpl	.L64
+ 161:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 765              		.loc 1 161 0
+ 766 00be D4ED017A 		flds	s15, [r4, #4]	@ int
+ 767 00c2 D4ED026A 		flds	s13, [r4, #8]	@ int
+ 768 00c6 B8EEE77A 		fsitos	s14, s15
+ 769 00ca DFED297A 		flds	s15, .L70+4
+ 770 00ce 27EE277A 		fmuls	s14, s14, s15
+ 162:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_QUAT_F);
+ 771              		.loc 1 162 0
+ 772 00d2 2046     		mov	r0, r4
+ 161:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 773              		.loc 1 161 0
+ 774 00d4 84ED117A 		fsts	s14, [r4, #68]
+ 775 00d8 B8EEE67A 		fsitos	s14, s13
+ 776 00dc D4ED036A 		flds	s13, [r4, #12]	@ int
+ 777 00e0 27EE277A 		fmuls	s14, s14, s15
+ 778              		.loc 1 162 0
+ 779 00e4 43F00803 		orr	r3, r3, #8
+ 161:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 780              		.loc 1 161 0
+ 781 00e8 84ED127A 		fsts	s14, [r4, #72]
+ 782 00ec B8EEE67A 		fsitos	s14, s13
+ 783 00f0 D4ED046A 		flds	s13, [r4, #16]	@ int
+ 784 00f4 27EE277A 		fmuls	s14, s14, s15
+ 785 00f8 84ED137A 		fsts	s14, [r4, #76]
+ 786 00fc B8EEE67A 		fsitos	s14, s13
+ 787 0100 67EE277A 		fmuls	s15, s14, s15
+ 788 0104 C4ED147A 		fsts	s15, [r4, #80]
+ 789              		.loc 1 162 0
+ 790 0108 00F8603B 		strb	r3, [r0], #96
+ 791              	.L68:
+ 163:math/pprz_orientation_conversion.c ****     float_rmat_of_quat(&(orientation->rmat_f), &(orientation->quat_f));
+ 792              		.loc 1 163 0
+ 793 010c 04F14401 		add	r1, r4, #68
+ 794 0110 FFF7FEFF 		bl	float_rmat_of_quat
+ 795              	.LVL22:
+ 796 0114 24E0     		b	.L61
+ 797              	.L64:
+ 164:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+ 798              		.loc 1 164 0
+ 799 0116 9A07     		lsls	r2, r3, #30
+ 800 0118 22D5     		bpl	.L61
+ 165:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 801              		.loc 1 165 0
+ 802 011a D4ED057A 		flds	s15, [r4, #20]	@ int
+ 803 011e D4ED066A 		flds	s13, [r4, #24]	@ int
+ 804 0122 B8EEE77A 		fsitos	s14, s15
+ 805 0126 DFED137A 		flds	s15, .L70+8
+ 806 012a 27EE277A 		fmuls	s14, s14, s15
+ 166:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_EULER_F);
+ 807              		.loc 1 166 0
+ 808 012e 2046     		mov	r0, r4
+ 165:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 809              		.loc 1 165 0
+ 810 0130 84ED157A 		fsts	s14, [r4, #84]
+ 811 0134 B8EEE67A 		fsitos	s14, s13
+ 812 0138 D4ED076A 		flds	s13, [r4, #28]	@ int
+ 813 013c 27EE277A 		fmuls	s14, s14, s15
+ 814              		.loc 1 166 0
+ 815 0140 43F01003 		orr	r3, r3, #16
+ 165:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 816              		.loc 1 165 0
+ 817 0144 84ED167A 		fsts	s14, [r4, #88]
+ 818 0148 B8EEE67A 		fsitos	s14, s13
+ 819 014c 67EE277A 		fmuls	s15, s14, s15
+ 820 0150 C4ED177A 		fsts	s15, [r4, #92]
+ 821              		.loc 1 166 0
+ 822 0154 00F8603B 		strb	r3, [r0], #96
+ 823              	.L69:
+ 167:math/pprz_orientation_conversion.c ****     float_rmat_of_eulers(&(orientation->rmat_f), &(orientation->eulers_f));
+ 824              		.loc 1 167 0
+ 825 0158 04F15401 		add	r1, r4, #84
+ 826 015c FFF7FEFF 		bl	float_rmat_of_eulers_321
+ 827              	.LVL23:
+ 828              	.L61:
+ 168:math/pprz_orientation_conversion.c ****   }
+ 169:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+ 170:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_RMAT_F);
+ 829              		.loc 1 170 0
+ 830 0160 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 831 0162 43F02003 		orr	r3, r3, #32
+ 832 0166 2370     		strb	r3, [r4]
+ 833              	.L58:
+ 834 0168 10BD     		pop	{r4, pc}
+ 835              	.LVL24:
+ 836              	.L71:
+ 837 016a 00BF     		.align	2
+ 838              	.L70:
+ 839 016c 00008038 		.word	947912704
+ 840 0170 00000038 		.word	939524096
+ 841 0174 00008039 		.word	964689920
+ 842              		.cfi_endproc
+ 843              	.LFE58:
+ 845              		.section	.text.orientationCalcEulers_f,"ax",%progbits
+ 846              		.align	1
+ 847              		.global	orientationCalcEulers_f
+ 848              		.thumb
+ 849              		.thumb_func
+ 851              	orientationCalcEulers_f:
+ 852              	.LFB59:
+ 171:math/pprz_orientation_conversion.c **** }
+ 172:math/pprz_orientation_conversion.c **** 
+ 173:math/pprz_orientation_conversion.c **** void orientationCalcEulers_f(struct OrientationReps *orientation)
+ 174:math/pprz_orientation_conversion.c **** {
+ 853              		.loc 1 174 0
+ 854              		.cfi_startproc
+ 855              		@ args = 0, pretend = 0, frame = 0
+ 856              		@ frame_needed = 0, uses_anonymous_args = 0
+ 857              	.LVL25:
+ 858 0000 10B5     		push	{r4, lr}
+ 859              		.cfi_def_cfa_offset 8
+ 860              		.cfi_offset 4, -8
+ 861              		.cfi_offset 14, -4
+ 175:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_EULER_F)) {
+ 862              		.loc 1 175 0
+ 863 0002 0378     		ldrb	r3, [r0]	@ zero_extendqisi2
+ 174:math/pprz_orientation_conversion.c **** {
+ 864              		.loc 1 174 0
+ 865 0004 0446     		mov	r4, r0
+ 866              		.loc 1 175 0
+ 867 0006 D806     		lsls	r0, r3, #27
+ 868              	.LVL26:
+ 869 0008 00F1AE80 		bmi	.L72
+ 176:math/pprz_orientation_conversion.c ****     return;
+ 177:math/pprz_orientation_conversion.c ****   }
+ 178:math/pprz_orientation_conversion.c **** 
+ 179:math/pprz_orientation_conversion.c ****   if (bit_is_set(orientation->status, ORREP_EULER_I)) {
+ 870              		.loc 1 179 0
+ 871 000c 9907     		lsls	r1, r3, #30
+ 872 000e 1AD5     		bpl	.L74
+ 180:math/pprz_orientation_conversion.c ****     EULERS_FLOAT_OF_BFP(orientation->eulers_f, orientation->eulers_i);
+ 873              		.loc 1 180 0
+ 874 0010 D4ED056A 		flds	s13, [r4, #20]	@ int
+ 875 0014 DFED557A 		flds	s15, .L84
+ 876 0018 B8EEE67A 		fsitos	s14, s13
+ 877 001c D4ED066A 		flds	s13, [r4, #24]	@ int
+ 878 0020 27EE277A 		fmuls	s14, s14, s15
+ 879 0024 84ED157A 		fsts	s14, [r4, #84]
+ 880 0028 B8EEE67A 		fsitos	s14, s13
+ 881 002c D4ED076A 		flds	s13, [r4, #28]	@ int
+ 882 0030 27EE277A 		fmuls	s14, s14, s15
+ 883 0034 84ED167A 		fsts	s14, [r4, #88]
+ 884 0038 B8EEE67A 		fsitos	s14, s13
+ 885 003c 67EE277A 		fmuls	s15, s14, s15
+ 886 0040 C4ED177A 		fsts	s15, [r4, #92]
+ 887 0044 8CE0     		b	.L75
+ 888              	.L74:
+ 181:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_F)) {
+ 889              		.loc 1 181 0
+ 890 0046 9A06     		lsls	r2, r3, #26
+ 891 0048 02D5     		bpl	.L76
+ 182:math/pprz_orientation_conversion.c ****     float_eulers_of_rmat(&(orientation->eulers_f), &(orientation->rmat_f));
+ 892              		.loc 1 182 0
+ 893 004a 04F15400 		add	r0, r4, #84
+ 894 004e 55E0     		b	.L82
+ 895              	.L76:
+ 183:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_F)) {
+ 896              		.loc 1 183 0
+ 897 0050 1807     		lsls	r0, r3, #28
+ 898 0052 02D5     		bpl	.L77
+ 184:math/pprz_orientation_conversion.c ****     float_eulers_of_quat(&(orientation->eulers_f), &(orientation->quat_f));
+ 899              		.loc 1 184 0
+ 900 0054 04F15400 		add	r0, r4, #84
+ 901 0058 7EE0     		b	.L83
+ 902              	.L77:
+ 185:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_RMAT_I)) {
+ 903              		.loc 1 185 0
+ 904 005a 5907     		lsls	r1, r3, #29
+ 905 005c 53D5     		bpl	.L78
+ 186:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 906              		.loc 1 186 0
+ 907 005e D4ED087A 		flds	s15, [r4, #32]	@ int
+ 908 0062 D4ED096A 		flds	s13, [r4, #36]	@ int
+ 909 0066 B8EEE77A 		fsitos	s14, s15
+ 910 006a DFED417A 		flds	s15, .L84+4
+ 911 006e 27EE277A 		fmuls	s14, s14, s15
+ 187:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_RMAT_F);
+ 912              		.loc 1 187 0
+ 913 0072 2046     		mov	r0, r4
+ 186:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 914              		.loc 1 186 0
+ 915 0074 84ED187A 		fsts	s14, [r4, #96]
+ 916 0078 B8EEE67A 		fsitos	s14, s13
+ 917 007c D4ED0A6A 		flds	s13, [r4, #40]	@ int
+ 918 0080 27EE277A 		fmuls	s14, s14, s15
+ 919              		.loc 1 187 0
+ 920 0084 43F02003 		orr	r3, r3, #32
+ 186:math/pprz_orientation_conversion.c ****     RMAT_FLOAT_OF_BFP(orientation->rmat_f, orientation->rmat_i);
+ 921              		.loc 1 186 0
+ 922 0088 84ED197A 		fsts	s14, [r4, #100]
+ 923 008c B8EEE67A 		fsitos	s14, s13
+ 924 0090 D4ED0B6A 		flds	s13, [r4, #44]	@ int
+ 925 0094 27EE277A 		fmuls	s14, s14, s15
+ 926 0098 84ED1A7A 		fsts	s14, [r4, #104]
+ 927 009c B8EEE67A 		fsitos	s14, s13
+ 928 00a0 D4ED0C6A 		flds	s13, [r4, #48]	@ int
+ 929 00a4 27EE277A 		fmuls	s14, s14, s15
+ 930 00a8 84ED1B7A 		fsts	s14, [r4, #108]
+ 931 00ac B8EEE67A 		fsitos	s14, s13
+ 932 00b0 D4ED0D6A 		flds	s13, [r4, #52]	@ int
+ 933 00b4 27EE277A 		fmuls	s14, s14, s15
+ 934 00b8 84ED1C7A 		fsts	s14, [r4, #112]
+ 935 00bc B8EEE67A 		fsitos	s14, s13
+ 936 00c0 D4ED0E6A 		flds	s13, [r4, #56]	@ int
+ 937 00c4 27EE277A 		fmuls	s14, s14, s15
+ 938 00c8 84ED1D7A 		fsts	s14, [r4, #116]
+ 939 00cc B8EEE67A 		fsitos	s14, s13
+ 940 00d0 D4ED0F6A 		flds	s13, [r4, #60]	@ int
+ 941 00d4 27EE277A 		fmuls	s14, s14, s15
+ 942 00d8 84ED1E7A 		fsts	s14, [r4, #120]
+ 943 00dc B8EEE67A 		fsitos	s14, s13
+ 944 00e0 D4ED106A 		flds	s13, [r4, #64]	@ int
+ 945 00e4 27EE277A 		fmuls	s14, s14, s15
+ 946 00e8 84ED1F7A 		fsts	s14, [r4, #124]
+ 947 00ec B8EEE67A 		fsitos	s14, s13
+ 948 00f0 67EE277A 		fmuls	s15, s14, s15
+ 949 00f4 C4ED207A 		fsts	s15, [r4, #128]
+ 950              		.loc 1 187 0
+ 951 00f8 00F8543B 		strb	r3, [r0], #84
+ 952              	.L82:
+ 188:math/pprz_orientation_conversion.c ****     float_eulers_of_rmat(&(orientation->eulers_f), &(orientation->rmat_f));
+ 953              		.loc 1 188 0
+ 954 00fc 04F16001 		add	r1, r4, #96
+ 955 0100 FFF7FEFF 		bl	float_eulers_of_rmat
+ 956              	.LVL27:
+ 957 0104 2CE0     		b	.L75
+ 958              	.L78:
+ 189:math/pprz_orientation_conversion.c ****   } else if (bit_is_set(orientation->status, ORREP_QUAT_I)) {
+ 959              		.loc 1 189 0
+ 960 0106 DA07     		lsls	r2, r3, #31
+ 961 0108 2AD5     		bpl	.L75
+ 190:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 962              		.loc 1 190 0
+ 963 010a D4ED017A 		flds	s15, [r4, #4]	@ int
+ 964 010e D4ED026A 		flds	s13, [r4, #8]	@ int
+ 965 0112 B8EEE77A 		fsitos	s14, s15
+ 966 0116 DFED177A 		flds	s15, .L84+8
+ 967 011a 27EE277A 		fmuls	s14, s14, s15
+ 191:math/pprz_orientation_conversion.c ****     SetBit(orientation->status, ORREP_QUAT_F);
+ 968              		.loc 1 191 0
+ 969 011e 2046     		mov	r0, r4
+ 190:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 970              		.loc 1 190 0
+ 971 0120 84ED117A 		fsts	s14, [r4, #68]
+ 972 0124 B8EEE67A 		fsitos	s14, s13
+ 973 0128 D4ED036A 		flds	s13, [r4, #12]	@ int
+ 974 012c 27EE277A 		fmuls	s14, s14, s15
+ 975              		.loc 1 191 0
+ 976 0130 43F00803 		orr	r3, r3, #8
+ 190:math/pprz_orientation_conversion.c ****     QUAT_FLOAT_OF_BFP(orientation->quat_f, orientation->quat_i);
+ 977              		.loc 1 190 0
+ 978 0134 84ED127A 		fsts	s14, [r4, #72]
+ 979 0138 B8EEE67A 		fsitos	s14, s13
+ 980 013c D4ED046A 		flds	s13, [r4, #16]	@ int
+ 981 0140 27EE277A 		fmuls	s14, s14, s15
+ 982 0144 84ED137A 		fsts	s14, [r4, #76]
+ 983 0148 B8EEE67A 		fsitos	s14, s13
+ 984 014c 67EE277A 		fmuls	s15, s14, s15
+ 985 0150 C4ED147A 		fsts	s15, [r4, #80]
+ 986              		.loc 1 191 0
+ 987 0154 00F8543B 		strb	r3, [r0], #84
+ 988              	.L83:
+ 192:math/pprz_orientation_conversion.c ****     float_eulers_of_quat(&(orientation->eulers_f), &(orientation->quat_f));
+ 989              		.loc 1 192 0
+ 990 0158 04F14401 		add	r1, r4, #68
+ 991 015c FFF7FEFF 		bl	float_eulers_of_quat
+ 992              	.LVL28:
+ 993              	.L75:
+ 193:math/pprz_orientation_conversion.c ****   }
+ 194:math/pprz_orientation_conversion.c ****   /* set bit to indicate this representation is computed */
+ 195:math/pprz_orientation_conversion.c ****   SetBit(orientation->status, ORREP_EULER_F);
+ 994              		.loc 1 195 0
+ 995 0160 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 996 0162 43F01003 		orr	r3, r3, #16
+ 997 0166 2370     		strb	r3, [r4]
+ 998              	.L72:
+ 999 0168 10BD     		pop	{r4, pc}
+ 1000              	.LVL29:
+ 1001              	.L85:
+ 1002 016a 00BF     		.align	2
+ 1003              	.L84:
+ 1004 016c 00008039 		.word	964689920
+ 1005 0170 00008038 		.word	947912704
+ 1006 0174 00000038 		.word	939524096
+ 1007              		.cfi_endproc
+ 1008              	.LFE59:
+ 1010              		.text
+ 1011              	.Letext0:
+ 1012              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 1013              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 1014              		.file 4 "./math/pprz_algebra_int.h"
+ 1015              		.file 5 "./math/pprz_algebra_float.h"
+ 1016              		.file 6 "math/pprz_orientation_conversion.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 pprz_orientation_conversion.c
+     /tmp/ccKClZso.s:20     .text.orientationCalcQuat_i:00000000 $t
+     /tmp/ccKClZso.s:25     .text.orientationCalcQuat_i:00000000 orientationCalcQuat_i
+     /tmp/ccKClZso.s:179    .text.orientationCalcQuat_i:00000168 $d
+     /tmp/ccKClZso.s:186    .text.orientationCalcRMat_i:00000000 $t
+     /tmp/ccKClZso.s:191    .text.orientationCalcRMat_i:00000000 orientationCalcRMat_i
+     /tmp/ccKClZso.s:344    .text.orientationCalcRMat_i:00000168 $d
+     /tmp/ccKClZso.s:351    .text.orientationCalcEulers_i:00000000 $t
+     /tmp/ccKClZso.s:356    .text.orientationCalcEulers_i:00000000 orientationCalcEulers_i
+     /tmp/ccKClZso.s:509    .text.orientationCalcEulers_i:00000168 $d
+     /tmp/ccKClZso.s:516    .text.orientationCalcQuat_f:00000000 $t
+     /tmp/ccKClZso.s:521    .text.orientationCalcQuat_f:00000000 orientationCalcQuat_f
+     /tmp/ccKClZso.s:674    .text.orientationCalcQuat_f:0000016c $d
+     /tmp/ccKClZso.s:681    .text.orientationCalcRMat_f:00000000 $t
+     /tmp/ccKClZso.s:686    .text.orientationCalcRMat_f:00000000 orientationCalcRMat_f
+     /tmp/ccKClZso.s:839    .text.orientationCalcRMat_f:0000016c $d
+     /tmp/ccKClZso.s:846    .text.orientationCalcEulers_f:00000000 $t
+     /tmp/ccKClZso.s:851    .text.orientationCalcEulers_f:00000000 orientationCalcEulers_f
+     /tmp/ccKClZso.s:1004   .text.orientationCalcEulers_f:0000016c $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+
+UNDEFINED SYMBOLS
+int32_quat_of_rmat
+int32_quat_of_eulers
+int32_rmat_of_quat
+int32_rmat_of_eulers_321
+int32_eulers_of_rmat
+int32_eulers_of_quat
+float_quat_of_rmat
+float_quat_of_eulers
+float_rmat_of_quat
+float_rmat_of_eulers_321
+float_eulers_of_rmat
+float_eulers_of_quat

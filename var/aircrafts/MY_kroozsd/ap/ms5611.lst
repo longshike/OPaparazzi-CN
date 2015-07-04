@@ -1,0 +1,935 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"ms5611.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.ms5611_prom_crc_ok,"ax",%progbits
+  20              		.align	1
+  21              		.global	ms5611_prom_crc_ok
+  22              		.thumb
+  23              		.thumb_func
+  25              	ms5611_prom_crc_ok:
+  26              	.LFB1:
+  27              		.file 1 "peripherals/ms5611.c"
+   1:peripherals/ms5611.c **** /*
+   2:peripherals/ms5611.c ****  * Copyright (C) 2011 Martin Mueller <martinmm@pfump.org>
+   3:peripherals/ms5611.c ****  * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
+   4:peripherals/ms5611.c ****  *
+   5:peripherals/ms5611.c ****  * This file is part of paparazzi.
+   6:peripherals/ms5611.c ****  *
+   7:peripherals/ms5611.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:peripherals/ms5611.c ****  * it under the terms of the GNU General Public License as published by
+   9:peripherals/ms5611.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:peripherals/ms5611.c ****  * any later version.
+  11:peripherals/ms5611.c ****  *
+  12:peripherals/ms5611.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:peripherals/ms5611.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:peripherals/ms5611.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:peripherals/ms5611.c ****  * GNU General Public License for more details.
+  16:peripherals/ms5611.c ****  *
+  17:peripherals/ms5611.c ****  * You should have received a copy of the GNU General Public License
+  18:peripherals/ms5611.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:peripherals/ms5611.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:peripherals/ms5611.c ****  * Boston, MA 02111-1307, USA.
+  21:peripherals/ms5611.c ****  */
+  22:peripherals/ms5611.c **** 
+  23:peripherals/ms5611.c **** /**
+  24:peripherals/ms5611.c ****  * @file peripherals/ms5611.c
+  25:peripherals/ms5611.c ****  *
+  26:peripherals/ms5611.c ****  * MS5611 and MS5607 barometer driver common functions (I2C and SPI).
+  27:peripherals/ms5611.c ****  */
+  28:peripherals/ms5611.c **** 
+  29:peripherals/ms5611.c **** #include "peripherals/ms5611.h"
+  30:peripherals/ms5611.c **** #include "std.h"
+  31:peripherals/ms5611.c **** 
+  32:peripherals/ms5611.c **** /**
+  33:peripherals/ms5611.c ****  * Check if CRC of PROM data is OK.
+  34:peripherals/ms5611.c ****  * @return TRUE if OK, FALSE otherwise
+  35:peripherals/ms5611.c ****  */
+  36:peripherals/ms5611.c **** bool_t ms5611_prom_crc_ok(uint16_t *prom)
+  37:peripherals/ms5611.c **** {
+  28              		.loc 1 37 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 30B5     		push	{r4, r5, lr}
+  34              		.cfi_def_cfa_offset 12
+  35              		.cfi_offset 4, -12
+  36              		.cfi_offset 5, -8
+  37              		.cfi_offset 14, -4
+  38:peripherals/ms5611.c ****   int32_t i, j;
+  39:peripherals/ms5611.c ****   uint32_t res = 0;
+  40:peripherals/ms5611.c ****   uint8_t crc = prom[7] & 0xF;
+  38              		.loc 1 40 0
+  39 0002 C589     		ldrh	r5, [r0, #14]
+  39:peripherals/ms5611.c ****   uint32_t res = 0;
+  40              		.loc 1 39 0
+  41 0004 0023     		movs	r3, #0
+  42              		.loc 1 40 0
+  43 0006 05F00F04 		and	r4, r5, #15
+  44              	.LVL1:
+  41:peripherals/ms5611.c ****   prom[7] &= 0xFF00;
+  45              		.loc 1 41 0
+  46 000a 05F47F45 		and	r5, r5, #65280
+  47 000e C581     		strh	r5, [r0, #14]	@ movhi
+  48              	.LVL2:
+  42:peripherals/ms5611.c ****   for (i = 0; i < 16; i++) {
+  49              		.loc 1 42 0
+  50 0010 1A46     		mov	r2, r3
+  51              	.LVL3:
+  52              	.L8:
+  53 0012 5110     		asrs	r1, r2, #1
+  43:peripherals/ms5611.c ****     if (i & 1) {
+  54              		.loc 1 43 0
+  55 0014 12F0010F 		tst	r2, #1
+  44:peripherals/ms5611.c ****       res ^= ((prom[i >> 1]) & 0x00FF);
+  56              		.loc 1 44 0
+  57 0018 15BF     		itete	ne
+  58 001a 10F81110 		ldrbne	r1, [r0, r1, lsl #1]	@ zero_extendqisi2
+  45:peripherals/ms5611.c ****     } else {
+  46:peripherals/ms5611.c ****       res ^= (prom[i >> 1] >> 8);
+  59              		.loc 1 46 0
+  60 001e 30F81110 		ldrheq	r1, [r0, r1, lsl #1]
+  44:peripherals/ms5611.c ****       res ^= ((prom[i >> 1]) & 0x00FF);
+  61              		.loc 1 44 0
+  62 0022 4B40     		eorne	r3, r3, r1
+  63              	.LVL4:
+  64              		.loc 1 46 0
+  65 0024 83EA1123 		eoreq	r3, r3, r1, lsr #8
+  66              	.LVL5:
+  42:peripherals/ms5611.c ****   for (i = 0; i < 16; i++) {
+  67              		.loc 1 42 0
+  68 0028 0821     		movs	r1, #8
+  69              	.LVL6:
+  70              	.L6:
+  47:peripherals/ms5611.c ****     }
+  48:peripherals/ms5611.c ****     for (j = 8; j > 0; j--) {
+  49:peripherals/ms5611.c ****       if (res & 0x8000) {
+  71              		.loc 1 49 0
+  72 002a 13F4004F 		tst	r3, #32768
+  50:peripherals/ms5611.c ****         res ^= 0x1800;
+  73              		.loc 1 50 0
+  74 002e 18BF     		it	ne
+  75 0030 83F4C053 		eorne	r3, r3, #6144
+  76              	.LVL7:
+  48:peripherals/ms5611.c ****     for (j = 8; j > 0; j--) {
+  77              		.loc 1 48 0
+  78 0034 0139     		subs	r1, r1, #1
+  79              	.LVL8:
+  51:peripherals/ms5611.c ****       }
+  52:peripherals/ms5611.c ****       res <<= 1;
+  80              		.loc 1 52 0
+  81 0036 4FEA4303 		lsl	r3, r3, #1
+  82              	.LVL9:
+  48:peripherals/ms5611.c ****     for (j = 8; j > 0; j--) {
+  83              		.loc 1 48 0
+  84 003a F6D1     		bne	.L6
+  42:peripherals/ms5611.c ****   for (i = 0; i < 16; i++) {
+  85              		.loc 1 42 0
+  86 003c 0132     		adds	r2, r2, #1
+  87              	.LVL10:
+  88 003e 102A     		cmp	r2, #16
+  89 0040 E7D1     		bne	.L8
+  53:peripherals/ms5611.c ****     }
+  54:peripherals/ms5611.c ****   }
+  55:peripherals/ms5611.c ****   prom[7] |= crc;
+  90              		.loc 1 55 0
+  91 0042 2543     		orrs	r5, r5, r4
+  92 0044 C581     		strh	r5, [r0, #14]	@ movhi
+  56:peripherals/ms5611.c ****   if (crc == ((res >> 12) & 0xF)) {
+  93              		.loc 1 56 0
+  94 0046 C3F30330 		ubfx	r0, r3, #12, #4
+  95              	.LVL11:
+  57:peripherals/ms5611.c ****     return TRUE;
+  58:peripherals/ms5611.c ****   } else {
+  59:peripherals/ms5611.c ****     return FALSE;
+  60:peripherals/ms5611.c ****   }
+  61:peripherals/ms5611.c **** }
+  96              		.loc 1 61 0
+  97 004a 231A     		subs	r3, r4, r0
+  98              	.LVL12:
+  99 004c 5842     		rsbs	r0, r3, #0
+ 100 004e 5841     		adcs	r0, r0, r3
+ 101 0050 30BD     		pop	{r4, r5, pc}
+ 102              		.cfi_endproc
+ 103              	.LFE1:
+ 105              		.section	.text.ms5611_calc,"ax",%progbits
+ 106              		.align	1
+ 107              		.global	ms5611_calc
+ 108              		.thumb
+ 109              		.thumb_func
+ 111              	ms5611_calc:
+ 112              	.LFB2:
+  62:peripherals/ms5611.c **** 
+  63:peripherals/ms5611.c **** /**
+  64:peripherals/ms5611.c ****  * Calculate temperature and compensated pressure for MS5611.
+  65:peripherals/ms5611.c ****  * @return TRUE if measurement was valid, FALSE otherwise
+  66:peripherals/ms5611.c ****  */
+  67:peripherals/ms5611.c **** bool_t ms5611_calc(struct Ms5611Data *ms)
+  68:peripherals/ms5611.c **** {
+ 113              		.loc 1 68 0
+ 114              		.cfi_startproc
+ 115              		@ args = 0, pretend = 0, frame = 40
+ 116              		@ frame_needed = 0, uses_anonymous_args = 0
+ 117              	.LVL13:
+ 118 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 119              		.cfi_def_cfa_offset 36
+ 120              		.cfi_offset 4, -36
+ 121              		.cfi_offset 5, -32
+ 122              		.cfi_offset 6, -28
+ 123              		.cfi_offset 7, -24
+ 124              		.cfi_offset 8, -20
+ 125              		.cfi_offset 9, -16
+ 126              		.cfi_offset 10, -12
+ 127              		.cfi_offset 11, -8
+ 128              		.cfi_offset 14, -4
+  69:peripherals/ms5611.c ****   int64_t dt, tempms, off, sens, t2, off2, sens2;
+  70:peripherals/ms5611.c **** 
+  71:peripherals/ms5611.c ****   /* difference between actual and ref temperature */
+  72:peripherals/ms5611.c ****   dt = ms->d2 - (int64_t)ms->c[5] * (1 << 8);
+ 129              		.loc 1 72 0
+ 130 0004 448A     		ldrh	r4, [r0, #18]
+ 131 0006 C169     		ldr	r1, [r0, #28]
+  73:peripherals/ms5611.c ****   /* actual temperature */
+  74:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 132              		.loc 1 74 0
+ 133 0008 868A     		ldrh	r6, [r0, #20]
+  72:peripherals/ms5611.c ****   dt = ms->d2 - (int64_t)ms->c[5] * (1 << 8);
+ 134              		.loc 1 72 0
+ 135 000a 6FF0FF02 		mvn	r2, #255
+ 136 000e A4FB0223 		umull	r2, r3, r4, r2
+ 137 0012 5218     		adds	r2, r2, r1
+ 138 0014 C4EB0303 		rsb	r3, r4, r3
+ 139 0018 43F10003 		adc	r3, r3, #0
+ 140              	.LVL14:
+ 141              		.loc 1 74 0
+ 142 001c A2FB0645 		umull	r4, r5, r2, r6
+ 143 0020 06FB0355 		mla	r5, r6, r3, r5
+ 144 0024 002C     		cmp	r4, #0
+ 145 0026 75F10001 		sbcs	r1, r5, #0
+  68:peripherals/ms5611.c **** {
+ 146              		.loc 1 68 0
+ 147 002a 8BB0     		sub	sp, sp, #44
+ 148              		.cfi_def_cfa_offset 80
+ 149              		.loc 1 74 0
+ 150 002c 04DA     		bge	.L16
+ 151 002e 8A4E     		ldr	r6, .L28
+ 152 0030 0027     		movs	r7, #0
+ 153 0032 A419     		adds	r4, r4, r6
+ 154 0034 45EB0705 		adc	r5, r5, r7
+ 155              	.L16:
+  75:peripherals/ms5611.c ****   /* offset at actual temperature */
+  76:peripherals/ms5611.c ****   off = ((int64_t)ms->c[2] * (1 << 16)) + ((int64_t)ms->c[4] * dt) / (1 << 7);
+ 156              		.loc 1 76 0
+ 157 0038 0026     		movs	r6, #0
+ 158 003a 0027     		movs	r7, #0
+ 159 003c CDE90267 		strd	r6, [sp, #8]
+  74:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 160              		.loc 1 74 0
+ 161 0040 4FEAD45A 		lsr	r10, r4, #23
+ 162              		.loc 1 76 0
+ 163 0044 068A     		ldrh	r6, [r0, #16]
+ 164 0046 8489     		ldrh	r4, [r0, #12]
+  74:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 165              		.loc 1 74 0
+ 166 0048 4AEA452A 		orr	r10, r10, r5, lsl #9
+ 167 004c 4FEAE55B 		asr	fp, r5, #23
+ 168              		.loc 1 76 0
+ 169 0050 2704     		lsls	r7, r4, #16
+ 170 0052 A6FB0245 		umull	r4, r5, r6, r2
+  74:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 171              		.loc 1 74 0
+ 172 0056 1AF5FA68 		adds	r8, r10, #2000
+ 173              		.loc 1 76 0
+ 174 005a 06FB0355 		mla	r5, r6, r3, r5
+  74:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 175              		.loc 1 74 0
+ 176 005e 4BF10009 		adc	r9, fp, #0
+ 177              	.LVL15:
+ 178              		.loc 1 76 0
+ 179 0062 002C     		cmp	r4, #0
+ 180 0064 75F10001 		sbcs	r1, r5, #0
+ 181 0068 0297     		str	r7, [sp, #8]
+ 182 006a 02DA     		bge	.L17
+ 183 006c 7F34     		adds	r4, r4, #127
+ 184 006e 45F10005 		adc	r5, r5, #0
+ 185              	.L17:
+ 186 0072 E609     		lsrs	r6, r4, #7
+ 187 0074 46EA4566 		orr	r6, r6, r5, lsl #25
+ 188 0078 EF11     		asrs	r7, r5, #7
+ 189 007a DDE90245 		ldrd	r4, [sp, #8]
+ 190 007e A419     		adds	r4, r4, r6
+  77:peripherals/ms5611.c ****   /* sensitivity at actual temperature */
+  78:peripherals/ms5611.c ****   sens = ((int64_t)ms->c[1] * (1 << 15)) + ((int64_t)ms->c[3] * dt) / (1 << 8);
+ 191              		.loc 1 78 0
+ 192 0080 C689     		ldrh	r6, [r0, #14]
+ 193 0082 4189     		ldrh	r1, [r0, #10]
+  76:peripherals/ms5611.c ****   off = ((int64_t)ms->c[2] * (1 << 16)) + ((int64_t)ms->c[4] * dt) / (1 << 7);
+ 194              		.loc 1 76 0
+ 195 0084 45EB0705 		adc	r5, r5, r7
+ 196 0088 CDE90445 		strd	r4, [sp, #16]
+ 197              	.LVL16:
+ 198              		.loc 1 78 0
+ 199 008c A6FB0245 		umull	r4, r5, r6, r2
+ 200              	.LVL17:
+ 201 0090 06FB0355 		mla	r5, r6, r3, r5
+ 202 0094 002C     		cmp	r4, #0
+ 203 0096 75F10006 		sbcs	r6, r5, #0
+ 204 009a 02DA     		bge	.L18
+ 205 009c FF34     		adds	r4, r4, #255
+ 206 009e 45F10005 		adc	r5, r5, #0
+ 207              	.L18:
+ 208 00a2 260A     		lsrs	r6, r4, #8
+ 209 00a4 46EA0566 		orr	r6, r6, r5, lsl #24
+ 210 00a8 2F12     		asrs	r7, r5, #8
+ 211 00aa 4FF4004C 		mov	ip, #32768
+ 212 00ae 3446     		mov	r4, r6
+ 213 00b0 3D46     		mov	r5, r7
+ 214 00b2 E1FB0C45 		umlal	r4, r5, r1, ip
+ 215 00b6 CDE90245 		strd	r4, [sp, #8]
+ 216              	.LVL18:
+  79:peripherals/ms5611.c ****   /* second order temperature compensation */
+  80:peripherals/ms5611.c ****   if (tempms < 2000) {
+ 217              		.loc 1 80 0
+ 218 00ba B8F5FA6F 		cmp	r8, #2000
+ 219 00be 79F10005 		sbcs	r5, r9, #0
+ 220 00c2 80F28580 		bge	.L19
+  81:peripherals/ms5611.c ****     t2 = (dt * dt) / (1 << 31);
+ 221              		.loc 1 81 0
+ 222 00c6 02FB03F1 		mul	r1, r2, r3
+ 223 00ca A2FB0223 		umull	r2, r3, r2, r2
+ 224              	.LVL19:
+ 225 00ce 03EB4103 		add	r3, r3, r1, lsl #1
+ 226 00d2 002A     		cmp	r2, #0
+ 227 00d4 73F10006 		sbcs	r6, r3, #0
+ 228 00d8 05DA     		bge	.L20
+ 229 00da 6FF00044 		mvn	r4, #-2147483648
+ 230              	.LVL20:
+ 231 00de 0025     		movs	r5, #0
+ 232 00e0 1219     		adds	r2, r2, r4
+ 233 00e2 43EB0503 		adc	r3, r3, r5
+ 234              	.L20:
+ 235 00e6 D40F     		lsrs	r4, r2, #31
+  82:peripherals/ms5611.c ****     off2 = 5 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 1);
+ 236              		.loc 1 82 0
+ 237 00e8 AAFB0A67 		umull	r6, r7, r10, r10
+ 238 00ec 0521     		movs	r1, #5
+  81:peripherals/ms5611.c ****     t2 = (dt * dt) / (1 << 31);
+ 239              		.loc 1 81 0
+ 240 00ee 44EA4304 		orr	r4, r4, r3, lsl #1
+ 241 00f2 DD17     		asrs	r5, r3, #31
+ 242              		.loc 1 82 0
+ 243 00f4 0AFB0BF3 		mul	r3, r10, fp
+ 244 00f8 07EB4307 		add	r7, r7, r3, lsl #1
+ 245 00fc A6FB0123 		umull	r2, r3, r6, r1
+ 246 0100 01FB0733 		mla	r3, r1, r7, r3
+ 247 0104 D90F     		lsrs	r1, r3, #31
+  81:peripherals/ms5611.c ****     t2 = (dt * dt) / (1 << 31);
+ 248              		.loc 1 81 0
+ 249 0106 6442     		negs	r4, r4
+ 250 0108 65EB4505 		sbc	r5, r5, r5, lsl #1
+ 251              	.LVL21:
+ 252              		.loc 1 82 0
+ 253 010c 5618     		adds	r6, r2, r1
+ 254 010e 43F10007 		adc	r7, r3, #0
+ 255 0112 7F10     		movs	r7, r7, asr #1
+ 256 0114 4FEA3606 		mov	r6, r6, rrx
+ 257 0118 CDE90867 		strd	r6, [sp, #32]
+ 258 011c CDE90667 		strd	r6, [sp, #24]
+ 259              	.LVL22:
+  83:peripherals/ms5611.c ****     sens2 = 5 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 2);
+ 260              		.loc 1 83 0
+ 261 0120 002A     		cmp	r2, #0
+ 262 0122 73F10007 		sbcs	r7, r3, #0
+ 263 0126 02DA     		bge	.L21
+ 264 0128 0332     		adds	r2, r2, #3
+ 265 012a 43F10003 		adc	r3, r3, #0
+ 266              	.L21:
+ 267 012e 9608     		lsrs	r6, r2, #2
+ 268              	.LVL23:
+  84:peripherals/ms5611.c ****     if (tempms < -1500) {
+ 269              		.loc 1 84 0
+ 270 0130 4A4A     		ldr	r2, .L28+4
+  83:peripherals/ms5611.c ****     sens2 = 5 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 2);
+ 271              		.loc 1 83 0
+ 272 0132 46EA8376 		orr	r6, r6, r3, lsl #30
+ 273 0136 9F10     		asrs	r7, r3, #2
+ 274              		.loc 1 84 0
+ 275 0138 4FF0FF33 		mov	r3, #-1
+ 276 013c 9045     		cmp	r8, r2
+ 277 013e 79EB0301 		sbcs	r1, r9, r3
+  83:peripherals/ms5611.c ****     sens2 = 5 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 2);
+ 278              		.loc 1 83 0
+ 279 0142 CDE90067 		strd	r6, [sp]
+ 280              	.LVL24:
+ 281              		.loc 1 84 0
+ 282 0146 2DDA     		bge	.L22
+  85:peripherals/ms5611.c ****       off2 = off2 + 7 * (int64_t)(tempms + 1500) * (tempms + 1500);
+ 283              		.loc 1 85 0
+ 284 0148 40F6AC52 		movw	r2, #3500
+ 285 014c 1AEB020A 		adds	r10, r10, r2
+ 286 0150 4FF00003 		mov	r3, #0
+ 287 0154 4BEB030B 		adc	fp, fp, r3
+ 288 0158 DDE90867 		ldrd	r6, [sp, #32]
+ 289              	.LVL25:
+ 290 015c 0AFB0BF3 		mul	r3, r10, fp
+ 291 0160 0721     		movs	r1, #7
+ 292 0162 AAFB0AAB 		umull	r10, fp, r10, r10
+ 293 0166 0BEB430B 		add	fp, fp, r3, lsl #1
+ 294 016a AAFB0123 		umull	r2, r3, r10, r1
+ 295 016e B618     		adds	r6, r6, r2
+ 296 0170 01FB0B33 		mla	r3, r1, fp, r3
+  86:peripherals/ms5611.c ****       sens2 = sens2 + 11 * ((int64_t)(tempms + 1500) * (tempms + 1500)) / (1 << 1);
+ 297              		.loc 1 86 0
+ 298 0174 4FF00B01 		mov	r1, #11
+  85:peripherals/ms5611.c ****       off2 = off2 + 7 * (int64_t)(tempms + 1500) * (tempms + 1500);
+ 299              		.loc 1 85 0
+ 300 0178 47EB0307 		adc	r7, r7, r3
+ 301              		.loc 1 86 0
+ 302 017c AAFB0123 		umull	r2, r3, r10, r1
+ 303 0180 01FB0B33 		mla	r3, r1, fp, r3
+ 304 0184 D90F     		lsrs	r1, r3, #31
+ 305 0186 5218     		adds	r2, r2, r1
+  85:peripherals/ms5611.c ****       off2 = off2 + 7 * (int64_t)(tempms + 1500) * (tempms + 1500);
+ 306              		.loc 1 85 0
+ 307 0188 CDE90667 		strd	r6, [sp, #24]
+ 308              	.LVL26:
+ 309              		.loc 1 86 0
+ 310 018c DDE90067 		ldrd	r6, [sp]
+ 311              	.LVL27:
+ 312 0190 43F10003 		adc	r3, r3, #0
+ 313 0194 5B10     		movs	r3, r3, asr #1
+ 314 0196 4FEA3202 		mov	r2, r2, rrx
+ 315 019a B618     		adds	r6, r6, r2
+ 316 019c 47EB0307 		adc	r7, r7, r3
+ 317 01a0 CDE90067 		strd	r6, [sp]
+ 318              	.LVL28:
+ 319              	.L22:
+  87:peripherals/ms5611.c ****     }
+  88:peripherals/ms5611.c ****     tempms = tempms - t2;
+  89:peripherals/ms5611.c ****     off = off - off2;
+ 320              		.loc 1 89 0
+ 321 01a4 DDE90423 		ldrd	r2, [sp, #16]
+  88:peripherals/ms5611.c ****     tempms = tempms - t2;
+ 322              		.loc 1 88 0
+ 323 01a8 B8EB0408 		subs	r8, r8, r4
+ 324 01ac 69EB0509 		sbc	r9, r9, r5
+ 325              	.LVL29:
+ 326              		.loc 1 89 0
+ 327 01b0 DDE90645 		ldrd	r4, [sp, #24]
+ 328              	.LVL30:
+ 329 01b4 121B     		subs	r2, r2, r4
+ 330 01b6 63EB0503 		sbc	r3, r3, r5
+  90:peripherals/ms5611.c ****     sens = sens - sens2;
+ 331              		.loc 1 90 0
+ 332 01ba DDE90267 		ldrd	r6, [sp, #8]
+  89:peripherals/ms5611.c ****     off = off - off2;
+ 333              		.loc 1 89 0
+ 334 01be CDE90423 		strd	r2, [sp, #16]
+ 335              	.LVL31:
+ 336              		.loc 1 90 0
+ 337 01c2 DDE90023 		ldrd	r2, [sp]
+ 338              	.LVL32:
+ 339 01c6 B61A     		subs	r6, r6, r2
+ 340 01c8 67EB0307 		sbc	r7, r7, r3
+ 341 01cc CDE90267 		strd	r6, [sp, #8]
+ 342              	.LVL33:
+ 343              	.L19:
+  91:peripherals/ms5611.c ****   }
+  92:peripherals/ms5611.c **** 
+  93:peripherals/ms5611.c ****   /* temperature compensated pressure in Pascal (0.01mbar) */
+  94:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+  95:peripherals/ms5611.c ****   /* if temp and pressare are in valid bounds, copy and return TRUE (valid) */
+  96:peripherals/ms5611.c ****   if ((tempms > -4000) && (tempms < 8500) && (p > 1000) && (p < 120000)) {
+ 344              		.loc 1 96 0
+ 345 01d0 40F69F72 		movw	r2, #3999
+ 346 01d4 12EB0802 		adds	r2, r2, r8
+ 347 01d8 4FF00003 		mov	r3, #0
+ 348 01dc 43EB0903 		adc	r3, r3, r9
+ 349 01e0 43F2D206 		movw	r6, #12498
+ 350 01e4 0027     		movs	r7, #0
+ 351 01e6 9F42     		cmp	r7, r3
+ 352 01e8 08BF     		it eq
+ 353 01ea 9642     		cmpeq	r6, r2
+  94:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+ 354              		.loc 1 94 0
+ 355 01ec 8469     		ldr	r4, [r0, #24]
+ 356              	.LVL34:
+ 357              		.loc 1 96 0
+ 358 01ee 2ED3     		bcc	.L27
+  94:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+ 359              		.loc 1 94 0 discriminator 1
+ 360 01f0 029E     		ldr	r6, [sp, #8]
+ 361 01f2 039F     		ldr	r7, [sp, #12]
+ 362 01f4 A4FB0623 		umull	r2, r3, r4, r6
+ 363 01f8 04FB0733 		mla	r3, r4, r7, r3
+ 364 01fc 002A     		cmp	r2, #0
+ 365 01fe 73F10001 		sbcs	r1, r3, #0
+ 366 0202 04DA     		bge	.L24
+ 367 0204 164C     		ldr	r4, .L28+8
+ 368              	.LVL35:
+ 369 0206 0025     		movs	r5, #0
+ 370 0208 1219     		adds	r2, r2, r4
+ 371 020a 43EB0503 		adc	r3, r3, r5
+ 372              	.L24:
+ 373 020e 560D     		lsrs	r6, r2, #21
+ 374 0210 46EAC326 		orr	r6, r6, r3, lsl #11
+ 375 0214 5F15     		asrs	r7, r3, #21
+ 376 0216 DDE90423 		ldrd	r2, [sp, #16]
+ 377 021a B61A     		subs	r6, r6, r2
+ 378 021c 67EB0307 		sbc	r7, r7, r3
+ 379 0220 002E     		cmp	r6, #0
+ 380 0222 77F10003 		sbcs	r3, r7, #0
+ 381 0226 05DA     		bge	.L25
+ 382 0228 47F6FF72 		movw	r2, #32767
+ 383 022c 0023     		movs	r3, #0
+ 384 022e B618     		adds	r6, r6, r2
+ 385 0230 47EB0307 		adc	r7, r7, r3
+ 386              	.L25:
+ 387 0234 F20B     		lsrs	r2, r6, #15
+ 388 0236 42EA4742 		orr	r2, r2, r7, lsl #17
+ 389              		.loc 1 96 0 discriminator 1
+ 390 023a 6FF47A73 		mvn	r3, #1000
+ 391 023e 0949     		ldr	r1, .L28+12
+ 392 0240 D418     		adds	r4, r2, r3
+ 393 0242 8C42     		cmp	r4, r1
+ 394 0244 03D8     		bhi	.L27
+  97:peripherals/ms5611.c ****     /* temperature in deg Celsius with 0.01 degC resolultion */
+  98:peripherals/ms5611.c ****     ms->temperature = (int32_t)tempms;
+  99:peripherals/ms5611.c ****     ms->pressure = p;
+ 395              		.loc 1 99 0
+ 396 0246 80E80401 		stmia	r0, {r2, r8}
+ 100:peripherals/ms5611.c ****     return TRUE;
+ 397              		.loc 1 100 0
+ 398 024a 0120     		movs	r0, #1
+ 399              	.LVL36:
+ 400 024c 00E0     		b	.L23
+ 401              	.LVL37:
+ 402              	.L27:
+ 101:peripherals/ms5611.c ****   }
+ 102:peripherals/ms5611.c ****   return FALSE;
+ 403              		.loc 1 102 0
+ 404 024e 0020     		movs	r0, #0
+ 405              	.LVL38:
+ 406              	.L23:
+ 103:peripherals/ms5611.c **** }
+ 407              		.loc 1 103 0
+ 408 0250 0BB0     		add	sp, sp, #44
+ 409              		@ sp needed
+ 410 0252 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 411              	.LVL39:
+ 412              	.L29:
+ 413 0256 00BF     		.align	2
+ 414              	.L28:
+ 415 0258 FFFF7F00 		.word	8388607
+ 416 025c 24FAFFFF 		.word	-1500
+ 417 0260 FFFF1F00 		.word	2097151
+ 418 0264 D6D00100 		.word	118998
+ 419              		.cfi_endproc
+ 420              	.LFE2:
+ 422              		.section	.text.ms5607_calc,"ax",%progbits
+ 423              		.align	1
+ 424              		.global	ms5607_calc
+ 425              		.thumb
+ 426              		.thumb_func
+ 428              	ms5607_calc:
+ 429              	.LFB3:
+ 104:peripherals/ms5611.c **** 
+ 105:peripherals/ms5611.c **** /**
+ 106:peripherals/ms5611.c ****  * Calculate temperature and compensated pressure for MS5607.
+ 107:peripherals/ms5611.c ****  * MS5607 basically has half the resolution of the MS5611.
+ 108:peripherals/ms5611.c ****  * @return TRUE if measurement was valid, FALSE otherwise
+ 109:peripherals/ms5611.c ****  */
+ 110:peripherals/ms5611.c **** bool_t ms5607_calc(struct Ms5611Data *ms)
+ 111:peripherals/ms5611.c **** {
+ 430              		.loc 1 111 0
+ 431              		.cfi_startproc
+ 432              		@ args = 0, pretend = 0, frame = 32
+ 433              		@ frame_needed = 0, uses_anonymous_args = 0
+ 434              	.LVL40:
+ 435 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 436              		.cfi_def_cfa_offset 36
+ 437              		.cfi_offset 4, -36
+ 438              		.cfi_offset 5, -32
+ 439              		.cfi_offset 6, -28
+ 440              		.cfi_offset 7, -24
+ 441              		.cfi_offset 8, -20
+ 442              		.cfi_offset 9, -16
+ 443              		.cfi_offset 10, -12
+ 444              		.cfi_offset 11, -8
+ 445              		.cfi_offset 14, -4
+ 112:peripherals/ms5611.c ****   int64_t dt, tempms, off, sens, t2, off2, sens2;
+ 113:peripherals/ms5611.c **** 
+ 114:peripherals/ms5611.c ****   /* difference between actual and ref temperature */
+ 115:peripherals/ms5611.c ****   dt = ms->d2 - (int64_t)ms->c[5] * (1 << 8);
+ 446              		.loc 1 115 0
+ 447 0004 448A     		ldrh	r4, [r0, #18]
+ 448 0006 C169     		ldr	r1, [r0, #28]
+ 116:peripherals/ms5611.c ****   /* actual temperature */
+ 117:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 449              		.loc 1 117 0
+ 450 0008 868A     		ldrh	r6, [r0, #20]
+ 115:peripherals/ms5611.c ****   dt = ms->d2 - (int64_t)ms->c[5] * (1 << 8);
+ 451              		.loc 1 115 0
+ 452 000a 6FF0FF02 		mvn	r2, #255
+ 453 000e A4FB0223 		umull	r2, r3, r4, r2
+ 454 0012 5218     		adds	r2, r2, r1
+ 455 0014 C4EB0303 		rsb	r3, r4, r3
+ 456 0018 43F10003 		adc	r3, r3, #0
+ 457              	.LVL41:
+ 458              		.loc 1 117 0
+ 459 001c A2FB0645 		umull	r4, r5, r2, r6
+ 460 0020 06FB0355 		mla	r5, r6, r3, r5
+ 461 0024 002C     		cmp	r4, #0
+ 462 0026 75F10001 		sbcs	r1, r5, #0
+ 111:peripherals/ms5611.c **** {
+ 463              		.loc 1 111 0
+ 464 002a 89B0     		sub	sp, sp, #36
+ 465              		.cfi_def_cfa_offset 72
+ 466              		.loc 1 117 0
+ 467 002c 04DA     		bge	.L31
+ 468 002e 874E     		ldr	r6, .L43
+ 469 0030 0027     		movs	r7, #0
+ 470 0032 A419     		adds	r4, r4, r6
+ 471 0034 45EB0705 		adc	r5, r5, r7
+ 472              	.L31:
+ 473 0038 4FEAD45A 		lsr	r10, r4, #23
+ 474 003c 4AEA452A 		orr	r10, r10, r5, lsl #9
+ 475 0040 1AF5FA64 		adds	r4, r10, #2000
+ 476 0044 4FEAE55B 		asr	fp, r5, #23
+ 477 0048 4BF10005 		adc	r5, fp, #0
+ 118:peripherals/ms5611.c ****   /* offset at actual temperature */
+ 119:peripherals/ms5611.c ****   off = ((int64_t)ms->c[2] * (1 << 17)) + ((int64_t)ms->c[4] * dt) / (1 << 6);
+ 478              		.loc 1 119 0
+ 479 004c 068A     		ldrh	r6, [r0, #16]
+ 117:peripherals/ms5611.c ****   tempms = 2000 + ((int64_t)dt * ms->c[6]) / (1 << 23);
+ 480              		.loc 1 117 0
+ 481 004e CDE90245 		strd	r4, [sp, #8]
+ 482              	.LVL42:
+ 483              		.loc 1 119 0
+ 484 0052 8489     		ldrh	r4, [r0, #12]
+ 485              	.LVL43:
+ 486 0054 4FEAD439 		lsr	r9, r4, #15
+ 487 0058 4FEA4448 		lsl	r8, r4, #17
+ 488 005c A6FB0245 		umull	r4, r5, r6, r2
+ 489 0060 06FB0355 		mla	r5, r6, r3, r5
+ 490 0064 002C     		cmp	r4, #0
+ 491 0066 75F10006 		sbcs	r6, r5, #0
+ 492 006a 02DA     		bge	.L32
+ 493 006c 3F34     		adds	r4, r4, #63
+ 494 006e 45F10005 		adc	r5, r5, #0
+ 495              	.L32:
+ 496 0072 A609     		lsrs	r6, r4, #6
+ 497 0074 46EA8566 		orr	r6, r6, r5, lsl #26
+ 498 0078 18EB0604 		adds	r4, r8, r6
+ 499 007c 4FEAA517 		asr	r7, r5, #6
+ 500 0080 49EB0705 		adc	r5, r9, r7
+ 120:peripherals/ms5611.c ****   /* sensitivity at actual temperature */
+ 121:peripherals/ms5611.c ****   sens = ((int64_t)ms->c[1] * (1 << 16)) + ((int64_t)ms->c[3] * dt) / (1 << 7);
+ 501              		.loc 1 121 0
+ 502 0084 C689     		ldrh	r6, [r0, #14]
+ 119:peripherals/ms5611.c ****   off = ((int64_t)ms->c[2] * (1 << 17)) + ((int64_t)ms->c[4] * dt) / (1 << 6);
+ 503              		.loc 1 119 0
+ 504 0086 CDE90645 		strd	r4, [sp, #24]
+ 505              	.LVL44:
+ 506              		.loc 1 121 0
+ 507 008a 4489     		ldrh	r4, [r0, #10]
+ 508              	.LVL45:
+ 509 008c 4FEA0448 		lsl	r8, r4, #16
+ 510 0090 A6FB0245 		umull	r4, r5, r6, r2
+ 511 0094 06FB0355 		mla	r5, r6, r3, r5
+ 512 0098 002C     		cmp	r4, #0
+ 513 009a 75F10006 		sbcs	r6, r5, #0
+ 514 009e 4FF00009 		mov	r9, #0
+ 515 00a2 02DA     		bge	.L33
+ 516 00a4 7F34     		adds	r4, r4, #127
+ 517 00a6 45F10005 		adc	r5, r5, #0
+ 518              	.L33:
+ 519 00aa E609     		lsrs	r6, r4, #7
+ 520 00ac 46EA4566 		orr	r6, r6, r5, lsl #25
+ 521 00b0 18EB0604 		adds	r4, r8, r6
+ 522 00b4 4FEAE517 		asr	r7, r5, #7
+ 523 00b8 49EB0705 		adc	r5, r9, r7
+ 122:peripherals/ms5611.c ****   /* second order temperature compensation */
+ 123:peripherals/ms5611.c ****   if (tempms < 2000) {
+ 524              		.loc 1 123 0
+ 525 00bc DDE90267 		ldrd	r6, [sp, #8]
+ 526 00c0 B6F5FA6F 		cmp	r6, #2000
+ 527 00c4 77F10007 		sbcs	r7, r7, #0
+ 121:peripherals/ms5611.c ****   sens = ((int64_t)ms->c[1] * (1 << 16)) + ((int64_t)ms->c[3] * dt) / (1 << 7);
+ 528              		.loc 1 121 0
+ 529 00c8 CDE90445 		strd	r4, [sp, #16]
+ 530              	.LVL46:
+ 531              		.loc 1 123 0
+ 532 00cc 78DA     		bge	.L34
+ 124:peripherals/ms5611.c ****     t2 = (dt * dt) / (1 << 31);
+ 533              		.loc 1 124 0
+ 534 00ce 02FB03F1 		mul	r1, r2, r3
+ 535 00d2 A2FB0223 		umull	r2, r3, r2, r2
+ 536              	.LVL47:
+ 537 00d6 03EB4103 		add	r3, r3, r1, lsl #1
+ 538 00da 002A     		cmp	r2, #0
+ 539 00dc 73F10001 		sbcs	r1, r3, #0
+ 540 00e0 05DA     		bge	.L35
+ 541 00e2 6FF00044 		mvn	r4, #-2147483648
+ 542              	.LVL48:
+ 543 00e6 0025     		movs	r5, #0
+ 544 00e8 1219     		adds	r2, r2, r4
+ 545 00ea 43EB0503 		adc	r3, r3, r5
+ 546              	.L35:
+ 547 00ee 4FEAD278 		lsr	r8, r2, #31
+ 548 00f2 48EA4308 		orr	r8, r8, r3, lsl #1
+ 549 00f6 4FEAE379 		asr	r9, r3, #31
+ 125:peripherals/ms5611.c ****     off2 = 61 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 4);
+ 550              		.loc 1 125 0
+ 551 00fa 0AFB0BF1 		mul	r1, r10, fp
+ 552 00fe AAFB0A23 		umull	r2, r3, r10, r10
+ 553 0102 03EB4103 		add	r3, r3, r1, lsl #1
+ 554 0106 3D21     		movs	r1, #61
+ 555 0108 A2FB0145 		umull	r4, r5, r2, r1
+ 556 010c 01FB0355 		mla	r5, r1, r3, r5
+ 124:peripherals/ms5611.c ****     t2 = (dt * dt) / (1 << 31);
+ 557              		.loc 1 124 0
+ 558 0110 D8F10008 		negs	r8, r8
+ 559 0114 69EB4909 		sbc	r9, r9, r9, lsl #1
+ 560              	.LVL49:
+ 561              		.loc 1 125 0
+ 562 0118 002C     		cmp	r4, #0
+ 563 011a 75F10006 		sbcs	r6, r5, #0
+ 564 011e 02DA     		bge	.L36
+ 565 0120 0F34     		adds	r4, r4, #15
+ 566 0122 45F10005 		adc	r5, r5, #0
+ 567              	.L36:
+ 568 0126 2609     		lsrs	r6, r4, #4
+ 569 0128 46EA0576 		orr	r6, r6, r5, lsl #28
+ 570 012c 2F11     		asrs	r7, r5, #4
+ 126:peripherals/ms5611.c ****     sens2 = 2 * ((int64_t)(tempms - 2000) * (tempms - 2000));
+ 127:peripherals/ms5611.c ****     if (tempms < -1500) {
+ 571              		.loc 1 127 0
+ 572 012e DDE90245 		ldrd	r4, [sp, #8]
+ 125:peripherals/ms5611.c ****     off2 = 61 * ((int64_t)(tempms - 2000) * (tempms - 2000)) / (1 << 4);
+ 573              		.loc 1 125 0
+ 574 0132 CDE90067 		strd	r6, [sp]
+ 575              	.LVL50:
+ 576              		.loc 1 127 0
+ 577 0136 464E     		ldr	r6, .L43+4
+ 578              	.LVL51:
+ 126:peripherals/ms5611.c ****     sens2 = 2 * ((int64_t)(tempms - 2000) * (tempms - 2000));
+ 579              		.loc 1 126 0
+ 580 0138 9218     		adds	r2, r2, r2
+ 581              		.loc 1 127 0
+ 582 013a 4FF0FF37 		mov	r7, #-1
+ 126:peripherals/ms5611.c ****     sens2 = 2 * ((int64_t)(tempms - 2000) * (tempms - 2000));
+ 583              		.loc 1 126 0
+ 584 013e 43EB0303 		adc	r3, r3, r3
+ 585              	.LVL52:
+ 586              		.loc 1 127 0
+ 587 0142 B442     		cmp	r4, r6
+ 588 0144 75EB0707 		sbcs	r7, r5, r7
+ 589 0148 22DA     		bge	.L37
+ 128:peripherals/ms5611.c ****       off2 = off2 + 15 * (int64_t)(tempms + 1500) * (tempms + 1500);
+ 590              		.loc 1 128 0
+ 591 014a 40F6AC54 		movw	r4, #3500
+ 592 014e 1AEB040A 		adds	r10, r10, r4
+ 593 0152 4FF00005 		mov	r5, #0
+ 594 0156 4BEB050B 		adc	fp, fp, r5
+ 595 015a 0AFB0BF1 		mul	r1, r10, fp
+ 596 015e DDE90067 		ldrd	r6, [sp]
+ 597 0162 AAFB0AAB 		umull	r10, fp, r10, r10
+ 598 0166 0BEB410B 		add	fp, fp, r1, lsl #1
+ 599 016a 0F21     		movs	r1, #15
+ 600 016c AAFB0145 		umull	r4, r5, r10, r1
+ 601 0170 3619     		adds	r6, r6, r4
+ 602 0172 01FB0B55 		mla	r5, r1, fp, r5
+ 603 0176 47EB0507 		adc	r7, r7, r5
+ 129:peripherals/ms5611.c ****       sens2 = sens2 + 8 * ((int64_t)(tempms + 1500) * (tempms + 1500));
+ 604              		.loc 1 129 0
+ 605 017a 4FEACA04 		lsl	r4, r10, #3
+ 606 017e 4FEACB05 		lsl	r5, fp, #3
+ 128:peripherals/ms5611.c ****       off2 = off2 + 15 * (int64_t)(tempms + 1500) * (tempms + 1500);
+ 607              		.loc 1 128 0
+ 608 0182 CDE90067 		strd	r6, [sp]
+ 609              	.LVL53:
+ 610              		.loc 1 129 0
+ 611 0186 45EA5A75 		orr	r5, r5, r10, lsr #29
+ 612 018a 1219     		adds	r2, r2, r4
+ 613              	.LVL54:
+ 614 018c 43EB0503 		adc	r3, r3, r5
+ 615              	.LVL55:
+ 616              	.L37:
+ 130:peripherals/ms5611.c ****     }
+ 131:peripherals/ms5611.c ****     tempms = tempms - t2;
+ 617              		.loc 1 131 0
+ 618 0190 DDE90245 		ldrd	r4, [sp, #8]
+ 619 0194 B4EB0804 		subs	r4, r4, r8
+ 620 0198 65EB0905 		sbc	r5, r5, r9
+ 132:peripherals/ms5611.c ****     off = off - off2;
+ 621              		.loc 1 132 0
+ 622 019c DDE90667 		ldrd	r6, [sp, #24]
+ 131:peripherals/ms5611.c ****     tempms = tempms - t2;
+ 623              		.loc 1 131 0
+ 624 01a0 CDE90245 		strd	r4, [sp, #8]
+ 625              	.LVL56:
+ 626              		.loc 1 132 0
+ 627 01a4 DDE90045 		ldrd	r4, [sp]
+ 628              	.LVL57:
+ 629 01a8 361B     		subs	r6, r6, r4
+ 630 01aa 67EB0507 		sbc	r7, r7, r5
+ 631 01ae CDE90667 		strd	r6, [sp, #24]
+ 632              	.LVL58:
+ 133:peripherals/ms5611.c ****     sens = sens - sens2;
+ 633              		.loc 1 133 0
+ 634 01b2 DDE90467 		ldrd	r6, [sp, #16]
+ 635              	.LVL59:
+ 636 01b6 B61A     		subs	r6, r6, r2
+ 637 01b8 67EB0307 		sbc	r7, r7, r3
+ 638 01bc CDE90467 		strd	r6, [sp, #16]
+ 639              	.LVL60:
+ 640              	.L34:
+ 134:peripherals/ms5611.c ****   }
+ 135:peripherals/ms5611.c **** 
+ 136:peripherals/ms5611.c ****   /* temperature compensated pressure in Pascal (0.01mbar) */
+ 137:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+ 138:peripherals/ms5611.c ****   /* if temp and pressare are in valid bounds, copy and return TRUE (valid) */
+ 139:peripherals/ms5611.c ****   if ((tempms > -4000) && (tempms < 8500) && (p > 1000) && (p < 120000)) {
+ 641              		.loc 1 139 0
+ 642 01c0 DDE90267 		ldrd	r6, [sp, #8]
+ 643 01c4 40F69F72 		movw	r2, #3999
+ 644 01c8 9219     		adds	r2, r2, r6
+ 645 01ca 4FF00003 		mov	r3, #0
+ 646 01ce 43EB0703 		adc	r3, r3, r7
+ 647 01d2 43F2D206 		movw	r6, #12498
+ 648 01d6 0027     		movs	r7, #0
+ 649 01d8 9F42     		cmp	r7, r3
+ 650 01da 08BF     		it eq
+ 651 01dc 9642     		cmpeq	r6, r2
+ 137:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+ 652              		.loc 1 137 0
+ 653 01de 8469     		ldr	r4, [r0, #24]
+ 654              	.LVL61:
+ 655              		.loc 1 139 0
+ 656 01e0 2FD3     		bcc	.L42
+ 137:peripherals/ms5611.c ****   uint32_t p = (((int64_t)ms->d1 * sens) / (1 << 21) - off) / (1 << 15);
+ 657              		.loc 1 137 0 discriminator 1
+ 658 01e2 049F     		ldr	r7, [sp, #16]
+ 659 01e4 0599     		ldr	r1, [sp, #20]
+ 660 01e6 A4FB0723 		umull	r2, r3, r4, r7
+ 661 01ea 04FB0133 		mla	r3, r4, r1, r3
+ 662 01ee 002A     		cmp	r2, #0
+ 663 01f0 73F10004 		sbcs	r4, r3, #0
+ 664              	.LVL62:
+ 665 01f4 04DA     		bge	.L39
+ 666 01f6 174C     		ldr	r4, .L43+8
+ 667 01f8 0025     		movs	r5, #0
+ 668 01fa 1219     		adds	r2, r2, r4
+ 669 01fc 43EB0503 		adc	r3, r3, r5
+ 670              	.L39:
+ 671 0200 560D     		lsrs	r6, r2, #21
+ 672 0202 46EAC326 		orr	r6, r6, r3, lsl #11
+ 673 0206 5F15     		asrs	r7, r3, #21
+ 674 0208 DDE90623 		ldrd	r2, [sp, #24]
+ 675 020c B61A     		subs	r6, r6, r2
+ 676 020e 67EB0307 		sbc	r7, r7, r3
+ 677 0212 002E     		cmp	r6, #0
+ 678 0214 77F10003 		sbcs	r3, r7, #0
+ 679 0218 05DA     		bge	.L40
+ 680 021a 47F6FF72 		movw	r2, #32767
+ 681 021e 0023     		movs	r3, #0
+ 682 0220 B618     		adds	r6, r6, r2
+ 683 0222 47EB0307 		adc	r7, r7, r3
+ 684              	.L40:
+ 685 0226 F20B     		lsrs	r2, r6, #15
+ 686 0228 42EA4742 		orr	r2, r2, r7, lsl #17
+ 687              		.loc 1 139 0 discriminator 1
+ 688 022c 6FF47A73 		mvn	r3, #1000
+ 689 0230 0949     		ldr	r1, .L43+12
+ 690 0232 D418     		adds	r4, r2, r3
+ 691 0234 8C42     		cmp	r4, r1
+ 692 0236 04D8     		bhi	.L42
+ 140:peripherals/ms5611.c ****     /* temperature in deg Celsius with 0.01 degC resolultion */
+ 141:peripherals/ms5611.c ****     ms->temperature = (int32_t)tempms;
+ 693              		.loc 1 141 0
+ 694 0238 029C     		ldr	r4, [sp, #8]
+ 142:peripherals/ms5611.c ****     ms->pressure = p;
+ 695              		.loc 1 142 0
+ 696 023a 80E81400 		stmia	r0, {r2, r4}
+ 143:peripherals/ms5611.c ****     return TRUE;
+ 697              		.loc 1 143 0
+ 698 023e 0120     		movs	r0, #1
+ 699              	.LVL63:
+ 700 0240 00E0     		b	.L38
+ 701              	.LVL64:
+ 702              	.L42:
+ 144:peripherals/ms5611.c ****   }
+ 145:peripherals/ms5611.c ****   return FALSE;
+ 703              		.loc 1 145 0
+ 704 0242 0020     		movs	r0, #0
+ 705              	.LVL65:
+ 706              	.L38:
+ 146:peripherals/ms5611.c **** }
+ 707              		.loc 1 146 0
+ 708 0244 09B0     		add	sp, sp, #36
+ 709              		@ sp needed
+ 710 0246 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 711              	.LVL66:
+ 712              	.L44:
+ 713 024a 00BF     		.align	2
+ 714              	.L43:
+ 715 024c FFFF7F00 		.word	8388607
+ 716 0250 24FAFFFF 		.word	-1500
+ 717 0254 FFFF1F00 		.word	2097151
+ 718 0258 D6D00100 		.word	118998
+ 719              		.cfi_endproc
+ 720              	.LFE3:
+ 722              		.text
+ 723              	.Letext0:
+ 724              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 725              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 726              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 727              		.file 5 "./peripherals/ms5611.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 ms5611.c
+     /tmp/cc5Mz7Yc.s:20     .text.ms5611_prom_crc_ok:00000000 $t
+     /tmp/cc5Mz7Yc.s:25     .text.ms5611_prom_crc_ok:00000000 ms5611_prom_crc_ok
+     /tmp/cc5Mz7Yc.s:106    .text.ms5611_calc:00000000 $t
+     /tmp/cc5Mz7Yc.s:111    .text.ms5611_calc:00000000 ms5611_calc
+     /tmp/cc5Mz7Yc.s:415    .text.ms5611_calc:00000258 $d
+     /tmp/cc5Mz7Yc.s:423    .text.ms5607_calc:00000000 $t
+     /tmp/cc5Mz7Yc.s:428    .text.ms5607_calc:00000000 ms5607_calc
+     /tmp/cc5Mz7Yc.s:715    .text.ms5607_calc:0000024c $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.ms5611_regs.h.28.e3c13714248cc6f802085158f5967767
+
+NO UNDEFINED SYMBOLS

@@ -1,0 +1,782 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"ms5611_i2c.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.ms5611_i2c_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	ms5611_i2c_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	ms5611_i2c_init:
+  26              	.LFB3:
+  27              		.file 1 "peripherals/ms5611_i2c.c"
+   1:peripherals/ms5611_i2c.c **** /*
+   2:peripherals/ms5611_i2c.c ****  * Copyright (C) 2011 Martin Mueller <martinmm@pfump.org>
+   3:peripherals/ms5611_i2c.c ****  * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
+   4:peripherals/ms5611_i2c.c ****  *
+   5:peripherals/ms5611_i2c.c ****  * This file is part of paparazzi.
+   6:peripherals/ms5611_i2c.c ****  *
+   7:peripherals/ms5611_i2c.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:peripherals/ms5611_i2c.c ****  * it under the terms of the GNU General Public License as published by
+   9:peripherals/ms5611_i2c.c ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:peripherals/ms5611_i2c.c ****  * any later version.
+  11:peripherals/ms5611_i2c.c ****  *
+  12:peripherals/ms5611_i2c.c ****  * paparazzi is distributed in the hope that it will be useful,
+  13:peripherals/ms5611_i2c.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:peripherals/ms5611_i2c.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:peripherals/ms5611_i2c.c ****  * GNU General Public License for more details.
+  16:peripherals/ms5611_i2c.c ****  *
+  17:peripherals/ms5611_i2c.c ****  * You should have received a copy of the GNU General Public License
+  18:peripherals/ms5611_i2c.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:peripherals/ms5611_i2c.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:peripherals/ms5611_i2c.c ****  * Boston, MA 02111-1307, USA.
+  21:peripherals/ms5611_i2c.c ****  */
+  22:peripherals/ms5611_i2c.c **** 
+  23:peripherals/ms5611_i2c.c **** /**
+  24:peripherals/ms5611_i2c.c ****  * @file peripherals/ms5611_i2c.c
+  25:peripherals/ms5611_i2c.c ****  * Measurement Specialties (Intersema) MS5611-01BA and MS5607-02BA03 pressure/temperature sensor in
+  26:peripherals/ms5611_i2c.c ****  *
+  27:peripherals/ms5611_i2c.c ****  */
+  28:peripherals/ms5611_i2c.c **** 
+  29:peripherals/ms5611_i2c.c **** 
+  30:peripherals/ms5611_i2c.c **** #include "peripherals/ms5611_i2c.h"
+  31:peripherals/ms5611_i2c.c **** 
+  32:peripherals/ms5611_i2c.c **** 
+  33:peripherals/ms5611_i2c.c **** void ms5611_i2c_init(struct Ms5611_I2c *ms, struct i2c_periph *i2c_p, uint8_t addr,
+  34:peripherals/ms5611_i2c.c ****                      bool_t is_ms5607)
+  35:peripherals/ms5611_i2c.c **** {
+  28              		.loc 1 35 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+  36:peripherals/ms5611_i2c.c ****   /* set i2c_peripheral */
+  37:peripherals/ms5611_i2c.c ****   ms->i2c_p = i2c_p;
+  38:peripherals/ms5611_i2c.c **** 
+  39:peripherals/ms5611_i2c.c ****   /* slave address */
+  40:peripherals/ms5611_i2c.c ****   ms->i2c_trans.slave_addr = addr;
+  34              		.loc 1 40 0
+  35 0000 4271     		strb	r2, [r0, #5]
+  41:peripherals/ms5611_i2c.c ****   /* set initial status: Success or Done */
+  42:peripherals/ms5611_i2c.c ****   ms->i2c_trans.status = I2CTransDone;
+  36              		.loc 1 42 0
+  37 0002 0422     		movs	r2, #4
+  38              	.LVL1:
+  39 0004 80F82920 		strb	r2, [r0, #41]
+  43:peripherals/ms5611_i2c.c **** 
+  44:peripherals/ms5611_i2c.c ****   ms->data_available = FALSE;
+  40              		.loc 1 44 0
+  41 0008 0022     		movs	r2, #0
+  37:peripherals/ms5611_i2c.c ****   ms->i2c_p = i2c_p;
+  42              		.loc 1 37 0
+  43 000a 0160     		str	r1, [r0]
+  44              		.loc 1 44 0
+  45 000c 80F82D20 		strb	r2, [r0, #45]
+  45:peripherals/ms5611_i2c.c ****   ms->initialized = FALSE;
+  46              		.loc 1 45 0
+  47 0010 80F82C20 		strb	r2, [r0, #44]
+  46:peripherals/ms5611_i2c.c ****   ms->status = MS5611_STATUS_UNINIT;
+  48              		.loc 1 46 0
+  49 0014 80F82A20 		strb	r2, [r0, #42]
+  47:peripherals/ms5611_i2c.c ****   ms->prom_cnt = 0;
+  50              		.loc 1 47 0
+  51 0018 0265     		str	r2, [r0, #80]
+  48:peripherals/ms5611_i2c.c ****   ms->is_ms5607 = is_ms5607;
+  52              		.loc 1 48 0
+  53 001a 80F82B30 		strb	r3, [r0, #43]
+  54 001e 7047     		bx	lr
+  55              		.cfi_endproc
+  56              	.LFE3:
+  58              		.section	.text.ms5611_i2c_start_configure,"ax",%progbits
+  59              		.align	1
+  60              		.global	ms5611_i2c_start_configure
+  61              		.thumb
+  62              		.thumb_func
+  64              	ms5611_i2c_start_configure:
+  65              	.LFB4:
+  49:peripherals/ms5611_i2c.c **** }
+  50:peripherals/ms5611_i2c.c **** 
+  51:peripherals/ms5611_i2c.c **** void ms5611_i2c_start_configure(struct Ms5611_I2c *ms)
+  52:peripherals/ms5611_i2c.c **** {
+  66              		.loc 1 52 0
+  67              		.cfi_startproc
+  68              		@ args = 0, pretend = 0, frame = 0
+  69              		@ frame_needed = 0, uses_anonymous_args = 0
+  70              	.LVL2:
+  53:peripherals/ms5611_i2c.c ****   if (ms->status == MS5611_STATUS_UNINIT) {
+  71              		.loc 1 53 0
+  72 0000 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+  52:peripherals/ms5611_i2c.c **** {
+  73              		.loc 1 52 0
+  74 0004 10B5     		push	{r4, lr}
+  75              		.cfi_def_cfa_offset 8
+  76              		.cfi_offset 4, -8
+  77              		.cfi_offset 14, -4
+  52:peripherals/ms5611_i2c.c **** {
+  78              		.loc 1 52 0
+  79 0006 0446     		mov	r4, r0
+  80              		.loc 1 53 0
+  81 0008 6BB9     		cbnz	r3, .L2
+  54:peripherals/ms5611_i2c.c ****     ms->initialized = FALSE;
+  82              		.loc 1 54 0
+  83 000a 80F82C30 		strb	r3, [r0, #44]
+  55:peripherals/ms5611_i2c.c ****     ms->prom_cnt = 0;
+  84              		.loc 1 55 0
+  85 000e 0365     		str	r3, [r0, #80]
+  56:peripherals/ms5611_i2c.c ****     ms->i2c_trans.buf[0] = MS5611_SOFT_RESET;
+  86              		.loc 1 56 0
+  87 0010 1E23     		movs	r3, #30
+  88 0012 4372     		strb	r3, [r0, #9]
+  57:peripherals/ms5611_i2c.c ****     i2c_transmit(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1);
+  89              		.loc 1 57 0
+  90 0014 211D     		adds	r1, r4, #4
+  91 0016 0123     		movs	r3, #1
+  92 0018 0068     		ldr	r0, [r0]
+  93              	.LVL3:
+  94 001a 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+  95 001c FFF7FEFF 		bl	i2c_transmit
+  96              	.LVL4:
+  58:peripherals/ms5611_i2c.c ****     ms->status = MS5611_STATUS_RESET;
+  97              		.loc 1 58 0
+  98 0020 0123     		movs	r3, #1
+  99 0022 84F82A30 		strb	r3, [r4, #42]
+ 100              	.L2:
+ 101 0026 10BD     		pop	{r4, pc}
+ 102              		.cfi_endproc
+ 103              	.LFE4:
+ 105              		.section	.text.ms5611_i2c_start_conversion,"ax",%progbits
+ 106              		.align	1
+ 107              		.global	ms5611_i2c_start_conversion
+ 108              		.thumb
+ 109              		.thumb_func
+ 111              	ms5611_i2c_start_conversion:
+ 112              	.LFB5:
+  59:peripherals/ms5611_i2c.c ****   }
+  60:peripherals/ms5611_i2c.c **** }
+  61:peripherals/ms5611_i2c.c **** 
+  62:peripherals/ms5611_i2c.c **** void ms5611_i2c_start_conversion(struct Ms5611_I2c *ms)
+  63:peripherals/ms5611_i2c.c **** {
+ 113              		.loc 1 63 0
+ 114              		.cfi_startproc
+ 115              		@ args = 0, pretend = 0, frame = 0
+ 116              		@ frame_needed = 0, uses_anonymous_args = 0
+ 117              	.LVL5:
+  64:peripherals/ms5611_i2c.c ****   if (ms->status == MS5611_STATUS_IDLE &&
+ 118              		.loc 1 64 0
+ 119 0000 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 120 0004 042B     		cmp	r3, #4
+  63:peripherals/ms5611_i2c.c **** {
+ 121              		.loc 1 63 0
+ 122 0006 10B5     		push	{r4, lr}
+ 123              		.cfi_def_cfa_offset 8
+ 124              		.cfi_offset 4, -8
+ 125              		.cfi_offset 14, -4
+  63:peripherals/ms5611_i2c.c **** {
+ 126              		.loc 1 63 0
+ 127 0008 0446     		mov	r4, r0
+ 128              		.loc 1 64 0
+ 129 000a 0ED1     		bne	.L5
+  65:peripherals/ms5611_i2c.c ****       ms->i2c_trans.status == I2CTransDone) {
+ 130              		.loc 1 65 0 discriminator 1
+ 131 000c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+  64:peripherals/ms5611_i2c.c ****   if (ms->status == MS5611_STATUS_IDLE &&
+ 132              		.loc 1 64 0 discriminator 1
+ 133 0010 042B     		cmp	r3, #4
+ 134 0012 0AD1     		bne	.L5
+  66:peripherals/ms5611_i2c.c ****     /* start D1 conversion */
+  67:peripherals/ms5611_i2c.c ****     ms->i2c_trans.buf[0] = MS5611_START_CONV_D1;
+ 135              		.loc 1 67 0
+ 136 0014 4823     		movs	r3, #72
+ 137 0016 4372     		strb	r3, [r0, #9]
+  68:peripherals/ms5611_i2c.c ****     i2c_transmit(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1);
+ 138              		.loc 1 68 0
+ 139 0018 211D     		adds	r1, r4, #4
+ 140 001a 0123     		movs	r3, #1
+ 141 001c 0068     		ldr	r0, [r0]
+ 142              	.LVL6:
+ 143 001e 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+ 144 0020 FFF7FEFF 		bl	i2c_transmit
+ 145              	.LVL7:
+  69:peripherals/ms5611_i2c.c ****     ms->status = MS5611_STATUS_CONV_D1;
+ 146              		.loc 1 69 0
+ 147 0024 0523     		movs	r3, #5
+ 148 0026 84F82A30 		strb	r3, [r4, #42]
+ 149              	.L5:
+ 150 002a 10BD     		pop	{r4, pc}
+ 151              		.cfi_endproc
+ 152              	.LFE5:
+ 154              		.section	.text.ms5611_i2c_periodic_check,"ax",%progbits
+ 155              		.align	1
+ 156              		.global	ms5611_i2c_periodic_check
+ 157              		.thumb
+ 158              		.thumb_func
+ 160              	ms5611_i2c_periodic_check:
+ 161              	.LFB6:
+  70:peripherals/ms5611_i2c.c ****   }
+  71:peripherals/ms5611_i2c.c **** }
+  72:peripherals/ms5611_i2c.c **** 
+  73:peripherals/ms5611_i2c.c **** /**
+  74:peripherals/ms5611_i2c.c ****  * Periodic function to ensure proper delay after triggering reset or conversion.
+  75:peripherals/ms5611_i2c.c ****  * Should run at 100Hz max.
+  76:peripherals/ms5611_i2c.c ****  * Typical conversion time is 8.22ms at max resolution.
+  77:peripherals/ms5611_i2c.c ****  */
+  78:peripherals/ms5611_i2c.c **** void ms5611_i2c_periodic_check(struct Ms5611_I2c *ms)
+  79:peripherals/ms5611_i2c.c **** {
+ 162              		.loc 1 79 0
+ 163              		.cfi_startproc
+ 164              		@ args = 0, pretend = 0, frame = 0
+ 165              		@ frame_needed = 0, uses_anonymous_args = 0
+ 166              	.LVL8:
+  80:peripherals/ms5611_i2c.c ****   switch (ms->status) {
+ 167              		.loc 1 80 0
+ 168 0000 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 169 0004 013B     		subs	r3, r3, #1
+  79:peripherals/ms5611_i2c.c **** {
+ 170              		.loc 1 79 0
+ 171 0006 13B5     		push	{r0, r1, r4, lr}
+ 172              		.cfi_def_cfa_offset 16
+ 173              		.cfi_offset 0, -16
+ 174              		.cfi_offset 1, -12
+ 175              		.cfi_offset 4, -8
+ 176              		.cfi_offset 14, -4
+  79:peripherals/ms5611_i2c.c **** {
+ 177              		.loc 1 79 0
+ 178 0008 0446     		mov	r4, r0
+ 179              		.loc 1 80 0
+ 180 000a 082B     		cmp	r3, #8
+ 181 000c 41D8     		bhi	.L7
+ 182 000e DFE803F0 		tbb	[pc, r3]
+ 183              	.L10:
+ 184 0012 05       		.byte	(.L9-.L10)/2
+ 185 0013 07       		.byte	(.L11-.L10)/2
+ 186 0014 40       		.byte	(.L7-.L10)/2
+ 187 0015 40       		.byte	(.L7-.L10)/2
+ 188 0016 1B       		.byte	(.L12-.L10)/2
+ 189 0017 1D       		.byte	(.L13-.L10)/2
+ 190 0018 40       		.byte	(.L7-.L10)/2
+ 191 0019 2D       		.byte	(.L14-.L10)/2
+ 192 001a 2F       		.byte	(.L15-.L10)/2
+ 193 001b 00       		.p2align 1
+ 194              	.L9:
+  81:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_RESET:
+  82:peripherals/ms5611_i2c.c ****       ms->status = MS5611_STATUS_RESET_OK;
+ 195              		.loc 1 82 0
+ 196 001c 0223     		movs	r3, #2
+ 197 001e 36E0     		b	.L16
+ 198              	.L11:
+  83:peripherals/ms5611_i2c.c ****       break;
+  84:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_RESET_OK:
+  85:peripherals/ms5611_i2c.c ****       if (ms->i2c_trans.status == I2CTransDone) {
+ 199              		.loc 1 85 0
+ 200 0020 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 201 0024 042B     		cmp	r3, #4
+ 202 0026 34D1     		bne	.L7
+  86:peripherals/ms5611_i2c.c ****         /* start getting prom data */
+  87:peripherals/ms5611_i2c.c ****         ms->i2c_trans.buf[0] = MS5611_PROM_READ | (ms->prom_cnt << 1);
+ 203              		.loc 1 87 0
+ 204 0028 036D     		ldr	r3, [r0, #80]
+  88:peripherals/ms5611_i2c.c ****         i2c_transceive(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1, 2);
+ 205              		.loc 1 88 0
+ 206 002a 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+  87:peripherals/ms5611_i2c.c ****         ms->i2c_trans.buf[0] = MS5611_PROM_READ | (ms->prom_cnt << 1);
+ 207              		.loc 1 87 0
+ 208 002c 5B00     		lsls	r3, r3, #1
+ 209 002e 63F05F03 		orn	r3, r3, #95
+ 210 0032 DBB2     		uxtb	r3, r3
+ 211 0034 4372     		strb	r3, [r0, #9]
+ 212              		.loc 1 88 0
+ 213 0036 0223     		movs	r3, #2
+ 214 0038 0093     		str	r3, [sp]
+ 215 003a 0068     		ldr	r0, [r0]
+ 216              	.LVL9:
+ 217 003c 0123     		movs	r3, #1
+ 218 003e 211D     		adds	r1, r4, #4
+ 219 0040 FFF7FEFF 		bl	i2c_transceive
+ 220              	.LVL10:
+  89:peripherals/ms5611_i2c.c ****         ms->status = MS5611_STATUS_PROM;
+ 221              		.loc 1 89 0
+ 222 0044 0323     		movs	r3, #3
+ 223 0046 22E0     		b	.L16
+ 224              	.LVL11:
+ 225              	.L12:
+  90:peripherals/ms5611_i2c.c ****       }
+  91:peripherals/ms5611_i2c.c ****       break;
+  92:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_CONV_D1:
+  93:peripherals/ms5611_i2c.c ****       ms->status = MS5611_STATUS_CONV_D1_OK;
+ 226              		.loc 1 93 0
+ 227 0048 0623     		movs	r3, #6
+ 228 004a 20E0     		b	.L16
+ 229              	.L13:
+  94:peripherals/ms5611_i2c.c ****       break;
+  95:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_CONV_D1_OK:
+  96:peripherals/ms5611_i2c.c ****       if (ms->i2c_trans.status == I2CTransDone) {
+ 230              		.loc 1 96 0
+ 231 004c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 232 0050 042B     		cmp	r3, #4
+ 233 0052 1ED1     		bne	.L7
+  97:peripherals/ms5611_i2c.c ****         /* read D1 adc */
+  98:peripherals/ms5611_i2c.c ****         ms->i2c_trans.buf[0] = MS5611_ADC_READ;
+ 234              		.loc 1 98 0
+ 235 0054 0023     		movs	r3, #0
+ 236 0056 4372     		strb	r3, [r0, #9]
+  99:peripherals/ms5611_i2c.c ****         i2c_transceive(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1, 3);
+ 237              		.loc 1 99 0
+ 238 0058 0323     		movs	r3, #3
+ 239 005a 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 240 005c 0093     		str	r3, [sp]
+ 241 005e 0068     		ldr	r0, [r0]
+ 242              	.LVL12:
+ 243 0060 0123     		movs	r3, #1
+ 244 0062 211D     		adds	r1, r4, #4
+ 245 0064 FFF7FEFF 		bl	i2c_transceive
+ 246              	.LVL13:
+ 100:peripherals/ms5611_i2c.c ****         ms->status = MS5611_STATUS_ADC_D1;
+ 247              		.loc 1 100 0
+ 248 0068 0723     		movs	r3, #7
+ 249 006a 10E0     		b	.L16
+ 250              	.LVL14:
+ 251              	.L14:
+ 101:peripherals/ms5611_i2c.c ****       }
+ 102:peripherals/ms5611_i2c.c ****       break;
+ 103:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_CONV_D2:
+ 104:peripherals/ms5611_i2c.c ****       ms->status = MS5611_STATUS_CONV_D2_OK;
+ 252              		.loc 1 104 0
+ 253 006c 0923     		movs	r3, #9
+ 254 006e 0EE0     		b	.L16
+ 255              	.L15:
+ 105:peripherals/ms5611_i2c.c ****       break;
+ 106:peripherals/ms5611_i2c.c ****     case MS5611_STATUS_CONV_D2_OK:
+ 107:peripherals/ms5611_i2c.c ****       if (ms->i2c_trans.status == I2CTransDone) {
+ 256              		.loc 1 107 0
+ 257 0070 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 258 0074 042B     		cmp	r3, #4
+ 259 0076 0CD1     		bne	.L7
+ 108:peripherals/ms5611_i2c.c ****         /* read D2 adc */
+ 109:peripherals/ms5611_i2c.c ****         ms->i2c_trans.buf[0] = MS5611_ADC_READ;
+ 260              		.loc 1 109 0
+ 261 0078 0023     		movs	r3, #0
+ 262 007a 4372     		strb	r3, [r0, #9]
+ 110:peripherals/ms5611_i2c.c ****         i2c_transceive(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1, 3);
+ 263              		.loc 1 110 0
+ 264 007c 0323     		movs	r3, #3
+ 265 007e 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 266 0080 0093     		str	r3, [sp]
+ 267 0082 0068     		ldr	r0, [r0]
+ 268              	.LVL15:
+ 269 0084 0123     		movs	r3, #1
+ 270 0086 211D     		adds	r1, r4, #4
+ 271 0088 FFF7FEFF 		bl	i2c_transceive
+ 272              	.LVL16:
+ 111:peripherals/ms5611_i2c.c ****         ms->status = MS5611_STATUS_ADC_D2;
+ 273              		.loc 1 111 0
+ 274 008c 0A23     		movs	r3, #10
+ 275              	.L16:
+ 276 008e 84F82A30 		strb	r3, [r4, #42]
+ 277              	.L7:
+ 112:peripherals/ms5611_i2c.c ****       }
+ 113:peripherals/ms5611_i2c.c ****       break;
+ 114:peripherals/ms5611_i2c.c ****     default:
+ 115:peripherals/ms5611_i2c.c ****       break;
+ 116:peripherals/ms5611_i2c.c ****   }
+ 117:peripherals/ms5611_i2c.c **** }
+ 278              		.loc 1 117 0
+ 279 0092 02B0     		add	sp, sp, #8
+ 280              		@ sp needed
+ 281 0094 10BD     		pop	{r4, pc}
+ 282              		.cfi_endproc
+ 283              	.LFE6:
+ 285              		.section	.text.ms5611_i2c_event,"ax",%progbits
+ 286              		.align	1
+ 287              		.global	ms5611_i2c_event
+ 288              		.thumb
+ 289              		.thumb_func
+ 291              	ms5611_i2c_event:
+ 292              	.LFB7:
+ 118:peripherals/ms5611_i2c.c **** 
+ 119:peripherals/ms5611_i2c.c **** void ms5611_i2c_event(struct Ms5611_I2c *ms)
+ 120:peripherals/ms5611_i2c.c **** {
+ 293              		.loc 1 120 0
+ 294              		.cfi_startproc
+ 295              		@ args = 0, pretend = 0, frame = 0
+ 296              		@ frame_needed = 0, uses_anonymous_args = 0
+ 297              	.LVL17:
+ 298 0000 73B5     		push	{r0, r1, r4, r5, r6, lr}
+ 299              		.cfi_def_cfa_offset 24
+ 300              		.cfi_offset 0, -24
+ 301              		.cfi_offset 1, -20
+ 302              		.cfi_offset 4, -16
+ 303              		.cfi_offset 5, -12
+ 304              		.cfi_offset 6, -8
+ 305              		.cfi_offset 14, -4
+ 121:peripherals/ms5611_i2c.c ****   if (ms->initialized) {
+ 306              		.loc 1 121 0
+ 307 0002 90F82C10 		ldrb	r1, [r0, #44]	@ zero_extendqisi2
+ 120:peripherals/ms5611_i2c.c **** {
+ 308              		.loc 1 120 0
+ 309 0006 0446     		mov	r4, r0
+ 310              		.loc 1 121 0
+ 311 0008 0029     		cmp	r1, #0
+ 312 000a 48D0     		beq	.L18
+ 122:peripherals/ms5611_i2c.c ****     if (ms->i2c_trans.status == I2CTransFailed) {
+ 313              		.loc 1 122 0
+ 314 000c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 315 0010 032B     		cmp	r3, #3
+ 316 0012 03D1     		bne	.L19
+ 123:peripherals/ms5611_i2c.c ****       ms->status = MS5611_STATUS_IDLE;
+ 317              		.loc 1 123 0
+ 318 0014 0423     		movs	r3, #4
+ 319 0016 80F82A30 		strb	r3, [r0, #42]
+ 320 001a 3DE0     		b	.L40
+ 321              	.L19:
+ 124:peripherals/ms5611_i2c.c ****       ms->i2c_trans.status = I2CTransDone;
+ 125:peripherals/ms5611_i2c.c ****     } else if (ms->i2c_trans.status == I2CTransSuccess) {
+ 322              		.loc 1 125 0
+ 323 001c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 324 0020 022B     		cmp	r3, #2
+ 325 0022 79D1     		bne	.L17
+ 126:peripherals/ms5611_i2c.c ****       // Successfull reading
+ 127:peripherals/ms5611_i2c.c ****       switch (ms->status) {
+ 326              		.loc 1 127 0
+ 327 0024 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 328 0028 072B     		cmp	r3, #7
+ 329 002a 02D0     		beq	.L22
+ 330 002c 0A2B     		cmp	r3, #10
+ 331 002e 18D0     		beq	.L23
+ 332 0030 31E0     		b	.L42
+ 333              	.L22:
+ 128:peripherals/ms5611_i2c.c **** 
+ 129:peripherals/ms5611_i2c.c ****         case MS5611_STATUS_ADC_D1:
+ 130:peripherals/ms5611_i2c.c ****           /* read D1 (pressure) */
+ 131:peripherals/ms5611_i2c.c ****           ms->data.d1 = (ms->i2c_trans.buf[0] << 16) |
+ 334              		.loc 1 131 0
+ 335 0032 417A     		ldrb	r1, [r0, #9]	@ zero_extendqisi2
+ 132:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 336              		.loc 1 132 0
+ 337 0034 827A     		ldrb	r2, [r0, #10]	@ zero_extendqisi2
+ 133:peripherals/ms5611_i2c.c ****                         ms->i2c_trans.buf[2];
+ 338              		.loc 1 133 0
+ 339 0036 C37A     		ldrb	r3, [r0, #11]	@ zero_extendqisi2
+ 132:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 340              		.loc 1 132 0
+ 341 0038 1202     		lsls	r2, r2, #8
+ 131:peripherals/ms5611_i2c.c ****           ms->data.d1 = (ms->i2c_trans.buf[0] << 16) |
+ 342              		.loc 1 131 0
+ 343 003a 42EA0142 		orr	r2, r2, r1, lsl #16
+ 132:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 344              		.loc 1 132 0
+ 345 003e 1A43     		orrs	r2, r2, r3
+ 134:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 346              		.loc 1 134 0
+ 347 0040 0423     		movs	r3, #4
+ 131:peripherals/ms5611_i2c.c ****           ms->data.d1 = (ms->i2c_trans.buf[0] << 16) |
+ 348              		.loc 1 131 0
+ 349 0042 8264     		str	r2, [r0, #72]
+ 350              		.loc 1 134 0
+ 351 0044 80F82930 		strb	r3, [r0, #41]
+ 135:peripherals/ms5611_i2c.c ****           if (ms->data.d1 == 0) {
+ 352              		.loc 1 135 0
+ 353 0048 42B1     		cbz	r2, .L41
+ 136:peripherals/ms5611_i2c.c ****             /* if value is zero, it was read to soon and is invalid, back to idle */
+ 137:peripherals/ms5611_i2c.c ****             ms->status = MS5611_STATUS_IDLE;
+ 138:peripherals/ms5611_i2c.c ****           } else {
+ 139:peripherals/ms5611_i2c.c ****             /* start D2 conversion */
+ 140:peripherals/ms5611_i2c.c ****             ms->i2c_trans.buf[0] = MS5611_START_CONV_D2;
+ 354              		.loc 1 140 0
+ 355 004a 5823     		movs	r3, #88
+ 356 004c 4372     		strb	r3, [r0, #9]
+ 141:peripherals/ms5611_i2c.c ****             i2c_transmit(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1);
+ 357              		.loc 1 141 0
+ 358 004e 211D     		adds	r1, r4, #4
+ 359 0050 0123     		movs	r3, #1
+ 360 0052 0068     		ldr	r0, [r0]
+ 361              	.LVL18:
+ 362 0054 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+ 363 0056 FFF7FEFF 		bl	i2c_transmit
+ 364              	.LVL19:
+ 142:peripherals/ms5611_i2c.c ****             ms->status = MS5611_STATUS_CONV_D2;
+ 365              		.loc 1 142 0
+ 366 005a 0823     		movs	r3, #8
+ 367              	.L41:
+ 368 005c 84F82A30 		strb	r3, [r4, #42]
+ 369 0060 5AE0     		b	.L17
+ 370              	.LVL20:
+ 371              	.L23:
+ 143:peripherals/ms5611_i2c.c ****           }
+ 144:peripherals/ms5611_i2c.c ****           break;
+ 145:peripherals/ms5611_i2c.c **** 
+ 146:peripherals/ms5611_i2c.c ****         case MS5611_STATUS_ADC_D2:
+ 147:peripherals/ms5611_i2c.c ****           /* read D2 (temperature) */
+ 148:peripherals/ms5611_i2c.c ****           ms->data.d2 = (ms->i2c_trans.buf[0] << 16) |
+ 372              		.loc 1 148 0
+ 373 0062 417A     		ldrb	r1, [r0, #9]	@ zero_extendqisi2
+ 149:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 374              		.loc 1 149 0
+ 375 0064 827A     		ldrb	r2, [r0, #10]	@ zero_extendqisi2
+ 150:peripherals/ms5611_i2c.c ****                         ms->i2c_trans.buf[2];
+ 376              		.loc 1 150 0
+ 377 0066 C37A     		ldrb	r3, [r0, #11]	@ zero_extendqisi2
+ 149:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 378              		.loc 1 149 0
+ 379 0068 1202     		lsls	r2, r2, #8
+ 148:peripherals/ms5611_i2c.c ****           ms->data.d2 = (ms->i2c_trans.buf[0] << 16) |
+ 380              		.loc 1 148 0
+ 381 006a 42EA0142 		orr	r2, r2, r1, lsl #16
+ 149:peripherals/ms5611_i2c.c ****                         (ms->i2c_trans.buf[1] << 8) |
+ 382              		.loc 1 149 0
+ 383 006e 1A43     		orrs	r2, r2, r3
+ 151:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 384              		.loc 1 151 0
+ 385 0070 0423     		movs	r3, #4
+ 148:peripherals/ms5611_i2c.c ****           ms->data.d2 = (ms->i2c_trans.buf[0] << 16) |
+ 386              		.loc 1 148 0
+ 387 0072 C264     		str	r2, [r0, #76]
+ 388              		.loc 1 151 0
+ 389 0074 80F82930 		strb	r3, [r0, #41]
+ 152:peripherals/ms5611_i2c.c ****           if (ms->data.d2 == 0) {
+ 390              		.loc 1 152 0
+ 391 0078 002A     		cmp	r2, #0
+ 392 007a EFD0     		beq	.L41
+ 153:peripherals/ms5611_i2c.c ****             /* if value is zero, it was read to soon and is invalid, back to idle */
+ 154:peripherals/ms5611_i2c.c ****             ms->status = MS5611_STATUS_IDLE;
+ 155:peripherals/ms5611_i2c.c ****           } else {
+ 156:peripherals/ms5611_i2c.c ****             /* calculate temp and pressure from measurements and set available if valid */
+ 157:peripherals/ms5611_i2c.c ****             if (ms->is_ms5607) {
+ 393              		.loc 1 157 0
+ 394 007c 90F82B30 		ldrb	r3, [r0, #43]	@ zero_extendqisi2
+ 395 0080 3030     		adds	r0, r0, #48
+ 396              	.LVL21:
+ 397 0082 13B1     		cbz	r3, .L26
+ 158:peripherals/ms5611_i2c.c ****               ms->data_available = ms5607_calc(&(ms->data));
+ 398              		.loc 1 158 0
+ 399 0084 FFF7FEFF 		bl	ms5607_calc
+ 400              	.LVL22:
+ 401 0088 01E0     		b	.L39
+ 402              	.L26:
+ 159:peripherals/ms5611_i2c.c ****             }
+ 160:peripherals/ms5611_i2c.c ****             else {
+ 161:peripherals/ms5611_i2c.c ****               ms->data_available = ms5611_calc(&(ms->data));
+ 403              		.loc 1 161 0
+ 404 008a FFF7FEFF 		bl	ms5611_calc
+ 405              	.LVL23:
+ 406              	.L39:
+ 407 008e 84F82D00 		strb	r0, [r4, #45]
+ 162:peripherals/ms5611_i2c.c ****             }
+ 163:peripherals/ms5611_i2c.c ****             ms->status = MS5611_STATUS_IDLE;
+ 408              		.loc 1 163 0
+ 409 0092 0423     		movs	r3, #4
+ 410 0094 E2E7     		b	.L41
+ 411              	.LVL24:
+ 412              	.L42:
+ 164:peripherals/ms5611_i2c.c ****           }
+ 165:peripherals/ms5611_i2c.c ****           break;
+ 166:peripherals/ms5611_i2c.c **** 
+ 167:peripherals/ms5611_i2c.c ****         default:
+ 168:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 413              		.loc 1 168 0
+ 414 0096 0423     		movs	r3, #4
+ 415              	.L40:
+ 416 0098 84F82930 		strb	r3, [r4, #41]
+ 169:peripherals/ms5611_i2c.c ****           break;
+ 417              		.loc 1 169 0
+ 418 009c 3CE0     		b	.L17
+ 419              	.L18:
+ 170:peripherals/ms5611_i2c.c ****       }
+ 171:peripherals/ms5611_i2c.c ****     }
+ 172:peripherals/ms5611_i2c.c ****   } else if (ms->status != MS5611_STATUS_UNINIT) { // Configuring but not yet initialized
+ 420              		.loc 1 172 0
+ 421 009e 90F82A20 		ldrb	r2, [r0, #42]	@ zero_extendqisi2
+ 422 00a2 002A     		cmp	r2, #0
+ 423 00a4 38D0     		beq	.L17
+ 173:peripherals/ms5611_i2c.c ****     switch (ms->i2c_trans.status) {
+ 424              		.loc 1 173 0
+ 425 00a6 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 426 00aa DBB2     		uxtb	r3, r3
+ 427 00ac 022B     		cmp	r3, #2
+ 428 00ae 4FF00405 		mov	r5, #4
+ 429 00b2 04D0     		beq	.L29
+ 430 00b4 032B     		cmp	r3, #3
+ 431 00b6 2DD1     		bne	.L38
+ 174:peripherals/ms5611_i2c.c **** 
+ 175:peripherals/ms5611_i2c.c ****       case I2CTransFailed:
+ 176:peripherals/ms5611_i2c.c ****         /* try again */
+ 177:peripherals/ms5611_i2c.c ****         ms->status = MS5611_STATUS_UNINIT;
+ 432              		.loc 1 177 0
+ 433 00b8 80F82A10 		strb	r1, [r0, #42]
+ 434 00bc 2AE0     		b	.L38
+ 435              	.L29:
+ 178:peripherals/ms5611_i2c.c ****         ms->i2c_trans.status = I2CTransDone;
+ 179:peripherals/ms5611_i2c.c ****         break;
+ 180:peripherals/ms5611_i2c.c **** 
+ 181:peripherals/ms5611_i2c.c ****       case I2CTransSuccess:
+ 182:peripherals/ms5611_i2c.c ****         if (ms->status == MS5611_STATUS_PROM) {
+ 436              		.loc 1 182 0
+ 437 00be 032A     		cmp	r2, #3
+ 438 00c0 28D1     		bne	.L38
+ 183:peripherals/ms5611_i2c.c ****           /* read prom data */
+ 184:peripherals/ms5611_i2c.c ****           ms->data.c[ms->prom_cnt++] = (ms->i2c_trans.buf[0] << 8) |
+ 439              		.loc 1 184 0
+ 440 00c2 016D     		ldr	r1, [r0, #80]
+ 441 00c4 467A     		ldrb	r6, [r0, #9]	@ zero_extendqisi2
+ 442 00c6 4A1C     		adds	r2, r1, #1
+ 443 00c8 0265     		str	r2, [r0, #80]
+ 185:peripherals/ms5611_i2c.c ****                                        ms->i2c_trans.buf[1];
+ 444              		.loc 1 185 0
+ 445 00ca 807A     		ldrb	r0, [r0, #10]	@ zero_extendqisi2
+ 446              	.LVL25:
+ 184:peripherals/ms5611_i2c.c ****           ms->data.c[ms->prom_cnt++] = (ms->i2c_trans.buf[0] << 8) |
+ 447              		.loc 1 184 0
+ 448 00cc 1C31     		adds	r1, r1, #28
+ 449 00ce 40EA0620 		orr	r0, r0, r6, lsl #8
+ 186:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 187:peripherals/ms5611_i2c.c ****           if (ms->prom_cnt < PROM_NB) {
+ 450              		.loc 1 187 0
+ 451 00d2 072A     		cmp	r2, #7
+ 184:peripherals/ms5611_i2c.c ****           ms->data.c[ms->prom_cnt++] = (ms->i2c_trans.buf[0] << 8) |
+ 452              		.loc 1 184 0
+ 453 00d4 24F81100 		strh	r0, [r4, r1, lsl #1]	@ movhi
+ 186:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 454              		.loc 1 186 0
+ 455 00d8 84F82950 		strb	r5, [r4, #41]
+ 456              		.loc 1 187 0
+ 457 00dc 0CDC     		bgt	.L32
+ 188:peripherals/ms5611_i2c.c ****             /* get next prom data */
+ 189:peripherals/ms5611_i2c.c ****             ms->i2c_trans.buf[0] = MS5611_PROM_READ | (ms->prom_cnt << 1);
+ 458              		.loc 1 189 0
+ 459 00de 5200     		lsls	r2, r2, #1
+ 460 00e0 62F05F02 		orn	r2, r2, #95
+ 461 00e4 D2B2     		uxtb	r2, r2
+ 462 00e6 6272     		strb	r2, [r4, #9]
+ 190:peripherals/ms5611_i2c.c ****             i2c_transceive(ms->i2c_p, &(ms->i2c_trans), ms->i2c_trans.slave_addr, 1, 2);
+ 463              		.loc 1 190 0
+ 464 00e8 0093     		str	r3, [sp]
+ 465 00ea 6279     		ldrb	r2, [r4, #5]	@ zero_extendqisi2
+ 466 00ec 2068     		ldr	r0, [r4]
+ 467 00ee 211D     		adds	r1, r4, #4
+ 468 00f0 0123     		movs	r3, #1
+ 469 00f2 FFF7FEFF 		bl	i2c_transceive
+ 470              	.LVL26:
+ 471 00f6 0FE0     		b	.L17
+ 472              	.L32:
+ 191:peripherals/ms5611_i2c.c ****           } else {
+ 192:peripherals/ms5611_i2c.c ****             /* done reading prom, check prom crc */
+ 193:peripherals/ms5611_i2c.c ****             if (ms5611_prom_crc_ok(ms->data.c)) {
+ 473              		.loc 1 193 0
+ 474 00f8 04F13800 		add	r0, r4, #56
+ 475 00fc FFF7FEFF 		bl	ms5611_prom_crc_ok
+ 476              	.LVL27:
+ 477 0100 28B1     		cbz	r0, .L33
+ 194:peripherals/ms5611_i2c.c ****               ms->initialized = TRUE;
+ 478              		.loc 1 194 0
+ 479 0102 0123     		movs	r3, #1
+ 480 0104 84F82C30 		strb	r3, [r4, #44]
+ 195:peripherals/ms5611_i2c.c ****               ms->status = MS5611_STATUS_IDLE;
+ 481              		.loc 1 195 0
+ 482 0108 84F82A50 		strb	r5, [r4, #42]
+ 483 010c 04E0     		b	.L17
+ 484              	.L33:
+ 196:peripherals/ms5611_i2c.c ****             } else {
+ 197:peripherals/ms5611_i2c.c ****               /* checksum error, try again */
+ 198:peripherals/ms5611_i2c.c ****               ms->status = MS5611_STATUS_UNINIT;
+ 485              		.loc 1 198 0
+ 486 010e 84F82A00 		strb	r0, [r4, #42]
+ 487 0112 01E0     		b	.L17
+ 488              	.LVL28:
+ 489              	.L38:
+ 199:peripherals/ms5611_i2c.c ****             }
+ 200:peripherals/ms5611_i2c.c ****           }
+ 201:peripherals/ms5611_i2c.c ****         } else {
+ 202:peripherals/ms5611_i2c.c ****           ms->i2c_trans.status = I2CTransDone;
+ 203:peripherals/ms5611_i2c.c ****         }
+ 204:peripherals/ms5611_i2c.c ****         break;
+ 205:peripherals/ms5611_i2c.c **** 
+ 206:peripherals/ms5611_i2c.c ****       default:
+ 207:peripherals/ms5611_i2c.c ****         ms->i2c_trans.status = I2CTransDone;
+ 490              		.loc 1 207 0
+ 491 0114 84F82950 		strb	r5, [r4, #41]
+ 492              	.LVL29:
+ 493              	.L17:
+ 208:peripherals/ms5611_i2c.c ****         break;
+ 209:peripherals/ms5611_i2c.c ****     }
+ 210:peripherals/ms5611_i2c.c ****   }
+ 211:peripherals/ms5611_i2c.c **** }
+ 494              		.loc 1 211 0
+ 495 0118 02B0     		add	sp, sp, #8
+ 496              		@ sp needed
+ 497 011a 70BD     		pop	{r4, r5, r6, pc}
+ 498              		.cfi_endproc
+ 499              	.LFE7:
+ 501              		.text
+ 502              	.Letext0:
+ 503              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 504              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 505              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 506              		.file 5 "./mcu_periph/i2c.h"
+ 507              		.file 6 "./peripherals/ms5611.h"
+ 508              		.file 7 "./peripherals/ms5611_i2c.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 ms5611_i2c.c
+     /tmp/cceJwLvz.s:20     .text.ms5611_i2c_init:00000000 $t
+     /tmp/cceJwLvz.s:25     .text.ms5611_i2c_init:00000000 ms5611_i2c_init
+     /tmp/cceJwLvz.s:59     .text.ms5611_i2c_start_configure:00000000 $t
+     /tmp/cceJwLvz.s:64     .text.ms5611_i2c_start_configure:00000000 ms5611_i2c_start_configure
+     /tmp/cceJwLvz.s:106    .text.ms5611_i2c_start_conversion:00000000 $t
+     /tmp/cceJwLvz.s:111    .text.ms5611_i2c_start_conversion:00000000 ms5611_i2c_start_conversion
+     /tmp/cceJwLvz.s:155    .text.ms5611_i2c_periodic_check:00000000 $t
+     /tmp/cceJwLvz.s:160    .text.ms5611_i2c_periodic_check:00000000 ms5611_i2c_periodic_check
+     /tmp/cceJwLvz.s:184    .text.ms5611_i2c_periodic_check:00000012 $d
+     /tmp/cceJwLvz.s:286    .text.ms5611_i2c_event:00000000 $t
+     /tmp/cceJwLvz.s:291    .text.ms5611_i2c_event:00000000 ms5611_i2c_event
+                     .debug_frame:00000010 $d
+     /tmp/cceJwLvz.s:193    .text.ms5611_i2c_periodic_check:0000001b $d
+     /tmp/cceJwLvz.s:193    .text.ms5611_i2c_periodic_check:0000001c $t
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.34a7bcc5d6061ae04ce49649a64c2253
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.i2c.h.173.edf41ec62e7796285c1333ff32983d5f
+                           .group:00000000 wm4.ms5611_regs.h.28.e3c13714248cc6f802085158f5967767
+
+UNDEFINED SYMBOLS
+i2c_transmit
+i2c_transceive
+ms5607_calc
+ms5611_calc
+ms5611_prom_crc_ok

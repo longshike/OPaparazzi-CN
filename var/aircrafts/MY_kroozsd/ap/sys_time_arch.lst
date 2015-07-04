@@ -1,0 +1,356 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"sys_time_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	__aeabi_f2d
+  20              		.global	__aeabi_dadd
+  21              		.global	__aeabi_d2uiz
+  22              		.section	.text.sys_time_arch_init,"ax",%progbits
+  23              		.align	1
+  24              		.global	sys_time_arch_init
+  25              		.thumb
+  26              		.thumb_func
+  28              	sys_time_arch_init:
+  29              	.LFB24:
+  30              		.file 1 "arch/stm32/mcu_periph/sys_time_arch.c"
+   1:arch/stm32/mcu_periph/sys_time_arch.c **** /*
+   2:arch/stm32/mcu_periph/sys_time_arch.c ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   3:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+   4:arch/stm32/mcu_periph/sys_time_arch.c ****  * This file is part of paparazzi.
+   5:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+   6:arch/stm32/mcu_periph/sys_time_arch.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:arch/stm32/mcu_periph/sys_time_arch.c ****  * it under the terms of the GNU General Public License as published by
+   8:arch/stm32/mcu_periph/sys_time_arch.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:arch/stm32/mcu_periph/sys_time_arch.c ****  * any later version.
+  10:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+  11:arch/stm32/mcu_periph/sys_time_arch.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:arch/stm32/mcu_periph/sys_time_arch.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:arch/stm32/mcu_periph/sys_time_arch.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:arch/stm32/mcu_periph/sys_time_arch.c ****  * GNU General Public License for more details.
+  15:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+  16:arch/stm32/mcu_periph/sys_time_arch.c ****  * You should have received a copy of the GNU General Public License
+  17:arch/stm32/mcu_periph/sys_time_arch.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:arch/stm32/mcu_periph/sys_time_arch.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:arch/stm32/mcu_periph/sys_time_arch.c ****  * Boston, MA 02111-1307, USA.
+  20:arch/stm32/mcu_periph/sys_time_arch.c ****  */
+  21:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  22:arch/stm32/mcu_periph/sys_time_arch.c **** /**
+  23:arch/stm32/mcu_periph/sys_time_arch.c ****  * @file arch/stm32/mcu_periph/sys_time_arch.c
+  24:arch/stm32/mcu_periph/sys_time_arch.c ****  * @ingroup stm32_arch
+  25:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+  26:arch/stm32/mcu_periph/sys_time_arch.c ****  * STM32 timing functions.
+  27:arch/stm32/mcu_periph/sys_time_arch.c ****  *
+  28:arch/stm32/mcu_periph/sys_time_arch.c ****  */
+  29:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  30:arch/stm32/mcu_periph/sys_time_arch.c **** #include "mcu_periph/sys_time.h"
+  31:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  32:arch/stm32/mcu_periph/sys_time_arch.c **** #include "libopencm3/cm3/systick.h"
+  33:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  34:arch/stm32/mcu_periph/sys_time_arch.c **** #ifdef SYS_TIME_LED
+  35:arch/stm32/mcu_periph/sys_time_arch.c **** #include "led.h"
+  36:arch/stm32/mcu_periph/sys_time_arch.c **** #endif
+  37:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  38:arch/stm32/mcu_periph/sys_time_arch.c **** #ifndef USE_OCM3_SYSTICK_INIT
+  39:arch/stm32/mcu_periph/sys_time_arch.c **** #define USE_OCM3_SYSTICK_INIT 1
+  40:arch/stm32/mcu_periph/sys_time_arch.c **** #endif
+  41:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  42:arch/stm32/mcu_periph/sys_time_arch.c **** void sys_tick_handler(void);
+  43:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  44:arch/stm32/mcu_periph/sys_time_arch.c **** /** Initialize SysTick.
+  45:arch/stm32/mcu_periph/sys_time_arch.c ****  * Generate SysTick interrupt every sys_time.resolution_cpu_ticks
+  46:arch/stm32/mcu_periph/sys_time_arch.c ****  */
+  47:arch/stm32/mcu_periph/sys_time_arch.c **** void sys_time_arch_init(void)
+  48:arch/stm32/mcu_periph/sys_time_arch.c **** {
+  31              		.loc 1 48 0
+  32              		.cfi_startproc
+  33              		@ args = 0, pretend = 0, frame = 0
+  34              		@ frame_needed = 0, uses_anonymous_args = 0
+  35 0000 10B5     		push	{r4, lr}
+  36              		.cfi_def_cfa_offset 8
+  37              		.cfi_offset 4, -8
+  38              		.cfi_offset 14, -4
+  49:arch/stm32/mcu_periph/sys_time_arch.c ****   /* run cortex systick timer with 72MHz (FIXME only 72 or does it work with 168MHz???) */
+  50:arch/stm32/mcu_periph/sys_time_arch.c **** #if USE_OCM3_SYSTICK_INIT
+  51:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+  52:arch/stm32/mcu_periph/sys_time_arch.c **** #endif
+  53:arch/stm32/mcu_periph/sys_time_arch.c ****   sys_time.cpu_ticks_per_sec = AHB_CLK;
+  39              		.loc 1 53 0
+  40 0002 114C     		ldr	r4, .L2
+  51:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+  41              		.loc 1 51 0
+  42 0004 0420     		movs	r0, #4
+  43 0006 FFF7FEFF 		bl	systick_set_clocksource
+  44              	.LVL0:
+  54:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  55:arch/stm32/mcu_periph/sys_time_arch.c ****   /* cpu ticks per desired sys_time timer step */
+  56:arch/stm32/mcu_periph/sys_time_arch.c ****   sys_time.resolution_cpu_ticks = (uint32_t)(sys_time.resolution * sys_time.cpu_ticks_per_sec + 0.5
+  45              		.loc 1 56 0
+  46 000a 94ED537A 		flds	s14, [r4, #332]
+  47 000e DFED0F7A 		flds	s15, .L2+4
+  53:arch/stm32/mcu_periph/sys_time_arch.c ****   sys_time.cpu_ticks_per_sec = AHB_CLK;
+  48              		.loc 1 53 0
+  49 0012 0F4B     		ldr	r3, .L2+8
+  50 0014 C4F85831 		str	r3, [r4, #344]
+  51              		.loc 1 56 0
+  52 0018 67EE277A 		fmuls	s15, s14, s15
+  53 001c 17EE900A 		fmrs	r0, s15
+  54 0020 FFF7FEFF 		bl	__aeabi_f2d
+  55              	.LVL1:
+  56 0024 0022     		movs	r2, #0
+  57 0026 0B4B     		ldr	r3, .L2+12
+  58 0028 FFF7FEFF 		bl	__aeabi_dadd
+  59              	.LVL2:
+  60 002c FFF7FEFF 		bl	__aeabi_d2uiz
+  61              	.LVL3:
+  62 0030 C4F85401 		str	r0, [r4, #340]
+  57:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  58:arch/stm32/mcu_periph/sys_time_arch.c **** #if USE_OCM3_SYSTICK_INIT
+  59:arch/stm32/mcu_periph/sys_time_arch.c ****   /* The timer interrupt is activated on the transition from 1 to 0,
+  60:arch/stm32/mcu_periph/sys_time_arch.c ****    * therefore it activates every n+1 clock ticks.
+  61:arch/stm32/mcu_periph/sys_time_arch.c ****    */
+  62:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_set_reload(sys_time.resolution_cpu_ticks - 1);
+  63              		.loc 1 62 0
+  64 0034 0138     		subs	r0, r0, #1
+  65 0036 FFF7FEFF 		bl	systick_set_reload
+  66              	.LVL4:
+  63:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  64:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_interrupt_enable();
+  67              		.loc 1 64 0
+  68 003a FFF7FEFF 		bl	systick_interrupt_enable
+  69              	.LVL5:
+  65:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_counter_enable();
+  66:arch/stm32/mcu_periph/sys_time_arch.c **** #endif
+  67:arch/stm32/mcu_periph/sys_time_arch.c **** }
+  70              		.loc 1 67 0
+  71 003e BDE81040 		pop	{r4, lr}
+  65:arch/stm32/mcu_periph/sys_time_arch.c ****   systick_counter_enable();
+  72              		.loc 1 65 0
+  73 0042 FFF7FEBF 		b	systick_counter_enable
+  74              	.LVL6:
+  75              	.L3:
+  76 0046 00BF     		.align	2
+  77              	.L2:
+  78 0048 00000000 		.word	sys_time
+  79 004c A037204D 		.word	1293957024
+  80 0050 007A030A 		.word	168000000
+  81 0054 0000E03F 		.word	1071644672
+  82              		.cfi_endproc
+  83              	.LFE24:
+  85              		.section	.text.sys_tick_handler,"ax",%progbits
+  86              		.align	1
+  87              		.global	sys_tick_handler
+  88              		.thumb
+  89              		.thumb_func
+  91              	sys_tick_handler:
+  92              	.LFB25:
+  68:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  69:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  70:arch/stm32/mcu_periph/sys_time_arch.c **** // FIXME : nb_tick rollover ???
+  71:arch/stm32/mcu_periph/sys_time_arch.c **** //
+  72:arch/stm32/mcu_periph/sys_time_arch.c **** // 97 days at 512hz
+  73:arch/stm32/mcu_periph/sys_time_arch.c **** // 12 hours at 100khz
+  74:arch/stm32/mcu_periph/sys_time_arch.c **** //
+  75:arch/stm32/mcu_periph/sys_time_arch.c **** void sys_tick_handler(void)
+  76:arch/stm32/mcu_periph/sys_time_arch.c **** {
+  93              		.loc 1 76 0
+  94              		.cfi_startproc
+  95              		@ args = 0, pretend = 0, frame = 0
+  96              		@ frame_needed = 0, uses_anonymous_args = 0
+  77:arch/stm32/mcu_periph/sys_time_arch.c ****   sys_time.nb_tick++;
+  97              		.loc 1 77 0
+  98 0000 1A4B     		ldr	r3, .L15
+  99 0002 9A68     		ldr	r2, [r3, #8]
+ 100 0004 0132     		adds	r2, r2, #1
+  76:arch/stm32/mcu_periph/sys_time_arch.c **** {
+ 101              		.loc 1 76 0
+ 102 0006 70B5     		push	{r4, r5, r6, lr}
+ 103              		.cfi_def_cfa_offset 16
+ 104              		.cfi_offset 4, -16
+ 105              		.cfi_offset 5, -12
+ 106              		.cfi_offset 6, -8
+ 107              		.cfi_offset 14, -4
+ 108              		.loc 1 77 0
+ 109 0008 9A60     		str	r2, [r3, #8]
+  78:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  79:arch/stm32/mcu_periph/sys_time_arch.c ****   sys_time.nb_sec_rem += sys_time.resolution_cpu_ticks;
+ 110              		.loc 1 79 0
+ 111 000a 5968     		ldr	r1, [r3, #4]
+ 112 000c D3F85421 		ldr	r2, [r3, #340]
+ 113 0010 0A44     		add	r2, r2, r1
+ 114 0012 5A60     		str	r2, [r3, #4]
+  80:arch/stm32/mcu_periph/sys_time_arch.c ****   if (sys_time.nb_sec_rem >= sys_time.cpu_ticks_per_sec) {
+ 115              		.loc 1 80 0
+ 116 0014 5968     		ldr	r1, [r3, #4]
+ 117 0016 D3F85821 		ldr	r2, [r3, #344]
+ 118 001a 9142     		cmp	r1, r2
+ 119 001c 1D46     		mov	r5, r3
+ 120 001e 0AD3     		bcc	.L5
+  81:arch/stm32/mcu_periph/sys_time_arch.c ****     sys_time.nb_sec_rem -= sys_time.cpu_ticks_per_sec;
+ 121              		.loc 1 81 0
+ 122 0020 5B68     		ldr	r3, [r3, #4]
+  82:arch/stm32/mcu_periph/sys_time_arch.c ****     sys_time.nb_sec++;
+  83:arch/stm32/mcu_periph/sys_time_arch.c **** 
+  84:arch/stm32/mcu_periph/sys_time_arch.c **** #ifdef SYS_TIME_LED
+  85:arch/stm32/mcu_periph/sys_time_arch.c ****     LED_TOGGLE(SYS_TIME_LED);
+ 123              		.loc 1 85 0
+ 124 0022 1348     		ldr	r0, .L15+4
+  81:arch/stm32/mcu_periph/sys_time_arch.c ****     sys_time.nb_sec_rem -= sys_time.cpu_ticks_per_sec;
+ 125              		.loc 1 81 0
+ 126 0024 9A1A     		subs	r2, r3, r2
+ 127 0026 6A60     		str	r2, [r5, #4]
+  82:arch/stm32/mcu_periph/sys_time_arch.c ****     sys_time.nb_sec++;
+ 128              		.loc 1 82 0
+ 129 0028 2B68     		ldr	r3, [r5]
+ 130              		.loc 1 85 0
+ 131 002a 4FF40041 		mov	r1, #32768
+  82:arch/stm32/mcu_periph/sys_time_arch.c ****     sys_time.nb_sec++;
+ 132              		.loc 1 82 0
+ 133 002e 0133     		adds	r3, r3, #1
+ 134 0030 2B60     		str	r3, [r5]
+ 135              		.loc 1 85 0
+ 136 0032 FFF7FEFF 		bl	gpio_toggle
+ 137              	.LVL7:
+ 138              	.L5:
+ 139 0036 0D4C     		ldr	r4, .L15
+  76:arch/stm32/mcu_periph/sys_time_arch.c **** {
+ 140              		.loc 1 76 0 discriminator 1
+ 141 0038 0026     		movs	r6, #0
+ 142              	.LVL8:
+ 143              	.L10:
+ 144              	.LBB2:
+  86:arch/stm32/mcu_periph/sys_time_arch.c **** #endif
+  87:arch/stm32/mcu_periph/sys_time_arch.c ****   }
+  88:arch/stm32/mcu_periph/sys_time_arch.c ****   for (unsigned int i = 0; i < SYS_TIME_NB_TIMER; i++) {
+  89:arch/stm32/mcu_periph/sys_time_arch.c ****     if (sys_time.timer[i].in_use &&
+ 145              		.loc 1 89 0
+ 146 003a 237B     		ldrb	r3, [r4, #12]	@ zero_extendqisi2
+ 147 003c 83B1     		cbz	r3, .L7
+  90:arch/stm32/mcu_periph/sys_time_arch.c ****         sys_time.nb_tick >= sys_time.timer[i].end_time) {
+ 148              		.loc 1 90 0 discriminator 1
+ 149 003e AA68     		ldr	r2, [r5, #8]
+ 150 0040 A369     		ldr	r3, [r4, #24]
+  89:arch/stm32/mcu_periph/sys_time_arch.c ****     if (sys_time.timer[i].in_use &&
+ 151              		.loc 1 89 0 discriminator 1
+ 152 0042 9A42     		cmp	r2, r3
+ 153 0044 0CD3     		bcc	.L7
+  91:arch/stm32/mcu_periph/sys_time_arch.c ****       sys_time.timer[i].end_time += sys_time.timer[i].duration;
+ 154              		.loc 1 91 0
+ 155 0046 E269     		ldr	r2, [r4, #28]
+ 156 0048 1344     		add	r3, r3, r2
+ 157 004a A361     		str	r3, [r4, #24]
+  92:arch/stm32/mcu_periph/sys_time_arch.c ****       sys_time.timer[i].elapsed = TRUE;
+ 158              		.loc 1 92 0
+ 159 004c 074B     		ldr	r3, .L15
+ 160 004e 1422     		movs	r2, #20
+ 161 0050 02FB0633 		mla	r3, r2, r6, r3
+ 162 0054 0122     		movs	r2, #1
+ 163 0056 1A75     		strb	r2, [r3, #20]
+  93:arch/stm32/mcu_periph/sys_time_arch.c ****       if (sys_time.timer[i].cb) {
+ 164              		.loc 1 93 0
+ 165 0058 2369     		ldr	r3, [r4, #16]
+ 166 005a 0BB1     		cbz	r3, .L7
+  94:arch/stm32/mcu_periph/sys_time_arch.c ****         sys_time.timer[i].cb(i);
+ 167              		.loc 1 94 0
+ 168 005c F0B2     		uxtb	r0, r6
+ 169 005e 9847     		blx	r3
+ 170              	.LVL9:
+ 171              	.L7:
+  88:arch/stm32/mcu_periph/sys_time_arch.c ****   for (unsigned int i = 0; i < SYS_TIME_NB_TIMER; i++) {
+ 172              		.loc 1 88 0
+ 173 0060 0136     		adds	r6, r6, #1
+ 174              	.LVL10:
+ 175 0062 102E     		cmp	r6, #16
+ 176 0064 04F11404 		add	r4, r4, #20
+ 177 0068 E7D1     		bne	.L10
+ 178              	.LBE2:
+  95:arch/stm32/mcu_periph/sys_time_arch.c ****       }
+  96:arch/stm32/mcu_periph/sys_time_arch.c ****     }
+  97:arch/stm32/mcu_periph/sys_time_arch.c ****   }
+  98:arch/stm32/mcu_periph/sys_time_arch.c **** }
+ 179              		.loc 1 98 0
+ 180 006a 70BD     		pop	{r4, r5, r6, pc}
+ 181              	.LVL11:
+ 182              	.L16:
+ 183              		.align	2
+ 184              	.L15:
+ 185 006c 00000000 		.word	sys_time
+ 186 0070 00000240 		.word	1073872896
+ 187              		.cfi_endproc
+ 188              	.LFE25:
+ 190              		.text
+ 191              	.Letext0:
+ 192              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 193              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 194              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 195              		.file 5 "./mcu_periph/sys_time.h"
+ 196              		.file 6 "../ext/libopencm3/include/libopencm3/cm3/systick.h"
+ 197              		.file 7 "../ext/libopencm3/include/libopencm3/stm32/common/gpio_common_all.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 sys_time_arch.c
+     /tmp/ccza8sue.s:23     .text.sys_time_arch_init:00000000 $t
+     /tmp/ccza8sue.s:28     .text.sys_time_arch_init:00000000 sys_time_arch_init
+     /tmp/ccza8sue.s:78     .text.sys_time_arch_init:00000048 $d
+     /tmp/ccza8sue.s:86     .text.sys_tick_handler:00000000 $t
+     /tmp/ccza8sue.s:91     .text.sys_tick_handler:00000000 sys_tick_handler
+     /tmp/ccza8sue.s:185    .text.sys_tick_handler:0000006c $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.stddef.h.184.e5e1bea8c259692d06c9231e54cad476
+                           .group:00000000 wm4.stddef.h.39.d0197034aa5fd947cae140b9289e6734
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.led_hw.h.40.8014fb3594847a9d275099fc6ed94641
+                           .group:00000000 wm4.led.h.99.0116146560b22524df8538874a4f60bf
+
+UNDEFINED SYMBOLS
+__aeabi_f2d
+__aeabi_dadd
+__aeabi_d2uiz
+systick_set_clocksource
+systick_set_reload
+systick_interrupt_enable
+systick_counter_enable
+sys_time
+gpio_toggle

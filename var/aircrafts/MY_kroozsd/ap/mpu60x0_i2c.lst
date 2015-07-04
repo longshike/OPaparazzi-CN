@@ -1,0 +1,793 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"mpu60x0_i2c.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.mpu60x0_i2c_write_to_reg,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	mpu60x0_i2c_write_to_reg:
+  25              	.LFB11:
+  26              		.file 1 "peripherals/mpu60x0_i2c.c"
+   1:peripherals/mpu60x0_i2c.c **** /*
+   2:peripherals/mpu60x0_i2c.c ****  * Copyright (C) 2013 Gautier Hattenberger
+   3:peripherals/mpu60x0_i2c.c ****  *
+   4:peripherals/mpu60x0_i2c.c ****  * This file is part of paparazzi.
+   5:peripherals/mpu60x0_i2c.c ****  *
+   6:peripherals/mpu60x0_i2c.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:peripherals/mpu60x0_i2c.c ****  * it under the terms of the GNU General Public License as published by
+   8:peripherals/mpu60x0_i2c.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:peripherals/mpu60x0_i2c.c ****  * any later version.
+  10:peripherals/mpu60x0_i2c.c ****  *
+  11:peripherals/mpu60x0_i2c.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:peripherals/mpu60x0_i2c.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:peripherals/mpu60x0_i2c.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:peripherals/mpu60x0_i2c.c ****  * GNU General Public License for more details.
+  15:peripherals/mpu60x0_i2c.c ****  *
+  16:peripherals/mpu60x0_i2c.c ****  * You should have received a copy of the GNU General Public License
+  17:peripherals/mpu60x0_i2c.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:peripherals/mpu60x0_i2c.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:peripherals/mpu60x0_i2c.c ****  * Boston, MA 02111-1307, USA.
+  20:peripherals/mpu60x0_i2c.c ****  */
+  21:peripherals/mpu60x0_i2c.c **** 
+  22:peripherals/mpu60x0_i2c.c **** /**
+  23:peripherals/mpu60x0_i2c.c ****  * @file peripherals/mpu60x0_i2c.c
+  24:peripherals/mpu60x0_i2c.c ****  *
+  25:peripherals/mpu60x0_i2c.c ****  * Driver for the MPU-60X0 using I2C.
+  26:peripherals/mpu60x0_i2c.c ****  *
+  27:peripherals/mpu60x0_i2c.c ****  */
+  28:peripherals/mpu60x0_i2c.c **** 
+  29:peripherals/mpu60x0_i2c.c **** #include "peripherals/mpu60x0_i2c.h"
+  30:peripherals/mpu60x0_i2c.c **** 
+  31:peripherals/mpu60x0_i2c.c **** void mpu60x0_i2c_init(struct Mpu60x0_I2c *mpu, struct i2c_periph *i2c_p, uint8_t addr)
+  32:peripherals/mpu60x0_i2c.c **** {
+  33:peripherals/mpu60x0_i2c.c ****   /* set i2c_peripheral */
+  34:peripherals/mpu60x0_i2c.c ****   mpu->i2c_p = i2c_p;
+  35:peripherals/mpu60x0_i2c.c **** 
+  36:peripherals/mpu60x0_i2c.c ****   /* slave address */
+  37:peripherals/mpu60x0_i2c.c ****   mpu->i2c_trans.slave_addr = addr;
+  38:peripherals/mpu60x0_i2c.c ****   /* set inital status: Success or Done */
+  39:peripherals/mpu60x0_i2c.c ****   mpu->i2c_trans.status = I2CTransDone;
+  40:peripherals/mpu60x0_i2c.c **** 
+  41:peripherals/mpu60x0_i2c.c ****   /* set default MPU60X0 config options */
+  42:peripherals/mpu60x0_i2c.c ****   mpu60x0_set_default_config(&(mpu->config));
+  43:peripherals/mpu60x0_i2c.c **** 
+  44:peripherals/mpu60x0_i2c.c ****   mpu->data_available = FALSE;
+  45:peripherals/mpu60x0_i2c.c ****   mpu->config.initialized = FALSE;
+  46:peripherals/mpu60x0_i2c.c ****   mpu->config.init_status = MPU60X0_CONF_UNINIT;
+  47:peripherals/mpu60x0_i2c.c **** 
+  48:peripherals/mpu60x0_i2c.c ****   mpu->slave_init_status = MPU60X0_I2C_CONF_UNINIT;
+  49:peripherals/mpu60x0_i2c.c **** }
+  50:peripherals/mpu60x0_i2c.c **** 
+  51:peripherals/mpu60x0_i2c.c **** 
+  52:peripherals/mpu60x0_i2c.c **** static void mpu60x0_i2c_write_to_reg(void *mpu, uint8_t _reg, uint8_t _val)
+  53:peripherals/mpu60x0_i2c.c **** {
+  27              		.loc 1 53 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32              	.LVL0:
+  33              		.loc 1 53 0
+  34 0000 0346     		mov	r3, r0
+  54:peripherals/mpu60x0_i2c.c ****   struct Mpu60x0_I2c *mpu_i2c = (struct Mpu60x0_I2c *)(mpu);
+  55:peripherals/mpu60x0_i2c.c ****   mpu_i2c->i2c_trans.buf[0] = _reg;
+  35              		.loc 1 55 0
+  36 0002 4172     		strb	r1, [r0, #9]
+  56:peripherals/mpu60x0_i2c.c ****   mpu_i2c->i2c_trans.buf[1] = _val;
+  37              		.loc 1 56 0
+  38 0004 8272     		strb	r2, [r0, #10]
+  57:peripherals/mpu60x0_i2c.c ****   i2c_transmit(mpu_i2c->i2c_p, &(mpu_i2c->i2c_trans), mpu_i2c->i2c_trans.slave_addr, 2);
+  39              		.loc 1 57 0
+  40 0006 191D     		adds	r1, r3, #4
+  41              	.LVL1:
+  42 0008 5A79     		ldrb	r2, [r3, #5]	@ zero_extendqisi2
+  43              	.LVL2:
+  44 000a 0068     		ldr	r0, [r0]
+  45              	.LVL3:
+  46 000c 0223     		movs	r3, #2
+  47              	.LVL4:
+  48 000e FFF7FEBF 		b	i2c_transmit
+  49              	.LVL5:
+  50              		.cfi_endproc
+  51              	.LFE11:
+  53              		.section	.text.mpu60x0_i2c_init,"ax",%progbits
+  54              		.align	1
+  55              		.global	mpu60x0_i2c_init
+  56              		.thumb
+  57              		.thumb_func
+  59              	mpu60x0_i2c_init:
+  60              	.LFB10:
+  32:peripherals/mpu60x0_i2c.c **** {
+  61              		.loc 1 32 0
+  62              		.cfi_startproc
+  63              		@ args = 0, pretend = 0, frame = 0
+  64              		@ frame_needed = 0, uses_anonymous_args = 0
+  65              	.LVL6:
+  66 0000 10B5     		push	{r4, lr}
+  67              		.cfi_def_cfa_offset 8
+  68              		.cfi_offset 4, -8
+  69              		.cfi_offset 14, -4
+  39:peripherals/mpu60x0_i2c.c ****   mpu->i2c_trans.status = I2CTransDone;
+  70              		.loc 1 39 0
+  71 0002 0423     		movs	r3, #4
+  32:peripherals/mpu60x0_i2c.c **** {
+  72              		.loc 1 32 0
+  73 0004 0446     		mov	r4, r0
+  39:peripherals/mpu60x0_i2c.c ****   mpu->i2c_trans.status = I2CTransDone;
+  74              		.loc 1 39 0
+  75 0006 80F82930 		strb	r3, [r0, #41]
+  34:peripherals/mpu60x0_i2c.c ****   mpu->i2c_p = i2c_p;
+  76              		.loc 1 34 0
+  77 000a 0160     		str	r1, [r0]
+  37:peripherals/mpu60x0_i2c.c ****   mpu->i2c_trans.slave_addr = addr;
+  78              		.loc 1 37 0
+  79 000c 4271     		strb	r2, [r0, #5]
+  42:peripherals/mpu60x0_i2c.c ****   mpu60x0_set_default_config(&(mpu->config));
+  80              		.loc 1 42 0
+  81 000e 4C30     		adds	r0, r0, #76
+  82              	.LVL7:
+  83 0010 FFF7FEFF 		bl	mpu60x0_set_default_config
+  84              	.LVL8:
+  44:peripherals/mpu60x0_i2c.c ****   mpu->data_available = FALSE;
+  85              		.loc 1 44 0
+  86 0014 0023     		movs	r3, #0
+  87 0016 84F82A30 		strb	r3, [r4, #42]
+  45:peripherals/mpu60x0_i2c.c ****   mpu->config.initialized = FALSE;
+  88              		.loc 1 45 0
+  89 001a 84F85430 		strb	r3, [r4, #84]
+  46:peripherals/mpu60x0_i2c.c ****   mpu->config.init_status = MPU60X0_CONF_UNINIT;
+  90              		.loc 1 46 0
+  91 001e 84F85330 		strb	r3, [r4, #83]
+  48:peripherals/mpu60x0_i2c.c ****   mpu->slave_init_status = MPU60X0_I2C_CONF_UNINIT;
+  92              		.loc 1 48 0
+  93 0022 84F87030 		strb	r3, [r4, #112]
+  94 0026 10BD     		pop	{r4, pc}
+  95              		.cfi_endproc
+  96              	.LFE10:
+  98              		.section	.text.mpu60x0_i2c_start_configure,"ax",%progbits
+  99              		.align	1
+ 100              		.global	mpu60x0_i2c_start_configure
+ 101              		.thumb
+ 102              		.thumb_func
+ 104              	mpu60x0_i2c_start_configure:
+ 105              	.LFB12:
+  58:peripherals/mpu60x0_i2c.c **** }
+  59:peripherals/mpu60x0_i2c.c **** 
+  60:peripherals/mpu60x0_i2c.c **** // Configuration function called once before normal use
+  61:peripherals/mpu60x0_i2c.c **** void mpu60x0_i2c_start_configure(struct Mpu60x0_I2c *mpu)
+  62:peripherals/mpu60x0_i2c.c **** {
+ 106              		.loc 1 62 0
+ 107              		.cfi_startproc
+ 108              		@ args = 0, pretend = 0, frame = 0
+ 109              		@ frame_needed = 0, uses_anonymous_args = 0
+ 110              		@ link register save eliminated.
+ 111              	.LVL9:
+  63:peripherals/mpu60x0_i2c.c ****   if (mpu->config.init_status == MPU60X0_CONF_UNINIT) {
+ 112              		.loc 1 63 0
+ 113 0000 90F85330 		ldrb	r3, [r0, #83]	@ zero_extendqisi2
+  62:peripherals/mpu60x0_i2c.c **** {
+ 114              		.loc 1 62 0
+ 115 0004 0146     		mov	r1, r0
+ 116              		.loc 1 63 0
+ 117 0006 7BB9     		cbnz	r3, .L3
+  64:peripherals/mpu60x0_i2c.c ****     mpu->config.init_status++;
+ 118              		.loc 1 64 0
+ 119 0008 0123     		movs	r3, #1
+ 120 000a 80F85330 		strb	r3, [r0, #83]
+  65:peripherals/mpu60x0_i2c.c ****     if (mpu->i2c_trans.status == I2CTransSuccess || mpu->i2c_trans.status == I2CTransDone) {
+ 121              		.loc 1 65 0
+ 122 000e 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 123 0012 022B     		cmp	r3, #2
+ 124 0014 03D0     		beq	.L6
+ 125              		.loc 1 65 0 is_stmt 0 discriminator 1
+ 126 0016 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 127 001a 042B     		cmp	r3, #4
+ 128 001c 04D1     		bne	.L3
+ 129              	.L6:
+  66:peripherals/mpu60x0_i2c.c ****       mpu60x0_send_config(mpu60x0_i2c_write_to_reg, (void *)mpu, &(mpu->config));
+ 130              		.loc 1 66 0 is_stmt 1
+ 131 001e 0348     		ldr	r0, .L12
+ 132              	.LVL10:
+ 133 0020 01F14C02 		add	r2, r1, #76
+ 134 0024 FFF7FEBF 		b	mpu60x0_send_config
+ 135              	.LVL11:
+ 136              	.L3:
+ 137 0028 7047     		bx	lr
+ 138              	.L13:
+ 139 002a 00BF     		.align	2
+ 140              	.L12:
+ 141 002c 00000000 		.word	mpu60x0_i2c_write_to_reg
+ 142              		.cfi_endproc
+ 143              	.LFE12:
+ 145              		.section	.text.mpu60x0_i2c_read,"ax",%progbits
+ 146              		.align	1
+ 147              		.global	mpu60x0_i2c_read
+ 148              		.thumb
+ 149              		.thumb_func
+ 151              	mpu60x0_i2c_read:
+ 152              	.LFB13:
+  67:peripherals/mpu60x0_i2c.c ****     }
+  68:peripherals/mpu60x0_i2c.c ****   }
+  69:peripherals/mpu60x0_i2c.c **** }
+  70:peripherals/mpu60x0_i2c.c **** 
+  71:peripherals/mpu60x0_i2c.c **** void mpu60x0_i2c_read(struct Mpu60x0_I2c *mpu)
+  72:peripherals/mpu60x0_i2c.c **** {
+ 153              		.loc 1 72 0
+ 154              		.cfi_startproc
+ 155              		@ args = 0, pretend = 0, frame = 0
+ 156              		@ frame_needed = 0, uses_anonymous_args = 0
+ 157              	.LVL12:
+ 158 0000 07B5     		push	{r0, r1, r2, lr}
+ 159              		.cfi_def_cfa_offset 16
+ 160              		.cfi_offset 0, -16
+ 161              		.cfi_offset 1, -12
+ 162              		.cfi_offset 2, -8
+ 163              		.cfi_offset 14, -4
+  73:peripherals/mpu60x0_i2c.c ****   if (mpu->config.initialized && mpu->i2c_trans.status == I2CTransDone) {
+ 164              		.loc 1 73 0
+ 165 0002 90F85430 		ldrb	r3, [r0, #84]	@ zero_extendqisi2
+  72:peripherals/mpu60x0_i2c.c **** {
+ 166              		.loc 1 72 0
+ 167 0006 0146     		mov	r1, r0
+ 168              		.loc 1 73 0
+ 169 0008 73B1     		cbz	r3, .L14
+ 170              		.loc 1 73 0 is_stmt 0 discriminator 1
+ 171 000a 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 172 000e 042B     		cmp	r3, #4
+ 173 0010 0AD1     		bne	.L14
+  74:peripherals/mpu60x0_i2c.c ****     /* set read bit and multiple byte bit, then address */
+  75:peripherals/mpu60x0_i2c.c ****     mpu->i2c_trans.buf[0] = MPU60X0_REG_INT_STATUS;
+ 174              		.loc 1 75 0 is_stmt 1
+ 175 0012 3A23     		movs	r3, #58
+ 176 0014 4372     		strb	r3, [r0, #9]
+  76:peripherals/mpu60x0_i2c.c ****     i2c_transceive(mpu->i2c_p, &(mpu->i2c_trans), mpu->i2c_trans.slave_addr, 1, mpu->config.nb_byte
+ 177              		.loc 1 76 0
+ 178 0016 90F85230 		ldrb	r3, [r0, #82]	@ zero_extendqisi2
+ 179 001a 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 180 001c 0093     		str	r3, [sp]
+ 181 001e 0068     		ldr	r0, [r0]
+ 182              	.LVL13:
+ 183 0020 0431     		adds	r1, r1, #4
+ 184              	.LVL14:
+ 185 0022 0123     		movs	r3, #1
+ 186 0024 FFF7FEFF 		bl	i2c_transceive
+ 187              	.LVL15:
+ 188              	.L14:
+  77:peripherals/mpu60x0_i2c.c ****   }
+  78:peripherals/mpu60x0_i2c.c **** }
+ 189              		.loc 1 78 0
+ 190 0028 03B0     		add	sp, sp, #12
+ 191              		@ sp needed
+ 192 002a 5DF804FB 		ldr	pc, [sp], #4
+ 193              		.cfi_endproc
+ 194              	.LFE13:
+ 196              		.section	.text.mpu60x0_i2c_event,"ax",%progbits
+ 197              		.align	1
+ 198              		.global	mpu60x0_i2c_event
+ 199              		.thumb
+ 200              		.thumb_func
+ 202              	mpu60x0_i2c_event:
+ 203              	.LFB14:
+  79:peripherals/mpu60x0_i2c.c **** 
+  80:peripherals/mpu60x0_i2c.c **** #define Int16FromBuf(_buf,_idx) ((int16_t)((_buf[_idx]<<8) | _buf[_idx+1]))
+  81:peripherals/mpu60x0_i2c.c **** 
+  82:peripherals/mpu60x0_i2c.c **** void mpu60x0_i2c_event(struct Mpu60x0_I2c *mpu)
+  83:peripherals/mpu60x0_i2c.c **** {
+ 204              		.loc 1 83 0
+ 205              		.cfi_startproc
+ 206              		@ args = 0, pretend = 0, frame = 0
+ 207              		@ frame_needed = 0, uses_anonymous_args = 0
+ 208              	.LVL16:
+ 209 0000 10B5     		push	{r4, lr}
+ 210              		.cfi_def_cfa_offset 8
+ 211              		.cfi_offset 4, -8
+ 212              		.cfi_offset 14, -4
+  84:peripherals/mpu60x0_i2c.c ****   if (mpu->config.initialized) {
+ 213              		.loc 1 84 0
+ 214 0002 90F85430 		ldrb	r3, [r0, #84]	@ zero_extendqisi2
+  83:peripherals/mpu60x0_i2c.c **** {
+ 215              		.loc 1 83 0
+ 216 0006 0446     		mov	r4, r0
+ 217              		.loc 1 84 0
+ 218 0008 002B     		cmp	r3, #0
+ 219 000a 4DD0     		beq	.L20
+  85:peripherals/mpu60x0_i2c.c ****     if (mpu->i2c_trans.status == I2CTransFailed) {
+ 220              		.loc 1 85 0
+ 221 000c 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 222 0010 032B     		cmp	r3, #3
+ 223 0012 62D0     		beq	.L47
+  86:peripherals/mpu60x0_i2c.c ****       mpu->i2c_trans.status = I2CTransDone;
+  87:peripherals/mpu60x0_i2c.c ****     } else if (mpu->i2c_trans.status == I2CTransSuccess) {
+ 224              		.loc 1 87 0
+ 225 0014 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 226 0018 022B     		cmp	r3, #2
+ 227 001a 61D1     		bne	.L19
+  88:peripherals/mpu60x0_i2c.c ****       // Successfull reading
+  89:peripherals/mpu60x0_i2c.c ****       if (bit_is_set(mpu->i2c_trans.buf[0], 0)) {
+ 228              		.loc 1 89 0
+ 229 001c 437A     		ldrb	r3, [r0, #9]	@ zero_extendqisi2
+ 230 001e DB07     		lsls	r3, r3, #31
+ 231 0020 5BD5     		bpl	.L47
+ 232              	.LBB2:
+  90:peripherals/mpu60x0_i2c.c ****         // new data
+  91:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.x = Int16FromBuf(mpu->i2c_trans.buf, 1);
+ 233              		.loc 1 91 0
+ 234 0022 827A     		ldrb	r2, [r0, #10]	@ zero_extendqisi2
+ 235 0024 C37A     		ldrb	r3, [r0, #11]	@ zero_extendqisi2
+  92:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.y = Int16FromBuf(mpu->i2c_trans.buf, 3);
+  93:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.z = Int16FromBuf(mpu->i2c_trans.buf, 5);
+  94:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.p = Int16FromBuf(mpu->i2c_trans.buf, 9);
+  95:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.q = Int16FromBuf(mpu->i2c_trans.buf, 11);
+  96:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.r = Int16FromBuf(mpu->i2c_trans.buf, 13);
+  97:peripherals/mpu60x0_i2c.c **** 
+  98:peripherals/mpu60x0_i2c.c ****         int16_t temp_raw = Int16FromBuf(mpu->i2c_trans.buf, 7);
+  99:peripherals/mpu60x0_i2c.c ****         mpu->temp = (float)temp_raw / 340.0f + 36.53f;
+ 236              		.loc 1 99 0
+ 237 0026 9FED2F7A 		flds	s14, .L48
+  91:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.x = Int16FromBuf(mpu->i2c_trans.buf, 1);
+ 238              		.loc 1 91 0
+ 239 002a 43EA0223 		orr	r3, r3, r2, lsl #8
+ 240 002e 8385     		strh	r3, [r0, #44]	@ movhi
+  92:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.y = Int16FromBuf(mpu->i2c_trans.buf, 3);
+ 241              		.loc 1 92 0
+ 242 0030 027B     		ldrb	r2, [r0, #12]	@ zero_extendqisi2
+ 243 0032 437B     		ldrb	r3, [r0, #13]	@ zero_extendqisi2
+ 244 0034 43EA0223 		orr	r3, r3, r2, lsl #8
+ 245 0038 C385     		strh	r3, [r0, #46]	@ movhi
+  93:peripherals/mpu60x0_i2c.c ****         mpu->data_accel.vect.z = Int16FromBuf(mpu->i2c_trans.buf, 5);
+ 246              		.loc 1 93 0
+ 247 003a 827B     		ldrb	r2, [r0, #14]	@ zero_extendqisi2
+ 248 003c C37B     		ldrb	r3, [r0, #15]	@ zero_extendqisi2
+ 249 003e 43EA0223 		orr	r3, r3, r2, lsl #8
+ 250 0042 0386     		strh	r3, [r0, #48]	@ movhi
+  94:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.p = Int16FromBuf(mpu->i2c_trans.buf, 9);
+ 251              		.loc 1 94 0
+ 252 0044 827C     		ldrb	r2, [r0, #18]	@ zero_extendqisi2
+ 253 0046 C37C     		ldrb	r3, [r0, #19]	@ zero_extendqisi2
+ 254 0048 43EA0223 		orr	r3, r3, r2, lsl #8
+ 255 004c 4386     		strh	r3, [r0, #50]	@ movhi
+  95:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.q = Int16FromBuf(mpu->i2c_trans.buf, 11);
+ 256              		.loc 1 95 0
+ 257 004e 027D     		ldrb	r2, [r0, #20]	@ zero_extendqisi2
+ 258 0050 437D     		ldrb	r3, [r0, #21]	@ zero_extendqisi2
+ 259 0052 43EA0223 		orr	r3, r3, r2, lsl #8
+ 260 0056 8386     		strh	r3, [r0, #52]	@ movhi
+  96:peripherals/mpu60x0_i2c.c ****         mpu->data_rates.rates.r = Int16FromBuf(mpu->i2c_trans.buf, 13);
+ 261              		.loc 1 96 0
+ 262 0058 827D     		ldrb	r2, [r0, #22]	@ zero_extendqisi2
+ 263 005a C37D     		ldrb	r3, [r0, #23]	@ zero_extendqisi2
+ 264 005c 43EA0223 		orr	r3, r3, r2, lsl #8
+ 265 0060 C386     		strh	r3, [r0, #54]	@ movhi
+  98:peripherals/mpu60x0_i2c.c ****         int16_t temp_raw = Int16FromBuf(mpu->i2c_trans.buf, 7);
+ 266              		.loc 1 98 0
+ 267 0062 027C     		ldrb	r2, [r0, #16]	@ zero_extendqisi2
+ 268 0064 437C     		ldrb	r3, [r0, #17]	@ zero_extendqisi2
+ 269              	.LVL17:
+ 270 0066 43EA0223 		orr	r3, r3, r2, lsl #8
+ 271              	.LVL18:
+ 272              		.loc 1 99 0
+ 273 006a 1BB2     		sxth	r3, r3
+ 274 006c 07EE903A 		fmsr	s15, r3	@ int
+ 275 0070 F8EEE77A 		fsitos	s15, s15
+ 100:peripherals/mpu60x0_i2c.c **** 
+ 101:peripherals/mpu60x0_i2c.c ****         // if we are reading slaves through the mpu, copy the ext_sens_data
+ 102:peripherals/mpu60x0_i2c.c ****         if ((mpu->config.i2c_bypass == FALSE) && (mpu->config.nb_slaves > 0)) {
+ 276              		.loc 1 102 0
+ 277 0074 90F85530 		ldrb	r3, [r0, #85]	@ zero_extendqisi2
+  99:peripherals/mpu60x0_i2c.c ****         mpu->temp = (float)temp_raw / 340.0f + 36.53f;
+ 278              		.loc 1 99 0
+ 279 0078 C7EE877A 		fdivs	s15, s15, s14
+ 280 007c 9FED1A7A 		flds	s14, .L48+4
+ 281 0080 77EE877A 		fadds	s15, s15, s14
+ 282 0084 C0ED0E7A 		fsts	s15, [r0, #56]
+ 283              		.loc 1 102 0
+ 284 0088 53B9     		cbnz	r3, .L25
+ 285              		.loc 1 102 0 is_stmt 0 discriminator 1
+ 286 008a 90F85630 		ldrb	r3, [r0, #86]	@ zero_extendqisi2
+ 287 008e 3BB1     		cbz	r3, .L25
+ 103:peripherals/mpu60x0_i2c.c ****           /* the buffer is volatile, since filled from ISR
+ 104:peripherals/mpu60x0_i2c.c ****            * but we know it's ok to use it here so we silence the warning
+ 105:peripherals/mpu60x0_i2c.c ****            */
+ 106:peripherals/mpu60x0_i2c.c **** #pragma GCC diagnostic push
+ 107:peripherals/mpu60x0_i2c.c **** #pragma GCC diagnostic ignored "-Wcast-qual"
+ 108:peripherals/mpu60x0_i2c.c ****           memcpy(mpu->data_ext, (uint8_t *) & (mpu->i2c_trans.buf[15]), mpu->config.nb_bytes - 15);
+ 288              		.loc 1 108 0 is_stmt 1
+ 289 0090 90F85220 		ldrb	r2, [r0, #82]	@ zero_extendqisi2
+ 290 0094 04F11801 		add	r1, r4, #24
+ 291 0098 3C30     		adds	r0, r0, #60
+ 292              	.LVL19:
+ 293 009a 0F3A     		subs	r2, r2, #15
+ 294 009c FFF7FEFF 		bl	memcpy
+ 295              	.LVL20:
+ 296              	.L25:
+ 109:peripherals/mpu60x0_i2c.c **** #pragma GCC diagnostic pop
+ 110:peripherals/mpu60x0_i2c.c ****         }
+ 111:peripherals/mpu60x0_i2c.c **** 
+ 112:peripherals/mpu60x0_i2c.c ****         mpu->data_available = TRUE;
+ 297              		.loc 1 112 0
+ 298 00a0 0123     		movs	r3, #1
+ 299 00a2 84F82A30 		strb	r3, [r4, #42]
+ 300 00a6 18E0     		b	.L47
+ 301              	.LVL21:
+ 302              	.L20:
+ 303              	.LBE2:
+ 113:peripherals/mpu60x0_i2c.c ****       }
+ 114:peripherals/mpu60x0_i2c.c ****       mpu->i2c_trans.status = I2CTransDone;
+ 115:peripherals/mpu60x0_i2c.c ****     }
+ 116:peripherals/mpu60x0_i2c.c ****   } else if (mpu->config.init_status != MPU60X0_CONF_UNINIT) { // Configuring but not yet initializ
+ 304              		.loc 1 116 0
+ 305 00a8 90F85320 		ldrb	r2, [r0, #83]	@ zero_extendqisi2
+ 306 00ac C2B1     		cbz	r2, .L19
+ 117:peripherals/mpu60x0_i2c.c ****     switch (mpu->i2c_trans.status) {
+ 307              		.loc 1 117 0
+ 308 00ae 90F82930 		ldrb	r3, [r0, #41]	@ zero_extendqisi2
+ 309 00b2 DBB2     		uxtb	r3, r3
+ 310 00b4 032B     		cmp	r3, #3
+ 311 00b6 04D0     		beq	.L27
+ 312 00b8 042B     		cmp	r3, #4
+ 313 00ba 05D0     		beq	.L28
+ 314 00bc 022B     		cmp	r3, #2
+ 315 00be 0FD1     		bne	.L19
+ 316 00c0 02E0     		b	.L28
+ 317              	.L27:
+ 118:peripherals/mpu60x0_i2c.c ****       case I2CTransFailed:
+ 119:peripherals/mpu60x0_i2c.c ****         mpu->config.init_status--; // Retry config (TODO max retry)
+ 318              		.loc 1 119 0
+ 319 00c2 013A     		subs	r2, r2, #1
+ 320 00c4 80F85320 		strb	r2, [r0, #83]
+ 321              	.L28:
+ 120:peripherals/mpu60x0_i2c.c ****       case I2CTransSuccess:
+ 121:peripherals/mpu60x0_i2c.c ****       case I2CTransDone:
+ 122:peripherals/mpu60x0_i2c.c ****         mpu60x0_send_config(mpu60x0_i2c_write_to_reg, (void *)mpu, &(mpu->config));
+ 322              		.loc 1 122 0
+ 323 00c8 0848     		ldr	r0, .L48+8
+ 324              	.LVL22:
+ 325 00ca 2146     		mov	r1, r4
+ 326 00cc 04F14C02 		add	r2, r4, #76
+ 327 00d0 FFF7FEFF 		bl	mpu60x0_send_config
+ 328              	.LVL23:
+ 123:peripherals/mpu60x0_i2c.c ****         if (mpu->config.initialized) {
+ 329              		.loc 1 123 0
+ 330 00d4 94F85430 		ldrb	r3, [r4, #84]	@ zero_extendqisi2
+ 331 00d8 13B1     		cbz	r3, .L19
+ 332              	.L47:
+ 124:peripherals/mpu60x0_i2c.c ****           mpu->i2c_trans.status = I2CTransDone;
+ 333              		.loc 1 124 0
+ 334 00da 0423     		movs	r3, #4
+ 335 00dc 84F82930 		strb	r3, [r4, #41]
+ 336              	.L19:
+ 337 00e0 10BD     		pop	{r4, pc}
+ 338              	.LVL24:
+ 339              	.L49:
+ 340 00e2 00BF     		.align	2
+ 341              	.L48:
+ 342 00e4 0000AA43 		.word	1135214592
+ 343 00e8 B81E1242 		.word	1108483768
+ 344 00ec 00000000 		.word	mpu60x0_i2c_write_to_reg
+ 345              		.cfi_endproc
+ 346              	.LFE14:
+ 348              		.section	.text.mpu60x0_configure_i2c_slaves,"ax",%progbits
+ 349              		.align	1
+ 350              		.global	mpu60x0_configure_i2c_slaves
+ 351              		.thumb
+ 352              		.thumb_func
+ 354              	mpu60x0_configure_i2c_slaves:
+ 355              	.LFB15:
+ 125:peripherals/mpu60x0_i2c.c ****         }
+ 126:peripherals/mpu60x0_i2c.c ****         break;
+ 127:peripherals/mpu60x0_i2c.c ****       default:
+ 128:peripherals/mpu60x0_i2c.c ****         break;
+ 129:peripherals/mpu60x0_i2c.c ****     }
+ 130:peripherals/mpu60x0_i2c.c ****   }
+ 131:peripherals/mpu60x0_i2c.c **** }
+ 132:peripherals/mpu60x0_i2c.c **** 
+ 133:peripherals/mpu60x0_i2c.c **** /** @todo: only one slave so far. */
+ 134:peripherals/mpu60x0_i2c.c **** bool_t mpu60x0_configure_i2c_slaves(Mpu60x0ConfigSet mpu_set, void *mpu)
+ 135:peripherals/mpu60x0_i2c.c **** {
+ 356              		.loc 1 135 0
+ 357              		.cfi_startproc
+ 358              		@ args = 0, pretend = 0, frame = 0
+ 359              		@ frame_needed = 0, uses_anonymous_args = 0
+ 360              	.LVL25:
+ 136:peripherals/mpu60x0_i2c.c ****   struct Mpu60x0_I2c *mpu_i2c = (struct Mpu60x0_I2c *)(mpu);
+ 137:peripherals/mpu60x0_i2c.c **** 
+ 138:peripherals/mpu60x0_i2c.c ****   if (mpu_i2c->slave_init_status == MPU60X0_I2C_CONF_UNINIT) {
+ 361              		.loc 1 138 0
+ 362 0000 91F87020 		ldrb	r2, [r1, #112]	@ zero_extendqisi2
+ 135:peripherals/mpu60x0_i2c.c **** {
+ 363              		.loc 1 135 0
+ 364 0004 38B5     		push	{r3, r4, r5, lr}
+ 365              		.cfi_def_cfa_offset 16
+ 366              		.cfi_offset 3, -16
+ 367              		.cfi_offset 4, -12
+ 368              		.cfi_offset 5, -8
+ 369              		.cfi_offset 14, -4
+ 135:peripherals/mpu60x0_i2c.c **** {
+ 370              		.loc 1 135 0
+ 371 0006 0346     		mov	r3, r0
+ 372 0008 0C46     		mov	r4, r1
+ 373              		.loc 1 138 0
+ 374 000a 12B9     		cbnz	r2, .L51
+ 139:peripherals/mpu60x0_i2c.c ****     mpu_i2c->slave_init_status++;
+ 375              		.loc 1 139 0
+ 376 000c 0122     		movs	r2, #1
+ 377 000e 81F87020 		strb	r2, [r1, #112]
+ 378              	.L51:
+ 140:peripherals/mpu60x0_i2c.c ****   }
+ 141:peripherals/mpu60x0_i2c.c **** 
+ 142:peripherals/mpu60x0_i2c.c ****   switch (mpu_i2c->slave_init_status) {
+ 379              		.loc 1 142 0
+ 380 0012 94F87020 		ldrb	r2, [r4, #112]	@ zero_extendqisi2
+ 381 0016 013A     		subs	r2, r2, #1
+ 382 0018 082A     		cmp	r2, #8
+ 383 001a 3ED8     		bhi	.L64
+ 384 001c DFE802F0 		tbb	[pc, r2]
+ 385              	.LVL26:
+ 386              	.L54:
+ 387 0020 07       		.byte	(.L53-.L54)/2
+ 388 0021 0A       		.byte	(.L55-.L54)/2
+ 389 0022 0E       		.byte	(.L56-.L54)/2
+ 390 0023 15       		.byte	(.L57-.L54)/2
+ 391 0024 24       		.byte	(.L58-.L54)/2
+ 392 0025 2B       		.byte	(.L59-.L54)/2
+ 393 0026 30       		.byte	(.L60-.L54)/2
+ 394 0027 34       		.byte	(.L61-.L54)/2
+ 395 0028 05       		.byte	(.L62-.L54)/2
+ 396 0029 00       		.p2align 1
+ 397              	.L62:
+ 143:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_MST_DIS:
+ 144:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_USER_CTRL, 0);
+ 145:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 146:peripherals/mpu60x0_i2c.c ****       break;
+ 147:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_BYPASS_EN:
+ 148:peripherals/mpu60x0_i2c.c ****       /* switch to I2C passthrough */
+ 149:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (1 << 1));
+ 150:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 151:peripherals/mpu60x0_i2c.c ****       break;
+ 152:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_SLAVES_CONFIGURE:
+ 153:peripherals/mpu60x0_i2c.c ****       /* configure each slave. TODO: currently only one */
+ 154:peripherals/mpu60x0_i2c.c ****       if (mpu_i2c->config.slaves[0].configure(mpu_set, mpu)) {
+ 155:peripherals/mpu60x0_i2c.c ****         mpu_i2c->slave_init_status++;
+ 156:peripherals/mpu60x0_i2c.c ****       }
+ 157:peripherals/mpu60x0_i2c.c ****       break;
+ 158:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_BYPASS_DIS:
+ 159:peripherals/mpu60x0_i2c.c ****       if (mpu_i2c->config.i2c_bypass) {
+ 160:peripherals/mpu60x0_i2c.c ****         /* if bypassing I2C skip MPU I2C master setup */
+ 161:peripherals/mpu60x0_i2c.c ****         mpu_i2c->slave_init_status = MPU60X0_I2C_CONF_DONE;
+ 162:peripherals/mpu60x0_i2c.c ****       } else {
+ 163:peripherals/mpu60x0_i2c.c ****         /* disable I2C passthrough again */
+ 164:peripherals/mpu60x0_i2c.c ****         mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (0 << 1));
+ 165:peripherals/mpu60x0_i2c.c ****         mpu_i2c->slave_init_status++;
+ 166:peripherals/mpu60x0_i2c.c ****       }
+ 167:peripherals/mpu60x0_i2c.c ****       break;
+ 168:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_MST_CLK:
+ 169:peripherals/mpu60x0_i2c.c ****       /* configure MPU I2C master clock and stop/start between slave reads */
+ 170:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_MST_CTRL,
+ 171:peripherals/mpu60x0_i2c.c ****               ((1 << 4) | mpu_i2c->config.i2c_mst_clk));
+ 172:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 173:peripherals/mpu60x0_i2c.c ****       break;
+ 174:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_MST_DELAY:
+ 175:peripherals/mpu60x0_i2c.c ****       /* Set I2C slaves delayed sample rate */
+ 176:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_MST_DELAY, mpu_i2c->config.i2c_mst_delay);
+ 177:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 178:peripherals/mpu60x0_i2c.c ****       break;
+ 179:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_SMPLRT:
+ 180:peripherals/mpu60x0_i2c.c ****       /* I2C slave0 sample rate/2 = 100/2 = 50Hz */
+ 181:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_SLV4_CTRL, 0);
+ 182:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 183:peripherals/mpu60x0_i2c.c ****       break;
+ 184:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_I2C_MST_EN:
+ 185:peripherals/mpu60x0_i2c.c ****       /* enable internal I2C master */
+ 186:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_USER_CTRL, (1 << MPU60X0_I2C_MST_EN));
+ 187:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 188:peripherals/mpu60x0_i2c.c ****       break;
+ 189:peripherals/mpu60x0_i2c.c ****     case MPU60X0_I2C_CONF_DONE:
+ 190:peripherals/mpu60x0_i2c.c ****       return TRUE;
+ 398              		.loc 1 190 0
+ 399 002a 0125     		movs	r5, #1
+ 400 002c 36E0     		b	.L52
+ 401              	.L53:
+ 144:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_USER_CTRL, 0);
+ 402              		.loc 1 144 0
+ 403 002e 2046     		mov	r0, r4
+ 404              	.LVL27:
+ 405 0030 6A21     		movs	r1, #106
+ 406 0032 27E0     		b	.L71
+ 407              	.LVL28:
+ 408              	.L55:
+ 149:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (1 << 1));
+ 409              		.loc 1 149 0
+ 410 0034 2046     		mov	r0, r4
+ 411              	.LVL29:
+ 412 0036 3721     		movs	r1, #55
+ 413 0038 0222     		movs	r2, #2
+ 414 003a 28E0     		b	.L68
+ 415              	.LVL30:
+ 416              	.L56:
+ 154:peripherals/mpu60x0_i2c.c ****       if (mpu_i2c->config.slaves[0].configure(mpu_set, mpu)) {
+ 417              		.loc 1 154 0
+ 418 003c A26D     		ldr	r2, [r4, #88]
+ 419 003e 1846     		mov	r0, r3
+ 420              	.LVL31:
+ 421 0040 2146     		mov	r1, r4
+ 422 0042 9047     		blx	r2
+ 423              	.LVL32:
+ 424 0044 0546     		mov	r5, r0
+ 425 0046 48B3     		cbz	r0, .L52
+ 426 0048 22E0     		b	.L69
+ 427              	.LVL33:
+ 428              	.L57:
+ 159:peripherals/mpu60x0_i2c.c ****       if (mpu_i2c->config.i2c_bypass) {
+ 429              		.loc 1 159 0
+ 430 004a 94F85550 		ldrb	r5, [r4, #85]	@ zero_extendqisi2
+ 431 004e 0DB1     		cbz	r5, .L63
+ 161:peripherals/mpu60x0_i2c.c ****         mpu_i2c->slave_init_status = MPU60X0_I2C_CONF_DONE;
+ 432              		.loc 1 161 0
+ 433 0050 0923     		movs	r3, #9
+ 434 0052 20E0     		b	.L70
+ 435              	.L63:
+ 164:peripherals/mpu60x0_i2c.c ****         mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (0 << 1));
+ 436              		.loc 1 164 0
+ 437 0054 2046     		mov	r0, r4
+ 438              	.LVL34:
+ 439 0056 3721     		movs	r1, #55
+ 440 0058 2A46     		mov	r2, r5
+ 441 005a 9847     		blx	r3
+ 442              	.LVL35:
+ 165:peripherals/mpu60x0_i2c.c ****         mpu_i2c->slave_init_status++;
+ 443              		.loc 1 165 0
+ 444 005c 94F87030 		ldrb	r3, [r4, #112]	@ zero_extendqisi2
+ 445 0060 0133     		adds	r3, r3, #1
+ 446 0062 84F87030 		strb	r3, [r4, #112]
+ 447 0066 19E0     		b	.L52
+ 448              	.LVL36:
+ 449              	.L58:
+ 170:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_MST_CTRL,
+ 450              		.loc 1 170 0
+ 451 0068 94F86C20 		ldrb	r2, [r4, #108]	@ zero_extendqisi2
+ 452 006c 2046     		mov	r0, r4
+ 453              	.LVL37:
+ 454 006e 2421     		movs	r1, #36
+ 455 0070 42F01002 		orr	r2, r2, #16
+ 456 0074 0BE0     		b	.L68
+ 457              	.LVL38:
+ 458              	.L59:
+ 176:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_MST_DELAY, mpu_i2c->config.i2c_mst_delay);
+ 459              		.loc 1 176 0
+ 460 0076 2046     		mov	r0, r4
+ 461              	.LVL39:
+ 462 0078 6721     		movs	r1, #103
+ 463 007a 94F86D20 		ldrb	r2, [r4, #109]	@ zero_extendqisi2
+ 464 007e 06E0     		b	.L68
+ 465              	.LVL40:
+ 466              	.L60:
+ 181:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_I2C_SLV4_CTRL, 0);
+ 467              		.loc 1 181 0
+ 468 0080 2046     		mov	r0, r4
+ 469              	.LVL41:
+ 470 0082 3421     		movs	r1, #52
+ 471              	.LVL42:
+ 472              	.L71:
+ 473 0084 0022     		movs	r2, #0
+ 474 0086 02E0     		b	.L68
+ 475              	.LVL43:
+ 476              	.L61:
+ 186:peripherals/mpu60x0_i2c.c ****       mpu_set(mpu, MPU60X0_REG_USER_CTRL, (1 << MPU60X0_I2C_MST_EN));
+ 477              		.loc 1 186 0
+ 478 0088 2046     		mov	r0, r4
+ 479              	.LVL44:
+ 480 008a 6A21     		movs	r1, #106
+ 481 008c 2022     		movs	r2, #32
+ 482              	.LVL45:
+ 483              	.L68:
+ 484 008e 9847     		blx	r3
+ 485              	.LVL46:
+ 486              	.L69:
+ 187:peripherals/mpu60x0_i2c.c ****       mpu_i2c->slave_init_status++;
+ 487              		.loc 1 187 0
+ 488 0090 94F87030 		ldrb	r3, [r4, #112]	@ zero_extendqisi2
+ 489 0094 0133     		adds	r3, r3, #1
+ 490              	.L70:
+ 491 0096 84F87030 		strb	r3, [r4, #112]
+ 492              	.L64:
+ 191:peripherals/mpu60x0_i2c.c ****     default:
+ 192:peripherals/mpu60x0_i2c.c ****       break;
+ 193:peripherals/mpu60x0_i2c.c ****   }
+ 194:peripherals/mpu60x0_i2c.c ****   return FALSE;
+ 493              		.loc 1 194 0
+ 494 009a 0025     		movs	r5, #0
+ 495              	.L52:
+ 195:peripherals/mpu60x0_i2c.c **** }
+ 496              		.loc 1 195 0
+ 497 009c 2846     		mov	r0, r5
+ 498 009e 38BD     		pop	{r3, r4, r5, pc}
+ 499              		.cfi_endproc
+ 500              	.LFE15:
+ 502              		.text
+ 503              	.Letext0:
+ 504              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 505              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 506              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 507              		.file 5 "./math/pprz_algebra_int.h"
+ 508              		.file 6 "./mcu_periph/i2c.h"
+ 509              		.file 7 "./peripherals/mpu60x0_regs.h"
+ 510              		.file 8 "./peripherals/mpu60x0.h"
+ 511              		.file 9 "./peripherals/mpu60x0_i2c.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 mpu60x0_i2c.c
+     /tmp/cc0gldcp.s:20     .text.mpu60x0_i2c_write_to_reg:00000000 $t
+     /tmp/cc0gldcp.s:24     .text.mpu60x0_i2c_write_to_reg:00000000 mpu60x0_i2c_write_to_reg
+     /tmp/cc0gldcp.s:54     .text.mpu60x0_i2c_init:00000000 $t
+     /tmp/cc0gldcp.s:59     .text.mpu60x0_i2c_init:00000000 mpu60x0_i2c_init
+     /tmp/cc0gldcp.s:99     .text.mpu60x0_i2c_start_configure:00000000 $t
+     /tmp/cc0gldcp.s:104    .text.mpu60x0_i2c_start_configure:00000000 mpu60x0_i2c_start_configure
+     /tmp/cc0gldcp.s:141    .text.mpu60x0_i2c_start_configure:0000002c $d
+     /tmp/cc0gldcp.s:146    .text.mpu60x0_i2c_read:00000000 $t
+     /tmp/cc0gldcp.s:151    .text.mpu60x0_i2c_read:00000000 mpu60x0_i2c_read
+     /tmp/cc0gldcp.s:197    .text.mpu60x0_i2c_event:00000000 $t
+     /tmp/cc0gldcp.s:202    .text.mpu60x0_i2c_event:00000000 mpu60x0_i2c_event
+     /tmp/cc0gldcp.s:342    .text.mpu60x0_i2c_event:000000e4 $d
+     /tmp/cc0gldcp.s:349    .text.mpu60x0_configure_i2c_slaves:00000000 $t
+     /tmp/cc0gldcp.s:354    .text.mpu60x0_configure_i2c_slaves:00000000 mpu60x0_configure_i2c_slaves
+     /tmp/cc0gldcp.s:387    .text.mpu60x0_configure_i2c_slaves:00000020 $d
+                     .debug_frame:00000010 $d
+     /tmp/cc0gldcp.s:396    .text.mpu60x0_configure_i2c_slaves:00000029 $d
+     /tmp/cc0gldcp.s:396    .text.mpu60x0_configure_i2c_slaves:0000002a $t
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.d7c95ef3b7385a54cace86b9fe5b1585
+                           .group:00000000 wm4.mpu60x0_regs.h.29.354741a377e41e863a6f15c8045a1631
+                           .group:00000000 wm4.mpu60x0.h.37.d6af4975dcfadd714415f3475e68a5c4
+
+UNDEFINED SYMBOLS
+i2c_transmit
+mpu60x0_set_default_config
+mpu60x0_send_config
+i2c_transceive
+memcpy

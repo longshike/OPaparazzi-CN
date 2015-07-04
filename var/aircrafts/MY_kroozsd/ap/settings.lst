@@ -1,0 +1,244 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"settings.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.settings_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	settings_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	settings_init:
+  26              	.LFB98:
+  27              		.file 1 "subsystems/settings.c"
+   1:subsystems/settings.c **** /*
+   2:subsystems/settings.c ****  * Copyright (C) 2009-2014 The Paparazzi Team
+   3:subsystems/settings.c ****  *
+   4:subsystems/settings.c ****  * This file is part of paparazzi.
+   5:subsystems/settings.c ****  *
+   6:subsystems/settings.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/settings.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/settings.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/settings.c ****  * any later version.
+  10:subsystems/settings.c ****  *
+  11:subsystems/settings.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/settings.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/settings.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/settings.c ****  * GNU General Public License for more details.
+  15:subsystems/settings.c ****  *
+  16:subsystems/settings.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/settings.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/settings.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/settings.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/settings.c ****  */
+  21:subsystems/settings.c **** 
+  22:subsystems/settings.c **** /**
+  23:subsystems/settings.c ****  * @file subsystems/settings.c
+  24:subsystems/settings.c ****  * Persistent settings interface.
+  25:subsystems/settings.c ****  *
+  26:subsystems/settings.c ****  */
+  27:subsystems/settings.c **** 
+  28:subsystems/settings.c **** #include "subsystems/settings.h"
+  29:subsystems/settings.c **** #include "generated/settings.h"
+  30:subsystems/settings.c **** 
+  31:subsystems/settings.c **** struct PersistentSettings pers_settings;
+  32:subsystems/settings.c **** 
+  33:subsystems/settings.c **** /** flag for setting feedback.
+  34:subsystems/settings.c ****  * if TRUE, was stored sucessfully.
+  35:subsystems/settings.c ****  * Also settings still need a variable,
+  36:subsystems/settings.c ****  * pure function call not possible yet.
+  37:subsystems/settings.c ****  */
+  38:subsystems/settings.c **** bool_t settings_store_flag;
+  39:subsystems/settings.c **** 
+  40:subsystems/settings.c **** 
+  41:subsystems/settings.c **** void settings_init(void)
+  42:subsystems/settings.c **** {
+  28              		.loc 1 42 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33 0000 7047     		bx	lr
+  34              		.cfi_endproc
+  35              	.LFE98:
+  37              		.section	.text.settings_store,"ax",%progbits
+  38              		.align	1
+  39              		.global	settings_store
+  40              		.thumb
+  41              		.thumb_func
+  43              	settings_store:
+  44              	.LFB99:
+  43:subsystems/settings.c **** #if USE_PERSISTENT_SETTINGS
+  44:subsystems/settings.c ****   if (persistent_read((void *)&pers_settings, sizeof(struct PersistentSettings))) {
+  45:subsystems/settings.c ****     return;  // return -1 ?
+  46:subsystems/settings.c ****   }
+  47:subsystems/settings.c ****   /* from generated/settings.h */
+  48:subsystems/settings.c ****   persistent_settings_load();
+  49:subsystems/settings.c **** #endif
+  50:subsystems/settings.c **** }
+  51:subsystems/settings.c **** 
+  52:subsystems/settings.c **** /** store settings marked as persistent to flash
+  53:subsystems/settings.c ****  * @return 0 on success
+  54:subsystems/settings.c ****  */
+  55:subsystems/settings.c **** int32_t settings_store(void)
+  56:subsystems/settings.c **** {
+  45              		.loc 1 56 0
+  46              		.cfi_startproc
+  47              		@ args = 0, pretend = 0, frame = 0
+  48              		@ frame_needed = 0, uses_anonymous_args = 0
+  49              		@ link register save eliminated.
+  57:subsystems/settings.c **** #if USE_PERSISTENT_SETTINGS
+  58:subsystems/settings.c ****   if (settings_store_flag) {
+  59:subsystems/settings.c ****     /* from generated/settings.h */
+  60:subsystems/settings.c ****     persistent_settings_store();
+  61:subsystems/settings.c ****     if (!persistent_write((void *)&pers_settings, sizeof(struct PersistentSettings))) {
+  62:subsystems/settings.c ****       /* persistent write was successful */
+  63:subsystems/settings.c ****       settings_store_flag = TRUE;
+  64:subsystems/settings.c ****       return 0;
+  65:subsystems/settings.c ****     }
+  66:subsystems/settings.c ****   }
+  67:subsystems/settings.c **** #endif
+  68:subsystems/settings.c ****   settings_store_flag = FALSE;
+  50              		.loc 1 68 0
+  51 0000 024B     		ldr	r3, .L3
+  52 0002 0022     		movs	r2, #0
+  53 0004 1A70     		strb	r2, [r3]
+  69:subsystems/settings.c ****   return -1;
+  70:subsystems/settings.c **** }
+  54              		.loc 1 70 0
+  55 0006 4FF0FF30 		mov	r0, #-1
+  56 000a 7047     		bx	lr
+  57              	.L4:
+  58              		.align	2
+  59              	.L3:
+  60 000c 00000000 		.word	.LANCHOR0
+  61              		.cfi_endproc
+  62              	.LFE99:
+  64              		.global	settings_store_flag
+  65              		.global	pers_settings
+  66              		.section	.bss.settings_store_flag,"aw",%nobits
+  67              		.set	.LANCHOR0,. + 0
+  70              	settings_store_flag:
+  71 0000 00       		.space	1
+  72              		.section	.bss.pers_settings,"aw",%nobits
+  75              	pers_settings:
+  76              		.text
+  77              	.Letext0:
+  78              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+  79              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+  80              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+  81              		.file 5 "modules/air_data/air_data.h"
+  82              		.file 6 "./mcu_periph/link_device.h"
+  83              		.file 7 "modules/gps/gps_ubx_ucenter.h"
+  84              		.file 8 "./math/pprz_algebra_int.h"
+  85              		.file 9 "./firmwares/rotorcraft/guidance/guidance_h_ref.h"
+  86              		.file 10 "./math/pprz_geodetic_int.h"
+  87              		.file 11 "./math/pprz_algebra_float.h"
+  88              		.file 12 "firmwares/rotorcraft/stabilization/stabilization_attitude_common_int.h"
+  89              		.file 13 "./mcu_periph/sys_time.h"
+  90              		.file 14 "./mcu_periph/uart.h"
+  91              		.file 15 "./subsystems/gps/gps_ubx.h"
+  92              		.file 16 "./subsystems/gps.h"
+  93              		.file 17 "./math/pprz_orientation_conversion.h"
+  94              		.file 18 "./subsystems/ahrs/ahrs_int_cmpl_quat.h"
+  95              		.file 19 "/home/lsk/paparazzi/var/aircrafts/kroozsd_lsk/ap/generated/periodic_telemetry.h"
+  96              		.file 20 "firmwares/rotorcraft/guidance/guidance_h.h"
+  97              		.file 21 "firmwares/rotorcraft/guidance/guidance_v.h"
+  98              		.file 22 "firmwares/rotorcraft/navigation.h"
+  99              		.file 23 "firmwares/rotorcraft/stabilization/stabilization_rate.h"
+ 100              		.file 24 "/home/lsk/paparazzi/var/aircrafts/kroozsd_lsk/ap/generated/modules.h"
+ 101              		.file 25 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 102              		.file 26 "/home/lsk/paparazzi/var/aircrafts/kroozsd_lsk/ap/generated/settings.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 settings.c
+     /tmp/ccv9Od5i.s:20     .text.settings_init:00000000 $t
+     /tmp/ccv9Od5i.s:25     .text.settings_init:00000000 settings_init
+     /tmp/ccv9Od5i.s:38     .text.settings_store:00000000 $t
+     /tmp/ccv9Od5i.s:43     .text.settings_store:00000000 settings_store
+     /tmp/ccv9Od5i.s:60     .text.settings_store:0000000c $d
+     /tmp/ccv9Od5i.s:70     .bss.settings_store_flag:00000000 settings_store_flag
+     /tmp/ccv9Od5i.s:75     .bss.pers_settings:00000000 pers_settings
+     /tmp/ccv9Od5i.s:71     .bss.settings_store_flag:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.settings.h.5.5877f558a7c62e845a89616ec72f9a96
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.periodic_telemetry.h.11.45a44616e39ae884c5a68828f6bf143a
+                           .group:00000000 wm4.gps_ubx_ucenter.h.29.30a3f1ed020dbc7085e412c29746d829
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.guidance_h_ref.h.28.02975291fcd9050282c105dc881ca473
+                           .group:00000000 wm4.guidance_h.h.52.9fa60ffd20b98f37d2a6446e3103ac47
+                           .group:00000000 wm4.guidance_v_ref.h.29.0602a27d4bd3b3735125d0ae2d060884
+                           .group:00000000 wm4.guidance_v_adapt.h.31.27bb7e62f811df116277369fe7cc10cb
+                           .group:00000000 wm4.guidance_v.h.35.a56f97080507d26c60b16012b7fd8373
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.waypoints.h.33.b7269a35eabfa0f882237a6392dba465
+                           .group:00000000 wm4.common_flight_plan.h.28.998f628cac1ef266b3e88de20c1aaea2
+                           .group:00000000 wm4.navigation.h.37.11a5e304c9f5272e40689ee17cc5173b
+                           .group:00000000 wm4.sys_time.h.31.454ffebb4f6baf6e87ab8a60104a5808
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.gps.h.41.79d1c69e44dd427f855100ff8e932fbe
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+                           .group:00000000 wm4.modules.h.5.be642dc363672736d1d1e45a75aad0cf
+                           .group:00000000 wm4.pprz_algebra_double.h.32.ffddb69f4b2468d251e675e232b5bba1
+                           .group:00000000 wm4.modules.h.24.27c8342510f0f30e64a55f4e4778474a
+                           .group:00000000 wm4.settings.h.21.5fa3cec16ab65f0d772e393c400933bf
+
+NO UNDEFINED SYMBOLS

@@ -1,0 +1,491 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"guidance_v_adapt.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.gv_adapt_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	gv_adapt_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	gv_adapt_init:
+  26              	.LFB9:
+  27              		.file 1 "firmwares/rotorcraft/guidance/guidance_v_adapt.c"
+   1:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /*
+   2:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * Copyright (C) 2009-2013 The Paparazzi Team
+   3:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *
+   4:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * This file is part of paparazzi.
+   5:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *
+   6:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * it under the terms of the GNU General Public License as published by
+   8:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * any later version.
+  10:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *
+  11:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * GNU General Public License for more details.
+  15:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *
+  16:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * You should have received a copy of the GNU General Public License
+  17:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * Boston, MA 02111-1307, USA.
+  20:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  21:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  22:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** @file firmwares/rotorcraft/guidance/guidance_v_adapt.c
+  23:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  Adaptation block of the vertical guidance.
+  24:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *
+  25:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  This is a dimension one kalman filter estimating
+  26:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  the ratio of vertical acceleration over thrust command ( ~ inverse of the mass )
+  27:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  needed by the invert dynamic model to produce a nominal command.
+  28:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  29:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  30:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #include "firmwares/rotorcraft/guidance/guidance_v_adapt.h"
+  31:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #include "paparazzi.h"
+  32:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #include "math/pprz_algebra_int.h"
+  33:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #include "generated/airframe.h"
+  34:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  35:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  36:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Initial hover throttle as factor of MAX_PPRZ.
+  37:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  Should be a value between #GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE and
+  38:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  #GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE.
+  39:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  It is better to start with low thrust and let it rise as the adaptive filter
+  40:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  finds the vehicle needs more thrust.
+  41:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  42:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_INITIAL_HOVER_THROTTLE
+  43:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_INITIAL_HOVER_THROTTLE 0.3
+  44:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  45:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** PRINT_CONFIG_VAR(GUIDANCE_V_ADAPT_INITIAL_HOVER_THROTTLE)
+  46:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  47:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Minimum hover throttle as factor of MAX_PPRZ.
+  48:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  With the default of 0.2 the nominal hover throttle will
+  49:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  never go lower than 20%.
+  50:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  51:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE
+  52:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE 0.2
+  53:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  54:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** PRINT_CONFIG_VAR(GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE)
+  55:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  56:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Maximum hover throttle as factor of MAX_PPRZ.
+  57:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  With the default of 0.75 the nominal hover throttle will
+  58:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  never go over 75% of max throttle.
+  59:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  60:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE
+  61:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE 0.75
+  62:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  63:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** PRINT_CONFIG_VAR(GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE)
+  64:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  65:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Adapt noise factor.
+  66:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  Smaller values will make the filter to adapt faster.
+  67:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  Bigger values (slower adaptation) make the filter more robust to external pertubations.
+  68:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  Factor should always be >0
+  69:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  70:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_NOISE_FACTOR
+  71:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_NOISE_FACTOR 1.0
+  72:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  73:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  74:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  75:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Filter is not fed if accel values are more than +/- MAX_ACCEL.
+  76:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  MAX_ACCEL is a positive value in m/s^2
+  77:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  78:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_MAX_ACCEL
+  79:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_MAX_ACCEL 4.0
+  80:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  81:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  82:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Filter is not fed if command values are out of a % of 0/MAX_PPRZ.
+  83:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  *  MAX_CMD and MIN_CMD must be between 0 and 1 with MIN_CMD < MAX_CMD
+  84:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+  85:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_MAX_CMD
+  86:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_MAX_CMD 0.9
+  87:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  88:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GUIDANCE_V_ADAPT_MIN_CMD
+  89:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GUIDANCE_V_ADAPT_MIN_CMD 0.1
+  90:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+  91:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  92:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  93:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  94:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** int32_t gv_adapt_X;
+  95:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** int32_t gv_adapt_P;
+  96:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** int32_t gv_adapt_Xmeas;
+  97:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+  98:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /* System  noises */
+  99:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #ifndef GV_ADAPT_SYS_NOISE_F
+ 100:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_SYS_NOISE_F 0.00005
+ 101:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #endif
+ 102:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_SYS_NOISE  BFP_OF_REAL(GV_ADAPT_SYS_NOISE_F, GV_ADAPT_P_FRAC)
+ 103:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 104:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /* Measuremement noises */
+ 105:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_MEAS_NOISE_HOVER_F (50.0*GUIDANCE_V_ADAPT_NOISE_FACTOR)
+ 106:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_MEAS_NOISE_HOVER BFP_OF_REAL(GV_ADAPT_MEAS_NOISE_HOVER_F, GV_ADAPT_P_FRAC)
+ 107:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_MEAS_NOISE_OF_ZD (100.0*GUIDANCE_V_ADAPT_NOISE_FACTOR)
+ 108:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 109:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /* Initial Covariance    */
+ 110:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define GV_ADAPT_P0_F 0.1
+ 111:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** static const int32_t gv_adapt_P0 = BFP_OF_REAL(GV_ADAPT_P0_F, GV_ADAPT_P_FRAC);
+ 112:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** static const int32_t gv_adapt_X0 = BFP_OF_REAL(9.81, GV_ADAPT_X_FRAC) /
+ 113:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****                                    (GUIDANCE_V_ADAPT_INITIAL_HOVER_THROTTLE *MAX_PPRZ);
+ 114:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 115:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** void gv_adapt_init(void)
+ 116:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** {
+  28              		.loc 1 116 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+ 117:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_X = gv_adapt_X0;
+  33              		.loc 1 117 0
+  34 0000 044B     		ldr	r3, .L2
+  35 0002 4DF63B72 		movw	r2, #57147
+  36 0006 1A60     		str	r2, [r3]
+ 118:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P = gv_adapt_P0;
+  37              		.loc 1 118 0
+  38 0008 034B     		ldr	r3, .L2+4
+  39 000a 46F26662 		movw	r2, #26214
+  40 000e 1A60     		str	r2, [r3]
+  41 0010 7047     		bx	lr
+  42              	.L3:
+  43 0012 00BF     		.align	2
+  44              	.L2:
+  45 0014 00000000 		.word	.LANCHOR0
+  46 0018 00000000 		.word	.LANCHOR1
+  47              		.cfi_endproc
+  48              	.LFE9:
+  50              		.global	__aeabi_i2d
+  51              		.global	__aeabi_dadd
+  52              		.global	__aeabi_d2iz
+  53              		.global	__aeabi_dmul
+  54              		.section	.text.gv_adapt_run,"ax",%progbits
+  55              		.align	1
+  56              		.global	gv_adapt_run
+  57              		.thumb
+  58              		.thumb_func
+  60              	gv_adapt_run:
+  61              	.LFB10:
+ 119:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** }
+ 120:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 121:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** #define K_FRAC 12
+ 122:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 123:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** /** Adaptation function.
+ 124:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * @param zdd_meas        vert accel measurement in m/s^2 with #INT32_ACCEL_FRAC
+ 125:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * @param thrust_applied  controller input [0 : MAX_PPRZ]
+ 126:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  * @param zd_ref          vertical speed reference in m/s with #INT32_SPEED_FRAC
+ 127:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****  */
+ 128:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** void gv_adapt_run(int32_t zdd_meas, int32_t thrust_applied, int32_t zd_ref)
+ 129:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** {
+  62              		.loc 1 129 0
+  63              		.cfi_startproc
+  64              		@ args = 0, pretend = 0, frame = 8
+  65              		@ frame_needed = 0, uses_anonymous_args = 0
+  66              	.LVL0:
+ 130:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 131:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   static const int32_t gv_adapt_min_cmd = GUIDANCE_V_ADAPT_MIN_CMD * MAX_PPRZ;
+ 132:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   static const int32_t gv_adapt_max_cmd = GUIDANCE_V_ADAPT_MAX_CMD * MAX_PPRZ;
+ 133:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   static const int32_t gv_adapt_max_accel = ACCEL_BFP_OF_REAL(GUIDANCE_V_ADAPT_MAX_ACCEL);
+ 134:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 135:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Update only if accel and commands are in a valid range */
+ 136:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* This also ensures we don't divide by zero */
+ 137:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   if (thrust_applied < gv_adapt_min_cmd || thrust_applied > gv_adapt_max_cmd
+  67              		.loc 1 137 0
+  68 0000 A1F57073 		sub	r3, r1, #960
+  69 0004 B3F5F05F 		cmp	r3, #7680
+ 129:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** {
+  70              		.loc 1 129 0
+  71 0008 2DE9F74F 		push	{r0, r1, r2, r4, r5, r6, r7, r8, r9, r10, fp, lr}
+  72              		.cfi_def_cfa_offset 48
+  73              		.cfi_offset 0, -48
+  74              		.cfi_offset 1, -44
+  75              		.cfi_offset 2, -40
+  76              		.cfi_offset 4, -36
+  77              		.cfi_offset 5, -32
+  78              		.cfi_offset 6, -28
+  79              		.cfi_offset 7, -24
+  80              		.cfi_offset 8, -20
+  81              		.cfi_offset 9, -16
+  82              		.cfi_offset 10, -12
+  83              		.cfi_offset 11, -8
+  84              		.cfi_offset 14, -4
+ 129:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** {
+  85              		.loc 1 129 0
+  86 000c 8246     		mov	r10, r0
+  87 000e 0C46     		mov	r4, r1
+  88 0010 9146     		mov	r9, r2
+  89              		.loc 1 137 0
+  90 0012 64D8     		bhi	.L4
+ 138:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****       || zdd_meas < -gv_adapt_max_accel || zdd_meas > gv_adapt_max_accel) {
+  91              		.loc 1 138 0 discriminator 1
+  92 0014 00F58053 		add	r3, r0, #4096
+  93 0018 B3F5005F 		cmp	r3, #8192
+  94 001c 5FD8     		bhi	.L4
+ 139:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     return;
+ 140:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   }
+ 141:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 142:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* We don't propagate state, it's constant !       */
+ 143:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* We propagate our covariance                     */
+ 144:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P =  gv_adapt_P + GV_ADAPT_SYS_NOISE;
+  95              		.loc 1 144 0
+  96 001e 344D     		ldr	r5, .L15+8
+ 145:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 146:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Compute our measurement. If zdd_meas is in the range +/-5g, meas is less than 30 bits */
+ 147:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   const int32_t g_m_zdd = ((int32_t)BFP_OF_REAL(9.81,
+ 148:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****                            INT32_ACCEL_FRAC) - zdd_meas) << (GV_ADAPT_X_FRAC - INT32_ACCEL_FRAC);
+ 149:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   if (g_m_zdd > 0) {
+ 150:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_Xmeas = (g_m_zdd + (thrust_applied >> 1)) / thrust_applied;
+ 151:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   } else {
+ 152:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_Xmeas = (g_m_zdd - (thrust_applied >> 1)) / thrust_applied;
+ 153:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   }
+ 154:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 155:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Compute a residual */
+ 156:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t residual = gv_adapt_Xmeas - gv_adapt_X;
+  97              		.loc 1 156 0
+  98 0020 344F     		ldr	r7, .L15+12
+ 144:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P =  gv_adapt_P + GV_ADAPT_SYS_NOISE;
+  99              		.loc 1 144 0
+ 100 0022 2868     		ldr	r0, [r5]
+ 101              	.LVL1:
+ 102 0024 FFF7FEFF 		bl	__aeabi_i2d
+ 103              	.LVL2:
+ 104 0028 2FA3     		adr	r3, .L15
+ 105 002a D3E90023 		ldrd	r2, [r3]
+ 106 002e FFF7FEFF 		bl	__aeabi_dadd
+ 107              	.LVL3:
+ 108 0032 FFF7FEFF 		bl	__aeabi_d2iz
+ 109              	.LVL4:
+ 110 0036 0646     		mov	r6, r0
+ 111              	.LVL5:
+ 148:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****                            INT32_ACCEL_FRAC) - zdd_meas) << (GV_ADAPT_X_FRAC - INT32_ACCEL_FRAC);
+ 112              		.loc 1 148 0
+ 113 0038 CAF51C50 		rsb	r0, r10, #9984
+ 114 003c 3D30     		adds	r0, r0, #61
+ 150:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_Xmeas = (g_m_zdd + (thrust_applied >> 1)) / thrust_applied;
+ 115              		.loc 1 150 0
+ 116 003e 4FEA640A 		asr	r10, r4, #1
+ 117              	.LVL6:
+ 118 0042 0AEB8030 		add	r0, r10, r0, lsl #14
+ 119 0046 2C4B     		ldr	r3, .L15+16
+ 120              		.loc 1 156 0
+ 121 0048 D7F80080 		ldr	r8, [r7]
+ 157:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 158:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Covariance Error  E = P + R  */
+ 159:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t ref = zd_ref >> (INT32_SPEED_FRAC - GV_ADAPT_P_FRAC);
+ 160:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   if (zd_ref < 0) { ref = -ref; }
+ 122              		.loc 1 160 0
+ 123 004c B9F1000F 		cmp	r9, #0
+ 159:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t ref = zd_ref >> (INT32_SPEED_FRAC - GV_ADAPT_P_FRAC);
+ 124              		.loc 1 159 0
+ 125 0050 4FEA690C 		asr	ip, r9, #1
+ 150:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_Xmeas = (g_m_zdd + (thrust_applied >> 1)) / thrust_applied;
+ 126              		.loc 1 150 0
+ 127 0054 90FBF4F4 		sdiv	r4, r0, r4
+ 128              	.LVL7:
+ 129              		.loc 1 160 0
+ 130 0058 B8BF     		it	lt
+ 131 005a CCF1000C 		rsblt	ip, ip, #0
+ 150:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_Xmeas = (g_m_zdd + (thrust_applied >> 1)) / thrust_applied;
+ 132              		.loc 1 150 0
+ 133 005e 1C60     		str	r4, [r3]
+ 161:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t E = gv_adapt_P + GV_ADAPT_MEAS_NOISE_HOVER + ref * GV_ADAPT_MEAS_NOISE_OF_ZD;
+ 134              		.loc 1 161 0
+ 135 0060 3046     		mov	r0, r6
+ 136 0062 CDF804C0 		str	ip, [sp, #4]
+ 137 0066 FFF7FEFF 		bl	__aeabi_i2d
+ 138              	.LVL8:
+ 139 006a 0022     		movs	r2, #0
+ 140 006c 234B     		ldr	r3, .L15+20
+ 141 006e FFF7FEFF 		bl	__aeabi_dadd
+ 142              	.LVL9:
+ 143 0072 DDF804C0 		ldr	ip, [sp, #4]
+ 156:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t residual = gv_adapt_Xmeas - gv_adapt_X;
+ 144              		.loc 1 156 0
+ 145 0076 C8EB040A 		rsb	r10, r8, r4
+ 146              	.LVL10:
+ 147              		.loc 1 161 0
+ 148 007a 0446     		mov	r4, r0
+ 149 007c 6046     		mov	r0, ip
+ 150 007e A946     		mov	r9, r5
+ 151              	.LVL11:
+ 152 0080 0D46     		mov	r5, r1
+ 153 0082 FFF7FEFF 		bl	__aeabi_i2d
+ 154              	.LVL12:
+ 155 0086 0022     		movs	r2, #0
+ 156 0088 1D4B     		ldr	r3, .L15+24
+ 157 008a FFF7FEFF 		bl	__aeabi_dmul
+ 158              	.LVL13:
+ 159 008e 0246     		mov	r2, r0
+ 160 0090 0B46     		mov	r3, r1
+ 161 0092 2046     		mov	r0, r4
+ 162 0094 2946     		mov	r1, r5
+ 163 0096 FFF7FEFF 		bl	__aeabi_dadd
+ 164              	.LVL14:
+ 165 009a FFF7FEFF 		bl	__aeabi_d2iz
+ 166              	.LVL15:
+ 162:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 163:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Kalman gain  K = P / (P + R) = P / E  */
+ 164:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   int32_t K = (gv_adapt_P << K_FRAC) / E;
+ 167              		.loc 1 164 0
+ 168 009e 4FEA063B 		lsl	fp, r6, #12
+ 169 00a2 9BFBF0F0 		sdiv	r0, fp, r0
+ 170              	.LVL16:
+ 165:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 166:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Update Covariance  Pnew = P - K * P   */
+ 167:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P = gv_adapt_P - ((K * gv_adapt_P) >> K_FRAC);
+ 171              		.loc 1 167 0
+ 172 00a6 06FB00F3 		mul	r3, r6, r0
+ 173 00aa A6EB2336 		sub	r6, r6, r3, asr #12
+ 168:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Don't let covariance climb over initial value */
+ 169:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   if (gv_adapt_P > gv_adapt_P0) {
+ 170:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****     gv_adapt_P = gv_adapt_P0;
+ 171:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   }
+ 172:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 173:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Update State */
+ 174:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_X = gv_adapt_X + (((int64_t)(K * residual)) >> K_FRAC);
+ 174              		.loc 1 174 0
+ 175 00ae 0AFB00FB 		mul	fp, r10, r0
+ 167:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P = gv_adapt_P - ((K * gv_adapt_P) >> K_FRAC);
+ 176              		.loc 1 167 0
+ 177 00b2 46F26663 		movw	r3, #26214
+ 175:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** 
+ 176:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   /* Output bounds.
+ 177:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****    * Don't let it climb over a value that would
+ 178:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****    * give less than #GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE % throttle
+ 179:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****    * or more than #GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE % throttle.
+ 180:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****    */
+ 181:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   static const int32_t max_out = BFP_OF_REAL(9.81, GV_ADAPT_X_FRAC) /
+ 182:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****                                  (GUIDANCE_V_ADAPT_MIN_HOVER_THROTTLE * MAX_PPRZ);
+ 183:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   static const int32_t min_out = BFP_OF_REAL(9.81, GV_ADAPT_X_FRAC) /
+ 184:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****                                  (GUIDANCE_V_ADAPT_MAX_HOVER_THROTTLE * MAX_PPRZ);
+ 185:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   Bound(gv_adapt_X, min_out, max_out);
+ 178              		.loc 1 185 0
+ 179 00b6 134A     		ldr	r2, .L15+28
+ 167:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_P = gv_adapt_P - ((K * gv_adapt_P) >> K_FRAC);
+ 180              		.loc 1 167 0
+ 181 00b8 9E42     		cmp	r6, r3
+ 182 00ba D4BF     		ite	le
+ 183 00bc C9F80060 		strle	r6, [r9]
+ 184 00c0 C9F80030 		strgt	r3, [r9]
+ 174:firmwares/rotorcraft/guidance/guidance_v_adapt.c ****   gv_adapt_X = gv_adapt_X + (((int64_t)(K * residual)) >> K_FRAC);
+ 185              		.loc 1 174 0
+ 186 00c4 08EB2B33 		add	r3, r8, fp, asr #12
+ 187              		.loc 1 185 0
+ 188 00c8 9342     		cmp	r3, r2
+ 189 00ca 01DD     		ble	.L11
+ 190              		.loc 1 185 0 is_stmt 0 discriminator 1
+ 191 00cc 3A60     		str	r2, [r7]
+ 192 00ce 06E0     		b	.L4
+ 193              	.L11:
+ 194              		.loc 1 185 0 discriminator 2
+ 195 00d0 45F64912 		movw	r2, #22857
+ 196 00d4 9342     		cmp	r3, r2
+ 197 00d6 D8BF     		it	le
+ 198 00d8 45F64A13 		movwle	r3, #22858
+ 199 00dc 3B60     		str	r3, [r7]
+ 200              	.LVL17:
+ 201              	.L4:
+ 186:firmwares/rotorcraft/guidance/guidance_v_adapt.c **** }
+ 202              		.loc 1 186 0 is_stmt 1
+ 203 00de 03B0     		add	sp, sp, #12
+ 204              		@ sp needed
+ 205 00e0 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 206              	.L16:
+ 207 00e4 AFF30080 		.align	3
+ 208              	.L15:
+ 209 00e8 2D431CEB 		.word	-350469331
+ 210 00ec E2362A40 		.word	1076508386
+ 211 00f0 00000000 		.word	.LANCHOR1
+ 212 00f4 00000000 		.word	.LANCHOR0
+ 213 00f8 00000000 		.word	.LANCHOR2
+ 214 00fc 00006941 		.word	1097400320
+ 215 0100 00005940 		.word	1079574528
+ 216 0104 D94E0100 		.word	85721
+ 217              		.cfi_endproc
+ 218              	.LFE10:
+ 220              		.global	gv_adapt_Xmeas
+ 221              		.global	gv_adapt_P
+ 222              		.global	gv_adapt_X
+ 223              		.section	.bss.gv_adapt_P,"aw",%nobits
+ 224              		.align	2
+ 225              		.set	.LANCHOR1,. + 0
+ 228              	gv_adapt_P:
+ 229 0000 00000000 		.space	4
+ 230              		.section	.bss.gv_adapt_Xmeas,"aw",%nobits
+ 231              		.align	2
+ 232              		.set	.LANCHOR2,. + 0
+ 235              	gv_adapt_Xmeas:
+ 236 0000 00000000 		.space	4
+ 237              		.section	.bss.gv_adapt_X,"aw",%nobits
+ 238              		.align	2
+ 239              		.set	.LANCHOR0,. + 0
+ 242              	gv_adapt_X:
+ 243 0000 00000000 		.space	4
+ 244              		.text
+ 245              	.Letext0:
+ 246              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 247              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 guidance_v_adapt.c
+     /tmp/ccOQbgUC.s:20     .text.gv_adapt_init:00000000 $t
+     /tmp/ccOQbgUC.s:25     .text.gv_adapt_init:00000000 gv_adapt_init
+     /tmp/ccOQbgUC.s:45     .text.gv_adapt_init:00000014 $d
+     /tmp/ccOQbgUC.s:55     .text.gv_adapt_run:00000000 $t
+     /tmp/ccOQbgUC.s:60     .text.gv_adapt_run:00000000 gv_adapt_run
+     /tmp/ccOQbgUC.s:209    .text.gv_adapt_run:000000e8 $d
+     /tmp/ccOQbgUC.s:235    .bss.gv_adapt_Xmeas:00000000 gv_adapt_Xmeas
+     /tmp/ccOQbgUC.s:228    .bss.gv_adapt_P:00000000 gv_adapt_P
+     /tmp/ccOQbgUC.s:242    .bss.gv_adapt_X:00000000 gv_adapt_X
+     /tmp/ccOQbgUC.s:224    .bss.gv_adapt_P:00000000 $d
+     /tmp/ccOQbgUC.s:231    .bss.gv_adapt_Xmeas:00000000 $d
+     /tmp/ccOQbgUC.s:238    .bss.gv_adapt_X:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.guidance_v_adapt.h.40.8a050dade24f935e6f73e39946c7fc68
+                           .group:00000000 wm4.paparazzi.h.2.903792c4429b74b43ba66cc0d2531abd
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+
+UNDEFINED SYMBOLS
+__aeabi_i2d
+__aeabi_dadd
+__aeabi_d2iz
+__aeabi_dmul

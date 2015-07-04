@@ -1,0 +1,1557 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"downlink.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.send_downlink,"ax",%progbits
+  20              		.align	1
+  21              		.thumb
+  22              		.thumb_func
+  24              	send_downlink:
+  25              	.LFB350:
+  26              		.file 1 "subsystems/datalink/downlink.c"
+   1:subsystems/datalink/downlink.c **** /*
+   2:subsystems/datalink/downlink.c ****  * Copyright (C) 2006 Pascal Brisset, Antoine Drouin
+   3:subsystems/datalink/downlink.c ****  *
+   4:subsystems/datalink/downlink.c ****  * This file is part of paparazzi.
+   5:subsystems/datalink/downlink.c ****  *
+   6:subsystems/datalink/downlink.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/datalink/downlink.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/datalink/downlink.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/datalink/downlink.c ****  * any later version.
+  10:subsystems/datalink/downlink.c ****  *
+  11:subsystems/datalink/downlink.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/datalink/downlink.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/datalink/downlink.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/datalink/downlink.c ****  * GNU General Public License for more details.
+  15:subsystems/datalink/downlink.c ****  *
+  16:subsystems/datalink/downlink.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/datalink/downlink.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/datalink/downlink.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/datalink/downlink.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/datalink/downlink.c ****  *
+  21:subsystems/datalink/downlink.c ****  */
+  22:subsystems/datalink/downlink.c **** 
+  23:subsystems/datalink/downlink.c **** /** \file downlink.c
+  24:subsystems/datalink/downlink.c ****  *  \brief Common code for AP and FBW telemetry
+  25:subsystems/datalink/downlink.c ****  *
+  26:subsystems/datalink/downlink.c ****  */
+  27:subsystems/datalink/downlink.c **** 
+  28:subsystems/datalink/downlink.c **** 
+  29:subsystems/datalink/downlink.c **** #include "subsystems/datalink/downlink.h"
+  30:subsystems/datalink/downlink.c **** 
+  31:subsystems/datalink/downlink.c **** struct downlink downlink;
+  32:subsystems/datalink/downlink.c **** 
+  33:subsystems/datalink/downlink.c **** #if PERIODIC_TELEMETRY
+  34:subsystems/datalink/downlink.c **** #include "subsystems/datalink/telemetry.h"
+  35:subsystems/datalink/downlink.c **** #include "subsystems/datalink/datalink.h"
+  36:subsystems/datalink/downlink.c **** #include "mcu_periph/sys_time.h"
+  37:subsystems/datalink/downlink.c **** 
+  38:subsystems/datalink/downlink.c **** static void send_downlink(struct transport_tx *trans, struct link_device *dev)
+  39:subsystems/datalink/downlink.c **** {
+  27              		.loc 1 39 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              	.LVL0:
+  32 0000 2DE9FF47 		push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, lr}
+  33              		.cfi_def_cfa_offset 48
+  34              		.cfi_offset 0, -48
+  35              		.cfi_offset 1, -44
+  36              		.cfi_offset 2, -40
+  37              		.cfi_offset 3, -36
+  38              		.cfi_offset 4, -32
+  39              		.cfi_offset 5, -28
+  40              		.cfi_offset 6, -24
+  41              		.cfi_offset 7, -20
+  42              		.cfi_offset 8, -16
+  43              		.cfi_offset 9, -12
+  44              		.cfi_offset 10, -8
+  45              		.cfi_offset 14, -4
+  46              	.LBB15:
+  47              	.LBB16:
+  48              		.file 2 "/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h"
+   1:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /*
+   2:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   3:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   4:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   5:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * This file is part of paparazzi.
+   6:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+   7:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * it under the terms of the GNU General Public License as published by
+   9:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * any later version.
+  11:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  12:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * paparazzi is distributed in the hope that it will be useful,
+  13:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * GNU General Public License for more details.
+  16:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  17:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * You should have received a copy of the GNU General Public License
+  18:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Boston, MA 02111-1307, USA.
+  21:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  22:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  23:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  24:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /**
+  25:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @file arch/stm32/mcu_periph/sys_time_arch.h
+  26:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @ingroup stm32_arch
+  27:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  28:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * STM32 timing functions.
+  29:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  *
+  30:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  31:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  32:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifndef SYS_TIME_ARCH_H
+  33:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #define SYS_TIME_ARCH_H
+  34:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  35:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "mcu_periph/sys_time.h"
+  36:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  37:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/stm32/gpio.h>
+  38:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/stm32/rcc.h>
+  39:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include <libopencm3/cm3/systick.h>
+  40:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "std.h"
+  41:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifdef RTOS_IS_CHIBIOS
+  42:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "chibios_stub.h"
+  43:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #include "chconf.h"
+  44:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #endif
+  45:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  46:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /**
+  47:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Get the time in microseconds since startup.
+  48:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * WARNING: overflows after 70min!
+  49:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @return microseconds since startup as uint32_t
+  50:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  51:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** static inline uint32_t get_sys_time_usec(void)
+  52:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** {
+  53:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifdef RTOS_IS_CHIBIOS
+  54:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return (chibios_chTimeNow() * (1000000 / CH_FREQUENCY));
+  55:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #else
+  56:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return sys_time.nb_sec * 1000000 +
+  57:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(sys_time.nb_sec_rem) +
+  58:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          usec_of_cpu_ticks(systick_get_reload() - systick_get_value());
+  59:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #endif
+  60:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** }
+  61:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** 
+  62:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** /**
+  63:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * Get the time in milliseconds since startup.
+  64:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  * @return milliseconds since startup as uint32_t
+  65:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****  */
+  66:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** static inline uint32_t get_sys_time_msec(void)
+  67:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** {
+  68:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #ifdef RTOS_IS_CHIBIOS
+  69:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return (chibios_chTimeNow() * (1000 / CH_FREQUENCY));
+  70:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h **** #else
+  71:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return sys_time.nb_sec * 1000 +
+  49              		.loc 2 71 0
+  50 0004 5C4E     		ldr	r6, .L7
+  51              	.LBB17:
+  52              	.LBB18:
+  53              		.file 3 "./mcu_periph/sys_time.h"
+   1:./mcu_periph/sys_time.h **** /*
+   2:./mcu_periph/sys_time.h ****  *
+   3:./mcu_periph/sys_time.h ****  * Copyright (C) 2009-2011 The Paparazzi Team
+   4:./mcu_periph/sys_time.h ****  *
+   5:./mcu_periph/sys_time.h ****  * This file is part of paparazzi.
+   6:./mcu_periph/sys_time.h ****  *
+   7:./mcu_periph/sys_time.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   8:./mcu_periph/sys_time.h ****  * it under the terms of the GNU General Public License as published by
+   9:./mcu_periph/sys_time.h ****  * the Free Software Foundation; either version 2, or (at your option)
+  10:./mcu_periph/sys_time.h ****  * any later version.
+  11:./mcu_periph/sys_time.h ****  *
+  12:./mcu_periph/sys_time.h ****  * paparazzi is distributed in the hope that it will be useful,
+  13:./mcu_periph/sys_time.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:./mcu_periph/sys_time.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:./mcu_periph/sys_time.h ****  * GNU General Public License for more details.
+  16:./mcu_periph/sys_time.h ****  *
+  17:./mcu_periph/sys_time.h ****  * You should have received a copy of the GNU General Public License
+  18:./mcu_periph/sys_time.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  19:./mcu_periph/sys_time.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  20:./mcu_periph/sys_time.h ****  * Boston, MA 02111-1307, USA.
+  21:./mcu_periph/sys_time.h ****  *
+  22:./mcu_periph/sys_time.h ****  */
+  23:./mcu_periph/sys_time.h **** 
+  24:./mcu_periph/sys_time.h **** /**
+  25:./mcu_periph/sys_time.h ****  * @file mcu_periph/sys_time.h
+  26:./mcu_periph/sys_time.h ****  * @brief Architecture independent timing functions.
+  27:./mcu_periph/sys_time.h ****  *
+  28:./mcu_periph/sys_time.h ****  */
+  29:./mcu_periph/sys_time.h **** 
+  30:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_H
+  31:./mcu_periph/sys_time.h **** #define SYS_TIME_H
+  32:./mcu_periph/sys_time.h **** 
+  33:./mcu_periph/sys_time.h **** #include <inttypes.h>
+  34:./mcu_periph/sys_time.h **** #include <stdlib.h>
+  35:./mcu_periph/sys_time.h **** #include "std.h"
+  36:./mcu_periph/sys_time.h **** 
+  37:./mcu_periph/sys_time.h **** #include BOARD_CONFIG
+  38:./mcu_periph/sys_time.h **** 
+  39:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_NB_TIMER
+  40:./mcu_periph/sys_time.h **** #define SYS_TIME_NB_TIMER 16
+  41:./mcu_periph/sys_time.h **** #endif
+  42:./mcu_periph/sys_time.h **** 
+  43:./mcu_periph/sys_time.h **** 
+  44:./mcu_periph/sys_time.h **** /**
+  45:./mcu_periph/sys_time.h ****  * (Default) sys_time timer frequency in Hz.
+  46:./mcu_periph/sys_time.h ****  * sys_time.resolution is set from this define.
+  47:./mcu_periph/sys_time.h ****  */
+  48:./mcu_periph/sys_time.h **** #ifndef SYS_TIME_FREQUENCY
+  49:./mcu_periph/sys_time.h **** #if defined PERIODIC_FREQUENCY
+  50:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY (2 * PERIODIC_FREQUENCY)
+  51:./mcu_periph/sys_time.h **** #else
+  52:./mcu_periph/sys_time.h **** #define SYS_TIME_FREQUENCY 1000
+  53:./mcu_periph/sys_time.h **** #endif
+  54:./mcu_periph/sys_time.h **** #endif
+  55:./mcu_periph/sys_time.h **** 
+  56:./mcu_periph/sys_time.h **** 
+  57:./mcu_periph/sys_time.h **** typedef uint8_t tid_t; ///< sys_time timer id type
+  58:./mcu_periph/sys_time.h **** typedef void (*sys_time_cb)(uint8_t id);
+  59:./mcu_periph/sys_time.h **** 
+  60:./mcu_periph/sys_time.h **** struct sys_time_timer {
+  61:./mcu_periph/sys_time.h ****   bool_t          in_use;
+  62:./mcu_periph/sys_time.h ****   sys_time_cb     cb;
+  63:./mcu_periph/sys_time.h ****   volatile bool_t elapsed;
+  64:./mcu_periph/sys_time.h ****   uint32_t        end_time; ///< in SYS_TIME_TICKS
+  65:./mcu_periph/sys_time.h ****   uint32_t        duration; ///< in SYS_TIME_TICKS
+  66:./mcu_periph/sys_time.h **** };
+  67:./mcu_periph/sys_time.h **** 
+  68:./mcu_periph/sys_time.h **** struct sys_time {
+  69:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec;       ///< full seconds since startup
+  70:./mcu_periph/sys_time.h ****   volatile uint32_t nb_sec_rem;   ///< remainder of seconds since startup in CPU_TICKS
+  71:./mcu_periph/sys_time.h ****   volatile uint32_t nb_tick;      ///< SYS_TIME_TICKS since startup
+  72:./mcu_periph/sys_time.h ****   struct sys_time_timer timer[SYS_TIME_NB_TIMER];
+  73:./mcu_periph/sys_time.h **** 
+  74:./mcu_periph/sys_time.h ****   float resolution;               ///< sys_time_timer resolution in seconds
+  75:./mcu_periph/sys_time.h ****   uint32_t ticks_per_sec;         ///< sys_time ticks per second (SYS_TIME_FREQUENCY)
+  76:./mcu_periph/sys_time.h ****   uint32_t resolution_cpu_ticks;  ///< sys_time_timer resolution in cpu ticks
+  77:./mcu_periph/sys_time.h ****   uint32_t cpu_ticks_per_sec;     ///< cpu ticks per second
+  78:./mcu_periph/sys_time.h **** };
+  79:./mcu_periph/sys_time.h **** 
+  80:./mcu_periph/sys_time.h **** extern struct sys_time sys_time;
+  81:./mcu_periph/sys_time.h **** 
+  82:./mcu_periph/sys_time.h **** 
+  83:./mcu_periph/sys_time.h **** extern void sys_time_init(void);
+  84:./mcu_periph/sys_time.h **** 
+  85:./mcu_periph/sys_time.h **** /**
+  86:./mcu_periph/sys_time.h ****  * Register a new system timer.
+  87:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+  88:./mcu_periph/sys_time.h ****  * @param cb Callback function that is called from the ISR when timer elapses, or NULL
+  89:./mcu_periph/sys_time.h ****  * @return -1 if it failed, the timer id otherwise
+  90:./mcu_periph/sys_time.h ****  */
+  91:./mcu_periph/sys_time.h **** extern int sys_time_register_timer(float duration, sys_time_cb cb);
+  92:./mcu_periph/sys_time.h **** 
+  93:./mcu_periph/sys_time.h **** /**
+  94:./mcu_periph/sys_time.h ****  * Cancel a system timer by id.
+  95:./mcu_periph/sys_time.h ****  * @param id Timer id.
+  96:./mcu_periph/sys_time.h ****  */
+  97:./mcu_periph/sys_time.h **** extern void sys_time_cancel_timer(tid_t id);
+  98:./mcu_periph/sys_time.h **** 
+  99:./mcu_periph/sys_time.h **** /**
+ 100:./mcu_periph/sys_time.h ****  * Update the duration until a timer elapses.
+ 101:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 102:./mcu_periph/sys_time.h ****  * @param duration Duration in seconds until the timer elapses.
+ 103:./mcu_periph/sys_time.h ****  */
+ 104:./mcu_periph/sys_time.h **** extern void sys_time_update_timer(tid_t id, float duration);
+ 105:./mcu_periph/sys_time.h **** 
+ 106:./mcu_periph/sys_time.h **** /**
+ 107:./mcu_periph/sys_time.h ****  * Check if timer has elapsed.
+ 108:./mcu_periph/sys_time.h ****  * @param id Timer id
+ 109:./mcu_periph/sys_time.h ****  * @return TRUE if timer has elapsed
+ 110:./mcu_periph/sys_time.h ****  */
+ 111:./mcu_periph/sys_time.h **** static inline bool_t sys_time_check_and_ack_timer(tid_t id)
+ 112:./mcu_periph/sys_time.h **** {
+ 113:./mcu_periph/sys_time.h ****   if (sys_time.timer[id].elapsed) {
+ 114:./mcu_periph/sys_time.h ****     sys_time.timer[id].elapsed = FALSE;
+ 115:./mcu_periph/sys_time.h ****     return TRUE;
+ 116:./mcu_periph/sys_time.h ****   }
+ 117:./mcu_periph/sys_time.h ****   return FALSE;
+ 118:./mcu_periph/sys_time.h **** }
+ 119:./mcu_periph/sys_time.h **** 
+ 120:./mcu_periph/sys_time.h **** /**
+ 121:./mcu_periph/sys_time.h ****  * Get the time in seconds since startup.
+ 122:./mcu_periph/sys_time.h ****  * @return current system time as float with sys_time.resolution
+ 123:./mcu_periph/sys_time.h ****  */
+ 124:./mcu_periph/sys_time.h **** static inline float get_sys_time_float(void)
+ 125:./mcu_periph/sys_time.h **** {
+ 126:./mcu_periph/sys_time.h ****   return (float)(sys_time.nb_sec + (float)(sys_time.nb_sec_rem) / sys_time.cpu_ticks_per_sec);
+ 127:./mcu_periph/sys_time.h **** }
+ 128:./mcu_periph/sys_time.h **** 
+ 129:./mcu_periph/sys_time.h **** 
+ 130:./mcu_periph/sys_time.h **** /*
+ 131:./mcu_periph/sys_time.h ****  * Convenience functions to convert between seconds and sys_time ticks.
+ 132:./mcu_periph/sys_time.h ****  */
+ 133:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_sec(float seconds)
+ 134:./mcu_periph/sys_time.h **** {
+ 135:./mcu_periph/sys_time.h ****   return (uint32_t)(seconds * sys_time.ticks_per_sec + 0.5);
+ 136:./mcu_periph/sys_time.h **** }
+ 137:./mcu_periph/sys_time.h **** 
+ 138:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_msec(uint32_t msec)
+ 139:./mcu_periph/sys_time.h **** {
+ 140:./mcu_periph/sys_time.h ****   return msec * sys_time.ticks_per_sec / 1000;
+ 141:./mcu_periph/sys_time.h **** }
+ 142:./mcu_periph/sys_time.h **** 
+ 143:./mcu_periph/sys_time.h **** static inline uint32_t sys_time_ticks_of_usec(uint32_t usec)
+ 144:./mcu_periph/sys_time.h **** {
+ 145:./mcu_periph/sys_time.h ****   return usec * sys_time.ticks_per_sec / 1000000;
+ 146:./mcu_periph/sys_time.h **** }
+ 147:./mcu_periph/sys_time.h **** 
+ 148:./mcu_periph/sys_time.h **** static inline float sec_of_sys_time_ticks(uint32_t ticks)
+ 149:./mcu_periph/sys_time.h **** {
+ 150:./mcu_periph/sys_time.h ****   return (float)ticks * sys_time.resolution;
+ 151:./mcu_periph/sys_time.h **** }
+ 152:./mcu_periph/sys_time.h **** 
+ 153:./mcu_periph/sys_time.h **** static inline uint32_t msec_of_sys_time_ticks(uint32_t ticks)
+ 154:./mcu_periph/sys_time.h **** {
+ 155:./mcu_periph/sys_time.h ****   return ticks * 1000 / sys_time.ticks_per_sec;
+ 156:./mcu_periph/sys_time.h **** }
+ 157:./mcu_periph/sys_time.h **** 
+ 158:./mcu_periph/sys_time.h **** static inline uint32_t usec_of_sys_time_ticks(uint32_t ticks)
+ 159:./mcu_periph/sys_time.h **** {
+ 160:./mcu_periph/sys_time.h ****   return ticks * 1000 / sys_time.ticks_per_sec * 1000;
+ 161:./mcu_periph/sys_time.h **** }
+ 162:./mcu_periph/sys_time.h **** 
+ 163:./mcu_periph/sys_time.h **** 
+ 164:./mcu_periph/sys_time.h **** 
+ 165:./mcu_periph/sys_time.h **** /*
+ 166:./mcu_periph/sys_time.h ****  * Convenience functions to convert between seconds and CPU ticks.
+ 167:./mcu_periph/sys_time.h ****  */
+ 168:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_sec(float seconds)
+ 169:./mcu_periph/sys_time.h **** {
+ 170:./mcu_periph/sys_time.h ****   return (uint32_t)(seconds * sys_time.cpu_ticks_per_sec + 0.5);
+ 171:./mcu_periph/sys_time.h **** }
+ 172:./mcu_periph/sys_time.h **** 
+ 173:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_usec(uint32_t usec)
+ 174:./mcu_periph/sys_time.h **** {
+ 175:./mcu_periph/sys_time.h ****   return usec * (sys_time.cpu_ticks_per_sec / 1000000);
+ 176:./mcu_periph/sys_time.h **** }
+ 177:./mcu_periph/sys_time.h **** 
+ 178:./mcu_periph/sys_time.h **** static inline int32_t signed_cpu_ticks_of_usec(int32_t usec)
+ 179:./mcu_periph/sys_time.h **** {
+ 180:./mcu_periph/sys_time.h ****   return usec * ((int32_t)sys_time.cpu_ticks_per_sec / 1000000);
+ 181:./mcu_periph/sys_time.h **** }
+ 182:./mcu_periph/sys_time.h **** 
+ 183:./mcu_periph/sys_time.h **** static inline uint32_t cpu_ticks_of_nsec(uint32_t nsec)
+ 184:./mcu_periph/sys_time.h **** {
+ 185:./mcu_periph/sys_time.h ****   return nsec * (sys_time.cpu_ticks_per_sec / 1000000) / 1000;
+ 186:./mcu_periph/sys_time.h **** }
+ 187:./mcu_periph/sys_time.h **** 
+ 188:./mcu_periph/sys_time.h **** static inline uint32_t msec_of_cpu_ticks(uint32_t cpu_ticks)
+ 189:./mcu_periph/sys_time.h **** {
+ 190:./mcu_periph/sys_time.h ****   return cpu_ticks / (sys_time.cpu_ticks_per_sec / 1000);
+  54              		.loc 3 190 0
+  55 0006 D6F85821 		ldr	r2, [r6, #344]
+  56              	.LBE18:
+  57              	.LBE17:
+  58              		.loc 2 71 0
+  59 000a 3768     		ldr	r7, [r6]
+  72:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          msec_of_cpu_ticks(sys_time.nb_sec_rem) +
+  60              		.loc 2 72 0
+  61 000c 7368     		ldr	r3, [r6, #4]
+  62              	.LVL1:
+  63              	.LBB20:
+  64              	.LBB19:
+  65              		.loc 3 190 0
+  66 000e 4FF47A75 		mov	r5, #1000
+  67 0012 B2FBF5F2 		udiv	r2, r2, r5
+  68 0016 B3FBF2F2 		udiv	r2, r3, r2
+  69              	.LBE19:
+  70              	.LBE20:
+  71:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return sys_time.nb_sec * 1000 +
+  71              		.loc 2 71 0
+  72 001a 05FB0727 		mla	r7, r5, r7, r2
+  73              	.LBE16:
+  74              	.LBE15:
+  75              		.loc 1 39 0
+  76 001e 0C46     		mov	r4, r1
+  77 0020 8246     		mov	r10, r0
+  78              	.LBB28:
+  79              	.LBB25:
+  73:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****          msec_of_cpu_ticks(systick_get_reload() - systick_get_value());
+  80              		.loc 2 73 0
+  81 0022 FFF7FEFF 		bl	systick_get_reload
+  82              	.LVL2:
+  83 0026 8046     		mov	r8, r0
+  84 0028 FFF7FEFF 		bl	systick_get_value
+  85              	.LVL3:
+  86              	.LBB21:
+  87              	.LBB22:
+  88              		.loc 3 190 0
+  89 002c D6F85831 		ldr	r3, [r6, #344]
+  90              	.LBE22:
+  91              	.LBE21:
+  92              	.LBE25:
+  93              	.LBE28:
+  40:subsystems/datalink/downlink.c ****   static uint32_t last_nb_bytes = 0;
+  41:subsystems/datalink/downlink.c ****   // timestamp in usec when last message was send
+  42:subsystems/datalink/downlink.c ****   static uint32_t last_ts = 0.;
+  43:subsystems/datalink/downlink.c ****   // current timestamp
+  44:subsystems/datalink/downlink.c ****   uint32_t now_ts = get_sys_time_msec();
+  45:subsystems/datalink/downlink.c ****   // compute downlink byte rate
+  46:subsystems/datalink/downlink.c ****   if (now_ts > last_ts) {
+  94              		.loc 1 46 0
+  95 0030 524A     		ldr	r2, .L7+4
+  96              	.LBB29:
+  97              	.LBB26:
+  98              		.loc 2 73 0
+  99 0032 C0EB0800 		rsb	r0, r0, r8
+ 100              	.LVL4:
+ 101              	.LBB24:
+ 102              	.LBB23:
+ 103              		.loc 3 190 0
+ 104 0036 B3FBF5F3 		udiv	r3, r3, r5
+ 105 003a B0FBF3F3 		udiv	r3, r0, r3
+ 106              	.LBE23:
+ 107              	.LBE24:
+ 108              	.LBE26:
+ 109              	.LBE29:
+ 110              		.loc 1 46 0
+ 111 003e 1168     		ldr	r1, [r2]
+ 112              	.LBB30:
+ 113              	.LBB27:
+  71:/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/sys_time_arch.h ****   return sys_time.nb_sec * 1000 +
+ 114              		.loc 2 71 0
+ 115 0040 3B44     		add	r3, r3, r7
+ 116              	.LBE27:
+ 117              	.LBE30:
+ 118              		.loc 1 46 0
+ 119 0042 8B42     		cmp	r3, r1
+ 120 0044 40F29480 		bls	.L1
+ 121              	.LBB31:
+  47:subsystems/datalink/downlink.c ****     uint16_t rate = (1000 * ((uint32_t)downlink.nb_bytes - last_nb_bytes)) / (now_ts - last_ts);
+ 122              		.loc 1 47 0
+ 123 0048 4D4E     		ldr	r6, .L7+8
+ 124 004a DFF84091 		ldr	r9, .L7+20
+ 125 004e 3068     		ldr	r0, [r6]
+ 126              	.LVL5:
+ 127 0050 B9F80270 		ldrh	r7, [r9, #2]
+  48:subsystems/datalink/downlink.c ****     last_ts = now_ts;
+  49:subsystems/datalink/downlink.c ****     last_nb_bytes = downlink.nb_bytes;
+ 128              		.loc 1 49 0
+ 129 0054 3760     		str	r7, [r6]
+  47:subsystems/datalink/downlink.c ****     uint16_t rate = (1000 * ((uint32_t)downlink.nb_bytes - last_nb_bytes)) / (now_ts - last_ts);
+ 130              		.loc 1 47 0
+ 131 0056 381A     		subs	r0, r7, r0
+ 132 0058 4543     		muls	r5, r0, r5
+ 133              	.LBB32:
+ 134              	.LBB33:
+ 135              		.file 4 "/home/lsk/paparazzi/var/include/messages.h"
+   1:/home/lsk/paparazzi/var/include/messages.h **** /* Automatically generated by gen_messages from /home/lsk/paparazzi/conf/messages.xml */
+   2:/home/lsk/paparazzi/var/include/messages.h **** /* Please DO NOT EDIT */
+   3:/home/lsk/paparazzi/var/include/messages.h **** /* Macros to send and receive messages of class telemetry */
+   4:/home/lsk/paparazzi/var/include/messages.h **** #ifndef _VAR_MESSAGES_telemetry_H_
+   5:/home/lsk/paparazzi/var/include/messages.h **** #define _VAR_MESSAGES_telemetry_H_
+   6:/home/lsk/paparazzi/var/include/messages.h **** #include "subsystems/datalink/transport.h"
+   7:/home/lsk/paparazzi/var/include/messages.h **** #include "mcu_periph/link_device.h"
+   8:/home/lsk/paparazzi/var/include/messages.h **** #if DOWNLINK
+   9:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AUTOPILOT_VERSION 1
+  10:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ALIVE 2
+  11:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PONG 3
+  12:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TAKEOFF 4
+  13:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ARDRONE_NAVDATA 5
+  14:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ATTITUDE 6
+  15:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IR_SENSORS 7
+  16:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GPS 8
+  17:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NAVIGATION_REF 9
+  18:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NAVIGATION 10
+  19:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PPRZ_MODE 11
+  20:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BAT 12
+  21:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DEBUG_MCU_LINK 13
+  22:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CALIBRATION 14
+  23:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SETTINGS 15
+  24:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DESIRED 16
+  25:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GPS_SOL 17
+  26:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ADC_GENERIC 18
+  27:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEST_FORMAT 19
+  28:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CAM 20
+  29:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CIRCLE 21
+  30:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SEGMENT 22
+  31:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SVINFO 25
+  32:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DEBUG 26
+  33:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SURVEY 27
+  34:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WC_RSSI 28
+  35:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RANGEFINDER 29
+  36:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DATALINK_REPORT 30
+  37:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DL_VALUE 31
+  38:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MARK 32
+  39:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SYS_MON 33
+  40:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MOTOR 34
+  41:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WP_MOVED 35
+  42:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MKK 36
+  43:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ENERGY 37
+  44:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_BMP85_CALIB 38
+  45:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_BMP85 39
+  46:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SPEED_LOOP 40
+  47:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ALT_KALMAN 41
+  48:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ESTIMATOR 42
+  49:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TUNE_ROLL 43
+  50:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_MS5534A 44
+  51:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PRESSURE 45
+  52:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_WORDS 46
+  53:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WP_MOVED_LLA 47
+  54:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CHRONO 48
+  55:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WP_MOVED_ENU 49
+  56:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WINDTURBINE_STATUS_ 50
+  57:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RC_3CH_ 51
+  58:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MPPT 52
+  59:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DEBUG_IR_I2C 53
+  60:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AIRSPEED 54
+  61:/home/lsk/paparazzi/var/include/messages.h **** #define DL_XSENS 55
+  62:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_ETS 56
+  63:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AIRSPEED_ETS 57
+  64:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PBN 58
+  65:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GPS_LLA 59
+  66:/home/lsk/paparazzi/var/include/messages.h **** #define DL_H_CTL_A 60
+  67:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TURB_PRESSURE_RAW 61
+  68:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TURB_PRESSURE_VOLTAGE 62
+  69:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CAM_POINT 63
+  70:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DC_INFO 64
+  71:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AMSYS_BARO 65
+  72:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AMSYS_AIRSPEED 66
+  73:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FLIGHT_BENCHMARK 67
+  74:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MPL3115_BARO 68
+  75:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AOA_ADC 69
+  76:/home/lsk/paparazzi/var/include/messages.h **** #define DL_XTEND_RSSI 70
+  77:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SUPERBITRF 72
+  78:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GX3_INFO 73
+  79:/home/lsk/paparazzi/var/include/messages.h **** #define DL_EXPLAIN 74
+  80:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VIDEO_TELEMETRY 75
+  81:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VF_UPDATE 76
+  82:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VF_PREDICT 77
+  83:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INV_FILTER 78
+  84:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MISSION_STATUS 79
+  85:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CROSS_TRACK_ERROR 80
+  86:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GENERIC_COM 81
+  87:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FORMATION_SLOT_TM 82
+  88:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FORMATION_STATUS_TM 83
+  89:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BMP_STATUS 84
+  90:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MLX_STATUS 85
+  91:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TMP_STATUS 86
+  92:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WIND_INFO_RET 87
+  93:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SCP_STATUS 88
+  94:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SHT_STATUS 89
+  95:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ENOSE_STATUS 90
+  96:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DPICCO_STATUS 91
+  97:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ANTENNA_DEBUG 92
+  98:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ANTENNA_STATUS 93
+  99:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MOTOR_BENCH_STATUS 94
+ 100:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MOTOR_BENCH_STATIC 95
+ 101:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HIH_STATUS 96
+ 102:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEMT_STATUS 97
+ 103:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GP2Y_STATUS 98
+ 104:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SHT_I2C_SERIAL 99
+ 105:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PPM 100
+ 106:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RC 101
+ 107:/home/lsk/paparazzi/var/include/messages.h **** #define DL_COMMANDS 102
+ 108:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FBW_STATUS 103
+ 109:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ADC 104
+ 110:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ACTUATORS 105
+ 111:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DC_SHOT 110
+ 112:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEST_BOARD_RESULTS 111
+ 113:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MLX_SERIAL 113
+ 114:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PAYLOAD 114
+ 115:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HTM_STATUS 115
+ 116:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_MS5611 116
+ 117:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MS5611_COEFF 117
+ 118:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ATMOSPHERE_CHARGE 118
+ 119:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SOLAR_RADIATION 119
+ 120:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TCAS_TA 120
+ 121:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TCAS_RA 121
+ 122:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TCAS_RESOLVED 122
+ 123:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TCAS_DEBUG 123
+ 124:/home/lsk/paparazzi/var/include/messages.h **** #define DL_POTENTIAL 124
+ 125:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VERTICAL_ENERGY 125
+ 126:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEMP_TCOUPLE 126
+ 127:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SHT_I2C_STATUS 127
+ 128:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CAMERA_SNAPSHOT 128
+ 129:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TIMESTAMP 129
+ 130:/home/lsk/paparazzi/var/include/messages.h **** #define DL_STAB_ATTITUDE_FLOAT 130
+ 131:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_GYRO_SCALED 131
+ 132:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_ACCEL_SCALED 132
+ 133:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_MAG_SCALED 133
+ 134:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FILTER 134
+ 135:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FILTER2 135
+ 136:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RATE_LOOP 136
+ 137:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FILTER_ALIGNER 137
+ 138:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AIRSPEED_MS45XX 138
+ 139:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FILTER_COR 139
+ 140:/home/lsk/paparazzi/var/include/messages.h **** #define DL_STAB_ATTITUDE_INT 140
+ 141:/home/lsk/paparazzi/var/include/messages.h **** #define DL_STAB_ATTITUDE_REF_INT 141
+ 142:/home/lsk/paparazzi/var/include/messages.h **** #define DL_STAB_ATTITUDE_REF_FLOAT 142
+ 143:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_CMD 143
+ 144:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GUIDANCE_H_INT 144
+ 145:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VERT_LOOP 145
+ 146:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HOVER_LOOP 146
+ 147:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_FP 147
+ 148:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEMP_ADC 148
+ 149:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GUIDANCE_H_REF_INT 149
+ 150:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_TUNE_HOVER 150
+ 151:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INS_Z 151
+ 152:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PCAP01_STATUS 152
+ 153:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GEIGER_COUNTER 153
+ 154:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INS_REF 154
+ 155:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GPS_INT 155
+ 156:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_EULER_INT 156
+ 157:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_QUAT_INT 157
+ 158:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_RMAT_INT 158
+ 159:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_NAV_STATUS 159
+ 160:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_RADIO_CONTROL 160
+ 161:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VFF_EXTENDED 161
+ 162:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VFF 162
+ 163:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GEO_MAG 163
+ 164:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HFF 164
+ 165:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HFF_DBG 165
+ 166:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HFF_GPS 166
+ 167:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INS_SONAR 167
+ 168:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_CAM 168
+ 169:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_REF_QUAT 169
+ 170:/home/lsk/paparazzi/var/include/messages.h **** #define DL_EKF7_XHAT 170
+ 171:/home/lsk/paparazzi/var/include/messages.h **** #define DL_EKF7_Y 171
+ 172:/home/lsk/paparazzi/var/include/messages.h **** #define DL_EKF7_P_DIAG 172
+ 173:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_EULER 173
+ 174:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_MEASUREMENT_EULER 174
+ 175:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WT 175
+ 176:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CSC_CAN_DEBUG 176
+ 177:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CSC_CAN_MSG 177
+ 178:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_GYRO_BIAS_INT 178
+ 179:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FLOW_AP_OTF 179
+ 180:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FMS_TIME 180
+ 181:/home/lsk/paparazzi/var/include/messages.h **** #define DL_LOADCELL 181
+ 182:/home/lsk/paparazzi/var/include/messages.h **** #define DL_FLA_DEBUG 182
+ 183:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BLMC_FAULT_STATUS 183
+ 184:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BLMC_SPEEDS 184
+ 185:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_DEBUG_QUAT 185
+ 186:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BLMC_BUSVOLTS 186
+ 187:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SYSTEM_STATUS 187
+ 188:/home/lsk/paparazzi/var/include/messages.h **** #define DL_DYNAMIXEL 188
+ 189:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RMAT_DEBUG 189
+ 190:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SIMPLE_COMMANDS 190
+ 191:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VANE_SENSOR 191
+ 192:/home/lsk/paparazzi/var/include/messages.h **** #define DL_CONTROLLER_GAINS 192
+ 193:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_LKF 193
+ 194:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_LKF_DEBUG 194
+ 195:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_LKF_ACC_DBG 195
+ 196:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_LKF_MAG_DBG 196
+ 197:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_SENSORS_SCALED 197
+ 198:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INS 198
+ 199:/home/lsk/paparazzi/var/include/messages.h **** #define DL_GPS_ERROR 199
+ 200:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_GYRO 200
+ 201:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_MAG 201
+ 202:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_ACCEL 202
+ 203:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_GYRO_RAW 203
+ 204:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_ACCEL_RAW 204
+ 205:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_MAG_RAW 205
+ 206:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_MAG_SETTINGS 206
+ 207:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_MAG_CURRENT_CALIBRATION 207
+ 208:/home/lsk/paparazzi/var/include/messages.h **** #define DL_UART_ERRORS 208
+ 209:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_GYRO_LP 209
+ 210:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_PRESSURE 210
+ 211:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_HS_GYRO 211
+ 212:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TEST_PASSTHROUGH_STATUS 212
+ 213:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TUNE_VERT 213
+ 214:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MF_DAQ_STATE 214
+ 215:/home/lsk/paparazzi/var/include/messages.h **** #define DL_INFO_MSG 215
+ 216:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BEBOP_ACTUATORS 218
+ 217:/home/lsk/paparazzi/var/include/messages.h **** #define DL_WEATHER 219
+ 218:/home/lsk/paparazzi/var/include/messages.h **** #define DL_IMU_TURNTABLE 220
+ 219:/home/lsk/paparazzi/var/include/messages.h **** #define DL_BARO_RAW 221
+ 220:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AIR_DATA 222
+ 221:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AMSL 223
+ 222:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VIDEO_SYNC 225
+ 223:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PERIODIC_TELEMETRY_ERR 226
+ 224:/home/lsk/paparazzi/var/include/messages.h **** #define DL_TIME 227
+ 225:/home/lsk/paparazzi/var/include/messages.h **** #define DL_OPTIC_FLOW_EST 228
+ 226:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AHRS_ARDRONE2 230
+ 227:/home/lsk/paparazzi/var/include/messages.h **** #define DL_ROTORCRAFT_STATUS 231
+ 228:/home/lsk/paparazzi/var/include/messages.h **** #define DL_STATE_FILTER_STATUS 232
+ 229:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PX4FLOW 233
+ 230:/home/lsk/paparazzi/var/include/messages.h **** #define DL_OPTICFLOW 234
+ 231:/home/lsk/paparazzi/var/include/messages.h **** #define DL_VISUALTARGET 235
+ 232:/home/lsk/paparazzi/var/include/messages.h **** #define DL_SONAR 236
+ 233:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PAYLOAD_FLOAT 237
+ 234:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_POS_LLH 238
+ 235:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_RPMS 239
+ 236:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_SPEED_POS 240
+ 237:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_RATE_ATTITUDE 241
+ 238:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_GYRO_BIAS 242
+ 239:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_RANGE_METER 243
+ 240:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_WIND 244
+ 241:/home/lsk/paparazzi/var/include/messages.h **** #define DL_PPRZ_DEBUG 247
+ 242:/home/lsk/paparazzi/var/include/messages.h **** #define DL_NPS_ACCEL_LTP 248
+ 243:/home/lsk/paparazzi/var/include/messages.h **** #define DL_LOOSE_INS_GPS 249
+ 244:/home/lsk/paparazzi/var/include/messages.h **** #define DL_AFL_COEFFS 250
+ 245:/home/lsk/paparazzi/var/include/messages.h **** #define DL_I2C_ERRORS 253
+ 246:/home/lsk/paparazzi/var/include/messages.h **** #define DL_RDYB_TRAJECTORY 254
+ 247:/home/lsk/paparazzi/var/include/messages.h **** #define DL_HENRY_GNSS 255
+ 248:/home/lsk/paparazzi/var/include/messages.h **** #define DL_MSG_telemetry_NB 239
+ 249:/home/lsk/paparazzi/var/include/messages.h **** 
+ 250:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_AUTOPILOT_VERSION(_trans, _dev, version, nb_desc, desc) pprz_msg_send_AUTOPIL
+ 251:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_AUTOPILOT_VERSION(struct transport_tx *trans, struct link_device *
+ 252:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+1+nb_desc*1 +2 
+ 253:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+1+nb_desc*1 +2 /* msg heade
+ 254:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+1+nb_desc*1 +2 /* msg header overhead */);
+ 255:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 256:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_AUTOPILOT_VERSION, "
+ 257:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _version);
+ 258:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_ARRAY_LENGTH, DL_FORMAT_SCALAR, 1, (void *) &nb_desc)
+ 259:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_CHAR, DL_FORMAT_ARRAY, 1 * nb_desc, (void *) _desc);
+ 260:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 261:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 262:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 263:/home/lsk/paparazzi/var/include/messages.h **** }
+ 264:/home/lsk/paparazzi/var/include/messages.h **** 
+ 265:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_ALIVE(_trans, _dev, nb_md5sum, md5sum) pprz_msg_send_ALIVE(&((_trans).trans_t
+ 266:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_ALIVE(struct transport_tx *trans, struct link_device *dev, uint8_t
+ 267:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+nb_md5sum*1 +2 
+ 268:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+nb_md5sum*1 +2 /* msg heade
+ 269:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+nb_md5sum*1 +2 /* msg header overhead */);
+ 270:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 271:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_ALIVE, "ALIVE");
+ 272:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_ARRAY_LENGTH, DL_FORMAT_SCALAR, 1, (void *) &nb_md5su
+ 273:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_ARRAY, 1 * nb_md5sum, (void *) _md5s
+ 274:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 275:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 276:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 277:/home/lsk/paparazzi/var/include/messages.h **** }
+ 278:/home/lsk/paparazzi/var/include/messages.h **** 
+ 279:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_PONG(_trans, _dev) pprz_msg_send_PONG(&((_trans).trans_tx), &((_dev).device),
+ 280:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_PONG(struct transport_tx *trans, struct link_device *dev, uint8_t 
+ 281:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0 +2 /* msg header 
+ 282:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0 +2 /* msg header overhead */)
+ 283:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0 +2 /* msg header overhead */);
+ 284:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 285:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_PONG, "PONG");
+ 286:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 287:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 288:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 289:/home/lsk/paparazzi/var/include/messages.h **** }
+ 290:/home/lsk/paparazzi/var/include/messages.h **** 
+ 291:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_TAKEOFF(_trans, _dev, cpu_time) pprz_msg_send_TAKEOFF(&((_trans).trans_tx), &
+ 292:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_TAKEOFF(struct transport_tx *trans, struct link_device *dev, uint8
+ 293:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2 +2 /* msg heade
+ 294:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2 +2 /* msg header overhead *
+ 295:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2 +2 /* msg header overhead */);
+ 296:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 297:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_TAKEOFF, "TAKEOFF");
+ 298:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _cpu_time);
+ 299:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 300:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 301:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 302:/home/lsk/paparazzi/var/include/messages.h **** }
+ 303:/home/lsk/paparazzi/var/include/messages.h **** 
+ 304:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_ARDRONE_NAVDATA(_trans, _dev, taille, nu_trame, ax, ay, az, vx, vy, vz, tempe
+ 305:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_ARDRONE_NAVDATA(struct transport_tx *trans, struct link_device *de
+ 306:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+2+2+2+2+2
+ 307:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2
+ 308:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2+2+4+2+2+4+2+2+2+2+2
+ 309:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 310:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_ARDRONE_NAVDATA, "AR
+ 311:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _taille);
+ 312:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _nu_trame);
+ 313:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _ax);
+ 314:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _ay);
+ 315:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _az);
+ 316:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _vx);
+ 317:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _vy);
+ 318:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _vz);
+ 319:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _temperature_ac
+ 320:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _temperature_gy
+ 321:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _ultrasound);
+ 322:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_debut_echo)
+ 323:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_fin_echo);
+ 324:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_association
+ 325:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_distance_ec
+ 326:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_curve_time)
+ 327:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_curve_value
+ 328:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _us_curve_ref);
+ 329:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _nb_echo);
+ 330:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _sum_echo);
+ 331:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _gradient);
+ 332:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _flag_echo_ini)
+ 333:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _pressure);
+ 334:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _temperature_pr
+ 335:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _mx);
+ 336:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _my);
+ 337:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _mz);
+ 338:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _chksum);
+ 339:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _checksum_error
+ 340:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 341:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 342:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 343:/home/lsk/paparazzi/var/include/messages.h **** }
+ 344:/home/lsk/paparazzi/var/include/messages.h **** 
+ 345:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_ATTITUDE(_trans, _dev, phi, psi, theta) pprz_msg_send_ATTITUDE(&((_trans).tra
+ 346:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_ATTITUDE(struct transport_tx *trans, struct link_device *dev, uint
+ 347:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4 +2 /* msg h
+ 348:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4 +2 /* msg header overhe
+ 349:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+4 +2 /* msg header overhead */);
+ 350:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 351:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_ATTITUDE, "ATTITUDE"
+ 352:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _phi);
+ 353:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _psi);
+ 354:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _theta);
+ 355:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 356:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 357:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 358:/home/lsk/paparazzi/var/include/messages.h **** }
+ 359:/home/lsk/paparazzi/var/include/messages.h **** 
+ 360:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_IR_SENSORS(_trans, _dev, ir1, ir2, longitudinal, lateral, vertical) pprz_msg_
+ 361:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_IR_SENSORS(struct transport_tx *trans, struct link_device *dev, ui
+ 362:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+2 +2 /* m
+ 363:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+2 +2 /* msg header ov
+ 364:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2+2+2+2 +2 /* msg header overhead */);
+ 365:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 366:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_IR_SENSORS, "IR_SENS
+ 367:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _ir1);
+ 368:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _ir2);
+ 369:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _longitudinal);
+ 370:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _lateral);
+ 371:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _vertical);
+ 372:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 373:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 374:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 375:/home/lsk/paparazzi/var/include/messages.h **** }
+ 376:/home/lsk/paparazzi/var/include/messages.h **** 
+ 377:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_GPS(_trans, _dev, mode, utm_east, utm_north, course, alt, speed, climb, week,
+ 378:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_GPS(struct transport_tx *trans, struct link_device *dev, uint8_t a
+ 379:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+4+4+2+4+2+2+2+4
+ 380:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+4+4+2+4+2+2+2+4+1+1 +2 /* m
+ 381:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+4+4+2+4+2+2+2+4+1+1 +2 /* msg header overhead */);
+ 382:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 383:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_GPS, "GPS");
+ 384:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _mode);
+ 385:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _utm_east);
+ 386:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _utm_north);
+ 387:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _course);
+ 388:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _alt);
+ 389:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _speed);
+ 390:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _climb);
+ 391:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _week);
+ 392:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _itow);
+ 393:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _utm_zone);
+ 394:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _gps_nb_err);
+ 395:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 396:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 397:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 398:/home/lsk/paparazzi/var/include/messages.h **** }
+ 399:/home/lsk/paparazzi/var/include/messages.h **** 
+ 400:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_NAVIGATION_REF(_trans, _dev, utm_east, utm_north, utm_zone, ground_alt) pprz_
+ 401:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_NAVIGATION_REF(struct transport_tx *trans, struct link_device *dev
+ 402:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+1+4 +2 /* msg
+ 403:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+1+4 +2 /* msg header over
+ 404:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+1+4 +2 /* msg header overhead */);
+ 405:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 406:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_NAVIGATION_REF, "NAV
+ 407:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _utm_east);
+ 408:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT32, DL_FORMAT_SCALAR, 4, (void *) _utm_north);
+ 409:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _utm_zone);
+ 410:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _ground_alt);
+ 411:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 412:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 413:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 414:/home/lsk/paparazzi/var/include/messages.h **** }
+ 415:/home/lsk/paparazzi/var/include/messages.h **** 
+ 416:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_NAVIGATION(_trans, _dev, cur_block, cur_stage, pos_x, pos_y, dist_wp, dist_ho
+ 417:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_NAVIGATION(struct transport_tx *trans, struct link_device *dev, ui
+ 418:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+4+4+4+4+1+1 +
+ 419:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+4+4+4+4+1+1 +2 /* msg hea
+ 420:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+1+4+4+4+4+1+1 +2 /* msg header overhead */);
+ 421:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 422:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_NAVIGATION, "NAVIGAT
+ 423:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _cur_block);
+ 424:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _cur_stage);
+ 425:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _pos_x);
+ 426:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _pos_y);
+ 427:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _dist_wp);
+ 428:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _dist_home);
+ 429:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _circle_count);
+ 430:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _oval_count);
+ 431:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 432:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 433:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 434:/home/lsk/paparazzi/var/include/messages.h **** }
+ 435:/home/lsk/paparazzi/var/include/messages.h **** 
+ 436:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_PPRZ_MODE(_trans, _dev, ap_mode, ap_gaz, ap_lateral, ap_horizontal, if_calib_
+ 437:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_PPRZ_MODE(struct transport_tx *trans, struct link_device *dev, uin
+ 438:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1+1+1+1 +2 /*
+ 439:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1+1+1+1 +2 /* msg header 
+ 440:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+1+1+1+1+1 +2 /* msg header overhead */);
+ 441:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 442:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_PPRZ_MODE, "PPRZ_MOD
+ 443:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _ap_mode);
+ 444:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _ap_gaz);
+ 445:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _ap_lateral);
+ 446:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _ap_horizontal);
+ 447:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _if_calib_mode);
+ 448:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _mcu1_status);
+ 449:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 450:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 451:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 452:/home/lsk/paparazzi/var/include/messages.h **** }
+ 453:/home/lsk/paparazzi/var/include/messages.h **** 
+ 454:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_BAT(_trans, _dev, throttle, voltage, amps, flight_time, kill_auto_throttle, b
+ 455:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_BAT(struct transport_tx *trans, struct link_device *dev, uint8_t a
+ 456:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+1+2+2+2 +
+ 457:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+1+2+2+2 +2 /* msg hea
+ 458:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2+2+2+1+2+2+2 +2 /* msg header overhead */);
+ 459:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 460:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_BAT, "BAT");
+ 461:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _throttle);
+ 462:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _voltage);
+ 463:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _amps);
+ 464:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _flight_time);
+ 465:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _kill_auto_throt
+ 466:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _block_time);
+ 467:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _stage_time);
+ 468:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _energy);
+ 469:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 470:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 471:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 472:/home/lsk/paparazzi/var/include/messages.h **** }
+ 473:/home/lsk/paparazzi/var/include/messages.h **** 
+ 474:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_DEBUG_MCU_LINK(_trans, _dev, i2c_nb_err, i2c_mcu1_nb_err, ppm_rate) pprz_msg_
+ 475:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_DEBUG_MCU_LINK(struct transport_tx *trans, struct link_device *dev
+ 476:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1 +2 /* msg h
+ 477:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1 +2 /* msg header overhe
+ 478:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+1+1 +2 /* msg header overhead */);
+ 479:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 480:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_DEBUG_MCU_LINK, "DEB
+ 481:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _i2c_nb_err);
+ 482:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _i2c_mcu1_nb_err
+ 483:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _ppm_rate);
+ 484:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 485:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 486:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 487:/home/lsk/paparazzi/var/include/messages.h **** }
+ 488:/home/lsk/paparazzi/var/include/messages.h **** 
+ 489:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_CALIBRATION(_trans, _dev, climb_sum_err, climb_gaz_submode) pprz_msg_send_CAL
+ 490:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_CALIBRATION(struct transport_tx *trans, struct link_device *dev, u
+ 491:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+1 +2 /* msg hea
+ 492:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+1 +2 /* msg header overhead
+ 493:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+1 +2 /* msg header overhead */);
+ 494:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 495:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_CALIBRATION, "CALIBR
+ 496:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _climb_sum_err);
+ 497:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _climb_gaz_submo
+ 498:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 499:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 500:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 501:/home/lsk/paparazzi/var/include/messages.h **** }
+ 502:/home/lsk/paparazzi/var/include/messages.h **** 
+ 503:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_SETTINGS(_trans, _dev, slider_1_val, slider_2_val) pprz_msg_send_SETTINGS(&((
+ 504:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_SETTINGS(struct transport_tx *trans, struct link_device *dev, uint
+ 505:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4 +2 /* msg hea
+ 506:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4 +2 /* msg header overhead
+ 507:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4 +2 /* msg header overhead */);
+ 508:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 509:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_SETTINGS, "SETTINGS"
+ 510:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _slider_1_val);
+ 511:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _slider_2_val);
+ 512:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 513:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 514:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 515:/home/lsk/paparazzi/var/include/messages.h **** }
+ 516:/home/lsk/paparazzi/var/include/messages.h **** 
+ 517:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_DESIRED(_trans, _dev, roll, pitch, course, x, y, altitude, climb, airspeed) p
+ 518:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_DESIRED(struct transport_tx *trans, struct link_device *dev, uint8
+ 519:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4+4+4+4+4 +
+ 520:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4+4+4+4+4 +2 /* msg hea
+ 521:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+4+4+4+4+4+4 +2 /* msg header overhead */);
+ 522:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 523:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_DESIRED, "DESIRED");
+ 524:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _roll);
+ 525:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _pitch);
+ 526:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _course);
+ 527:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _x);
+ 528:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _y);
+ 529:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _altitude);
+ 530:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _climb);
+ 531:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _airspeed);
+ 532:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 533:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 534:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 535:/home/lsk/paparazzi/var/include/messages.h **** }
+ 536:/home/lsk/paparazzi/var/include/messages.h **** 
+ 537:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_GPS_SOL(_trans, _dev, Pacc, Sacc, PDOP, numSV) pprz_msg_send_GPS_SOL(&((_tran
+ 538:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_GPS_SOL(struct transport_tx *trans, struct link_device *dev, uint8
+ 539:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+2+1 +2 /* msg
+ 540:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+2+1 +2 /* msg header over
+ 541:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+2+1 +2 /* msg header overhead */);
+ 542:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 543:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_GPS_SOL, "GPS_SOL");
+ 544:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _Pacc);
+ 545:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT32, DL_FORMAT_SCALAR, 4, (void *) _Sacc);
+ 546:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _PDOP);
+ 547:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _numSV);
+ 548:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 549:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 550:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 551:/home/lsk/paparazzi/var/include/messages.h **** }
+ 552:/home/lsk/paparazzi/var/include/messages.h **** 
+ 553:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_ADC_GENERIC(_trans, _dev, val1, val2) pprz_msg_send_ADC_GENERIC(&((_trans).tr
+ 554:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_ADC_GENERIC(struct transport_tx *trans, struct link_device *dev, u
+ 555:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2 +2 /* msg hea
+ 556:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2 +2 /* msg header overhead
+ 557:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2 +2 /* msg header overhead */);
+ 558:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 559:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_ADC_GENERIC, "ADC_GE
+ 560:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _val1);
+ 561:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _val2);
+ 562:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 563:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 564:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 565:/home/lsk/paparazzi/var/include/messages.h **** }
+ 566:/home/lsk/paparazzi/var/include/messages.h **** 
+ 567:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_TEST_FORMAT(_trans, _dev, val1, val2) pprz_msg_send_TEST_FORMAT(&((_trans).tr
+ 568:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_TEST_FORMAT(struct transport_tx *trans, struct link_device *dev, u
+ 569:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+8+4 +2 /* msg hea
+ 570:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+8+4 +2 /* msg header overhead
+ 571:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+8+4 +2 /* msg header overhead */);
+ 572:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 573:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_TEST_FORMAT, "TEST_F
+ 574:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_DOUBLE, DL_FORMAT_SCALAR, 8, (void *) _val1);
+ 575:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _val2);
+ 576:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 577:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 578:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 579:/home/lsk/paparazzi/var/include/messages.h **** }
+ 580:/home/lsk/paparazzi/var/include/messages.h **** 
+ 581:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_CAM(_trans, _dev, phi, theta, target_x, target_y) pprz_msg_send_CAM(&((_trans
+ 582:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_CAM(struct transport_tx *trans, struct link_device *dev, uint8_t a
+ 583:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2 +2 /* msg
+ 584:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2 +2 /* msg header over
+ 585:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2+2+2 +2 /* msg header overhead */);
+ 586:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 587:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_CAM, "CAM");
+ 588:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _phi);
+ 589:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _theta);
+ 590:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _target_x);
+ 591:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _target_y);
+ 592:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 593:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 594:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 595:/home/lsk/paparazzi/var/include/messages.h **** }
+ 596:/home/lsk/paparazzi/var/include/messages.h **** 
+ 597:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_CIRCLE(_trans, _dev, center_east, center_north, radius) pprz_msg_send_CIRCLE(
+ 598:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_CIRCLE(struct transport_tx *trans, struct link_device *dev, uint8_
+ 599:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4 +2 /* msg h
+ 600:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4 +2 /* msg header overhe
+ 601:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+4 +2 /* msg header overhead */);
+ 602:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 603:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_CIRCLE, "CIRCLE");
+ 604:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _center_east);
+ 605:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _center_north);
+ 606:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _radius);
+ 607:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 608:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 609:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 610:/home/lsk/paparazzi/var/include/messages.h **** }
+ 611:/home/lsk/paparazzi/var/include/messages.h **** 
+ 612:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_SEGMENT(_trans, _dev, segment_east_1, segment_north_1, segment_east_2, segmen
+ 613:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_SEGMENT(struct transport_tx *trans, struct link_device *dev, uint8
+ 614:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4 +2 /* msg
+ 615:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4 +2 /* msg header over
+ 616:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+4+4 +2 /* msg header overhead */);
+ 617:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 618:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_SEGMENT, "SEGMENT");
+ 619:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _segment_east_1)
+ 620:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _segment_north_1
+ 621:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _segment_east_2)
+ 622:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _segment_north_2
+ 623:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 624:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 625:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 626:/home/lsk/paparazzi/var/include/messages.h **** }
+ 627:/home/lsk/paparazzi/var/include/messages.h **** 
+ 628:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_SVINFO(_trans, _dev, chn, SVID, Flags, QI, CNO, Elev, Azim) pprz_msg_send_SVI
+ 629:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_SVINFO(struct transport_tx *trans, struct link_device *dev, uint8_
+ 630:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1+1+1+1+2 +2 
+ 631:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+1+1+1+1+1+2 +2 /* msg heade
+ 632:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+1+1+1+1+1+2 +2 /* msg header overhead */);
+ 633:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 634:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_SVINFO, "SVINFO");
+ 635:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _chn);
+ 636:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _SVID);
+ 637:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _Flags);
+ 638:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _QI);
+ 639:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _CNO);
+ 640:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT8, DL_FORMAT_SCALAR, 1, (void *) _Elev);
+ 641:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_INT16, DL_FORMAT_SCALAR, 2, (void *) _Azim);
+ 642:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 643:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 644:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 645:/home/lsk/paparazzi/var/include/messages.h **** }
+ 646:/home/lsk/paparazzi/var/include/messages.h **** 
+ 647:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_DEBUG(_trans, _dev, nb_msg, msg) pprz_msg_send_DEBUG(&((_trans).trans_tx), &(
+ 648:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_DEBUG(struct transport_tx *trans, struct link_device *dev, uint8_t
+ 649:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1+nb_msg*1 +2 /* 
+ 650:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1+nb_msg*1 +2 /* msg header o
+ 651:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1+nb_msg*1 +2 /* msg header overhead */);
+ 652:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 653:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_DEBUG, "DEBUG");
+ 654:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_ARRAY_LENGTH, DL_FORMAT_SCALAR, 1, (void *) &nb_msg);
+ 655:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_ARRAY, 1 * nb_msg, (void *) _msg);
+ 656:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 657:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 658:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 659:/home/lsk/paparazzi/var/include/messages.h **** }
+ 660:/home/lsk/paparazzi/var/include/messages.h **** 
+ 661:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_SURVEY(_trans, _dev, east, north, west, south) pprz_msg_send_SURVEY(&((_trans
+ 662:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_SURVEY(struct transport_tx *trans, struct link_device *dev, uint8_
+ 663:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4 +2 /* msg
+ 664:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+4+4+4+4 +2 /* msg header over
+ 665:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+4+4+4+4 +2 /* msg header overhead */);
+ 666:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 667:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_SURVEY, "SURVEY");
+ 668:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _east);
+ 669:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _north);
+ 670:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _west);
+ 671:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _south);
+ 672:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 673:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 674:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 675:/home/lsk/paparazzi/var/include/messages.h **** }
+ 676:/home/lsk/paparazzi/var/include/messages.h **** 
+ 677:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_WC_RSSI(_trans, _dev, raw_level) pprz_msg_send_WC_RSSI(&((_trans).trans_tx), 
+ 678:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_WC_RSSI(struct transport_tx *trans, struct link_device *dev, uint8
+ 679:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+1 +2 /* msg heade
+ 680:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+1 +2 /* msg header overhead *
+ 681:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+1 +2 /* msg header overhead */);
+ 682:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 683:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_WC_RSSI, "WC_RSSI");
+ 684:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _raw_level);
+ 685:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 686:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 687:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 688:/home/lsk/paparazzi/var/include/messages.h **** }
+ 689:/home/lsk/paparazzi/var/include/messages.h **** 
+ 690:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_RANGEFINDER(_trans, _dev, range, z_dot, z_dot_sum_err, z_dot_setpoint, z_sum_
+ 691:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_RANGEFINDER(struct transport_tx *trans, struct link_device *dev, u
+ 692:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+4+4+4+4+4+1 +2 
+ 693:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+4+4+4+4+4+1 +2 /* msg heade
+ 694:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+4+4+4+4+4+1 +2 /* msg header overhead */);
+ 695:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 696:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_RANGEFINDER, "RANGEF
+ 697:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _range);
+ 698:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _z_dot);
+ 699:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _z_dot_sum_err);
+ 700:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _z_dot_setpoint)
+ 701:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _z_sum_err);
+ 702:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_FLOAT, DL_FORMAT_SCALAR, 4, (void *) _z_setpoint);
+ 703:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _flying);
+ 704:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 705:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 706:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 707:/home/lsk/paparazzi/var/include/messages.h **** }
+ 708:/home/lsk/paparazzi/var/include/messages.h **** 
+ 709:/home/lsk/paparazzi/var/include/messages.h **** #define DOWNLINK_SEND_DATALINK_REPORT(_trans, _dev, uplink_lost_time, uplink_nb_msgs, downlink_nb_m
+ 710:/home/lsk/paparazzi/var/include/messages.h **** static inline void pprz_msg_send_DATALINK_REPORT(struct transport_tx *trans, struct link_device *de
+ 711:/home/lsk/paparazzi/var/include/messages.h **** 	if (trans->check_available_space(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+1 +2 /* m
+ 136              		.loc 4 711 0
+ 137 005a DAF82060 		ldr	r6, [r10, #32]
+ 138              	.LBE33:
+ 139              	.LBE32:
+  48:subsystems/datalink/downlink.c ****     last_ts = now_ts;
+ 140              		.loc 1 48 0
+ 141 005e 1360     		str	r3, [r2]
+  47:subsystems/datalink/downlink.c ****     uint16_t rate = (1000 * ((uint32_t)downlink.nb_bytes - last_nb_bytes)) / (now_ts - last_ts);
+ 142              		.loc 1 47 0
+ 143 0060 591A     		subs	r1, r3, r1
+ 144 0062 B5FBF1F1 		udiv	r1, r5, r1
+ 145 0066 4FF00108 		mov	r8, #1
+  50:subsystems/datalink/downlink.c **** 
+  51:subsystems/datalink/downlink.c ****     // TODO uplink nb received msg
+  52:subsystems/datalink/downlink.c ****     uint16_t uplink_nb_msgs = 0;
+ 146              		.loc 1 52 0
+ 147 006a 0025     		movs	r5, #0
+  47:subsystems/datalink/downlink.c ****     uint16_t rate = (1000 * ((uint32_t)downlink.nb_bytes - last_nb_bytes)) / (now_ts - last_ts);
+ 148              		.loc 1 47 0
+ 149 006c ADF80C10 		strh	r1, [sp, #12]	@ movhi
+ 150              		.loc 1 52 0
+ 151 0070 ADF80E50 		strh	r5, [sp, #14]	@ movhi
+ 152              	.LVL6:
+ 153              	.LBB35:
+ 154              	.LBB34:
+ 155              		.loc 4 711 0
+ 156 0074 0B21     		movs	r1, #11
+ 157 0076 8DF80B80 		strb	r8, [sp, #11]
+ 158              	.LVL7:
+ 159 007a DAF80030 		ldr	r3, [r10]
+ 160 007e DAF80470 		ldr	r7, [r10, #4]
+ 161 0082 3046     		mov	r0, r6
+ 162 0084 9847     		blx	r3
+ 163              	.LVL8:
+ 164 0086 2146     		mov	r1, r4
+ 165 0088 0246     		mov	r2, r0
+ 166 008a 3046     		mov	r0, r6
+ 167 008c B847     		blx	r7
+ 168              	.LVL9:
+ 169 008e 0028     		cmp	r0, #0
+ 170 0090 68D0     		beq	.L3
+ 712:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->count_bytes(trans->impl, dev, trans->size_of(trans->impl, 0+2+2+2+2+1 +2 /* msg header ov
+ 171              		.loc 4 712 0
+ 172 0092 DAF82060 		ldr	r6, [r10, #32]
+ 173 0096 DAF80030 		ldr	r3, [r10]
+ 174 009a DAF81C70 		ldr	r7, [r10, #28]
+ 175 009e 3046     		mov	r0, r6
+ 176 00a0 0B21     		movs	r1, #11
+ 177 00a2 9847     		blx	r3
+ 178              	.LVL10:
+ 179 00a4 2146     		mov	r1, r4
+ 180 00a6 0246     		mov	r2, r0
+ 181 00a8 3046     		mov	r0, r6
+ 182 00aa B847     		blx	r7
+ 183              	.LVL11:
+ 713:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->start_message(trans->impl, dev, 0+2+2+2+2+1 +2 /* msg header overhead */);
+ 184              		.loc 4 713 0
+ 185 00ac DAF81030 		ldr	r3, [r10, #16]
+ 186 00b0 DAF82000 		ldr	r0, [r10, #32]
+ 187 00b4 2146     		mov	r1, r4
+ 188 00b6 0B22     		movs	r2, #11
+ 189 00b8 9847     		blx	r3
+ 190              	.LVL12:
+ 714:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, &ac_id);
+ 191              		.loc 4 714 0
+ 192 00ba 0DF10B03 		add	r3, sp, #11
+ 193 00be 0193     		str	r3, [sp, #4]
+ 194 00c0 DAF80860 		ldr	r6, [r10, #8]
+ 195 00c4 DAF82000 		ldr	r0, [r10, #32]
+ 196 00c8 CDF80080 		str	r8, [sp]
+ 197 00cc 2146     		mov	r1, r4
+ 198 00ce 0222     		movs	r2, #2
+ 199 00d0 2B46     		mov	r3, r5
+ 200 00d2 B047     		blx	r6
+ 201              	.LVL13:
+ 715:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_named_byte(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, DL_DATALINK_REPORT, "DA
+ 202              		.loc 4 715 0
+ 203 00d4 1E23     		movs	r3, #30
+ 204 00d6 0093     		str	r3, [sp]
+ 205 00d8 2A4B     		ldr	r3, .L7+12
+ 206 00da 0193     		str	r3, [sp, #4]
+ 207 00dc DAF80C60 		ldr	r6, [r10, #12]
+ 208 00e0 DAF82000 		ldr	r0, [r10, #32]
+ 209 00e4 2146     		mov	r1, r4
+ 210 00e6 0222     		movs	r2, #2
+ 211 00e8 2B46     		mov	r3, r5
+ 212 00ea B047     		blx	r6
+ 213              	.LVL14:
+ 716:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _uplink_lost_ti
+ 214              		.loc 4 716 0
+ 215 00ec 0226     		movs	r6, #2
+ 216 00ee 264B     		ldr	r3, .L7+16
+ 217 00f0 0193     		str	r3, [sp, #4]
+ 218 00f2 DAF80870 		ldr	r7, [r10, #8]
+ 219 00f6 DAF82000 		ldr	r0, [r10, #32]
+ 220 00fa 0096     		str	r6, [sp]
+ 221 00fc 2146     		mov	r1, r4
+ 222 00fe 0422     		movs	r2, #4
+ 223 0100 2B46     		mov	r3, r5
+ 224 0102 B847     		blx	r7
+ 225              	.LVL15:
+ 717:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _uplink_nb_msgs
+ 226              		.loc 4 717 0
+ 227 0104 0DF10E03 		add	r3, sp, #14
+ 228              	.LVL16:
+ 229 0108 0193     		str	r3, [sp, #4]
+ 230 010a DAF80870 		ldr	r7, [r10, #8]
+ 231 010e DAF82000 		ldr	r0, [r10, #32]
+ 232 0112 0096     		str	r6, [sp]
+ 233 0114 2146     		mov	r1, r4
+ 234 0116 0422     		movs	r2, #4
+ 235 0118 2B46     		mov	r3, r5
+ 236              	.LVL17:
+ 237 011a B847     		blx	r7
+ 238              	.LVL18:
+ 718:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _downlink_nb_ms
+ 239              		.loc 4 718 0
+ 240 011c 09F10403 		add	r3, r9, #4
+ 241 0120 0193     		str	r3, [sp, #4]
+ 242 0122 DAF80870 		ldr	r7, [r10, #8]
+ 243 0126 DAF82000 		ldr	r0, [r10, #32]
+ 244 012a 0096     		str	r6, [sp]
+ 245 012c 2146     		mov	r1, r4
+ 246 012e 0422     		movs	r2, #4
+ 247 0130 2B46     		mov	r3, r5
+ 248 0132 B847     		blx	r7
+ 249              	.LVL19:
+ 719:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT16, DL_FORMAT_SCALAR, 2, (void *) _downlink_rate)
+ 250              		.loc 4 719 0
+ 251 0134 03AB     		add	r3, sp, #12
+ 252              	.LVL20:
+ 253 0136 0193     		str	r3, [sp, #4]
+ 254 0138 DAF80870 		ldr	r7, [r10, #8]
+ 255 013c DAF82000 		ldr	r0, [r10, #32]
+ 256 0140 0096     		str	r6, [sp]
+ 257 0142 2146     		mov	r1, r4
+ 258 0144 0422     		movs	r2, #4
+ 259 0146 2B46     		mov	r3, r5
+ 260              	.LVL21:
+ 261 0148 B847     		blx	r7
+ 262              	.LVL22:
+ 720:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->put_bytes(trans->impl, dev, DL_TYPE_UINT8, DL_FORMAT_SCALAR, 1, (void *) _downlink_ovrn);
+ 263              		.loc 4 720 0
+ 264 014a 2B46     		mov	r3, r5
+ 265 014c 8DE80003 		stmia	sp, {r8, r9}
+ 266 0150 DAF80870 		ldr	r7, [r10, #8]
+ 267 0154 DAF82000 		ldr	r0, [r10, #32]
+ 268 0158 2146     		mov	r1, r4
+ 269 015a 3246     		mov	r2, r6
+ 270 015c B847     		blx	r7
+ 271              	.LVL23:
+ 721:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->end_message(trans->impl, dev);
+ 272              		.loc 4 721 0
+ 273 015e DAF81430 		ldr	r3, [r10, #20]
+ 274 0162 01E0     		b	.L5
+ 275              	.L3:
+ 722:/home/lsk/paparazzi/var/include/messages.h **** 	} else
+ 723:/home/lsk/paparazzi/var/include/messages.h **** 	  trans->overrun(trans->impl, dev);
+ 276              		.loc 4 723 0
+ 277 0164 DAF81830 		ldr	r3, [r10, #24]
+ 278              	.L5:
+ 279 0168 DAF82000 		ldr	r0, [r10, #32]
+ 280 016c 2146     		mov	r1, r4
+ 281 016e 9847     		blx	r3
+ 282              	.LVL24:
+ 283              	.L1:
+ 284              	.LBE34:
+ 285              	.LBE35:
+ 286              	.LBE31:
+  53:subsystems/datalink/downlink.c ****     pprz_msg_send_DATALINK_REPORT(trans, dev, AC_ID,
+  54:subsystems/datalink/downlink.c ****                                   &datalink_time, &uplink_nb_msgs,
+  55:subsystems/datalink/downlink.c ****                                   &downlink.nb_msgs, &rate, &downlink.nb_ovrn);
+  56:subsystems/datalink/downlink.c ****   }
+  57:subsystems/datalink/downlink.c **** }
+ 287              		.loc 1 57 0
+ 288 0170 04B0     		add	sp, sp, #16
+ 289              		@ sp needed
+ 290 0172 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 291              	.LVL25:
+ 292              	.L8:
+ 293 0176 00BF     		.align	2
+ 294              	.L7:
+ 295 0178 00000000 		.word	sys_time
+ 296 017c 00000000 		.word	.LANCHOR0
+ 297 0180 00000000 		.word	.LANCHOR2
+ 298 0184 00000000 		.word	.LC0
+ 299 0188 00000000 		.word	datalink_time
+ 300 018c 00000000 		.word	.LANCHOR1
+ 301              		.cfi_endproc
+ 302              	.LFE350:
+ 304              		.section	.text.downlink_init,"ax",%progbits
+ 305              		.align	1
+ 306              		.global	downlink_init
+ 307              		.thumb
+ 308              		.thumb_func
+ 310              	downlink_init:
+ 311              	.LFB351:
+  58:subsystems/datalink/downlink.c **** #endif
+  59:subsystems/datalink/downlink.c **** 
+  60:subsystems/datalink/downlink.c **** void downlink_init(void)
+  61:subsystems/datalink/downlink.c **** {
+ 312              		.loc 1 61 0
+ 313              		.cfi_startproc
+ 314              		@ args = 0, pretend = 0, frame = 0
+ 315              		@ frame_needed = 0, uses_anonymous_args = 0
+ 316 0000 08B5     		push	{r3, lr}
+ 317              		.cfi_def_cfa_offset 8
+ 318              		.cfi_offset 3, -8
+ 319              		.cfi_offset 14, -4
+  62:subsystems/datalink/downlink.c ****   downlink.nb_ovrn = 0;
+ 320              		.loc 1 62 0
+ 321 0002 074B     		ldr	r3, .L10
+  63:subsystems/datalink/downlink.c ****   downlink.nb_bytes = 0;
+  64:subsystems/datalink/downlink.c ****   downlink.nb_msgs = 0;
+  65:subsystems/datalink/downlink.c **** 
+  66:subsystems/datalink/downlink.c **** #if defined DATALINK
+  67:subsystems/datalink/downlink.c **** #if DATALINK == PPRZ || DATALINK == SUPERBITRF || DATALINK == W5100
+  68:subsystems/datalink/downlink.c ****   pprz_transport_init(&pprz_tp);
+ 322              		.loc 1 68 0
+ 323 0004 0748     		ldr	r0, .L10+4
+  62:subsystems/datalink/downlink.c ****   downlink.nb_ovrn = 0;
+ 324              		.loc 1 62 0
+ 325 0006 0022     		movs	r2, #0
+ 326 0008 1A70     		strb	r2, [r3]
+  63:subsystems/datalink/downlink.c ****   downlink.nb_bytes = 0;
+ 327              		.loc 1 63 0
+ 328 000a 5A80     		strh	r2, [r3, #2]	@ movhi
+  64:subsystems/datalink/downlink.c ****   downlink.nb_msgs = 0;
+ 329              		.loc 1 64 0
+ 330 000c 9A80     		strh	r2, [r3, #4]	@ movhi
+ 331              		.loc 1 68 0
+ 332 000e FFF7FEFF 		bl	pprz_transport_init
+ 333              	.LVL26:
+  69:subsystems/datalink/downlink.c **** #endif
+  70:subsystems/datalink/downlink.c **** #if DATALINK == XBEE
+  71:subsystems/datalink/downlink.c ****   xbee_init();
+  72:subsystems/datalink/downlink.c **** #endif
+  73:subsystems/datalink/downlink.c **** #if DATALINK == W5100
+  74:subsystems/datalink/downlink.c ****   w5100_init();
+  75:subsystems/datalink/downlink.c **** #endif
+  76:subsystems/datalink/downlink.c **** #endif
+  77:subsystems/datalink/downlink.c **** 
+  78:subsystems/datalink/downlink.c **** #if USE_PPRZLOG
+  79:subsystems/datalink/downlink.c ****   pprzlog_transport_init();
+  80:subsystems/datalink/downlink.c **** #endif
+  81:subsystems/datalink/downlink.c **** 
+  82:subsystems/datalink/downlink.c **** #if SITL
+  83:subsystems/datalink/downlink.c ****   ivy_transport_init();
+  84:subsystems/datalink/downlink.c **** #endif
+  85:subsystems/datalink/downlink.c **** 
+  86:subsystems/datalink/downlink.c **** #if PERIODIC_TELEMETRY
+  87:subsystems/datalink/downlink.c ****   register_periodic_telemetry(DefaultPeriodic, "DATALINK_REPORT", send_downlink);
+ 334              		.loc 1 87 0
+ 335 0012 0548     		ldr	r0, .L10+8
+ 336 0014 0549     		ldr	r1, .L10+12
+ 337 0016 064A     		ldr	r2, .L10+16
+  88:subsystems/datalink/downlink.c **** #endif
+  89:subsystems/datalink/downlink.c **** }
+ 338              		.loc 1 89 0
+ 339 0018 BDE80840 		pop	{r3, lr}
+  87:subsystems/datalink/downlink.c ****   register_periodic_telemetry(DefaultPeriodic, "DATALINK_REPORT", send_downlink);
+ 340              		.loc 1 87 0
+ 341 001c FFF7FEBF 		b	register_periodic_telemetry
+ 342              	.LVL27:
+ 343              	.L11:
+ 344              		.align	2
+ 345              	.L10:
+ 346 0020 00000000 		.word	.LANCHOR1
+ 347 0024 00000000 		.word	pprz_tp
+ 348 0028 00000000 		.word	pprz_telemetry
+ 349 002c 00000000 		.word	.LC0
+ 350 0030 00000000 		.word	send_downlink
+ 351              		.cfi_endproc
+ 352              	.LFE351:
+ 354              		.global	downlink
+ 355              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 356              	.LC0:
+ 357 0000 44415441 		.ascii	"DATALINK_REPORT\000"
+ 357      4C494E4B 
+ 357      5F524550 
+ 357      4F525400 
+ 358              		.section	.bss.last_nb_bytes.9842,"aw",%nobits
+ 359              		.align	2
+ 360              		.set	.LANCHOR2,. + 0
+ 363              	last_nb_bytes.9842:
+ 364 0000 00000000 		.space	4
+ 365              		.section	.bss.downlink,"aw",%nobits
+ 366              		.align	1
+ 367              		.set	.LANCHOR1,. + 0
+ 370              	downlink:
+ 371 0000 00000000 		.space	6
+ 371      0000
+ 372              		.section	.bss.last_ts.9843,"aw",%nobits
+ 373              		.align	2
+ 374              		.set	.LANCHOR0,. + 0
+ 377              	last_ts.9843:
+ 378 0000 00000000 		.space	4
+ 379              		.text
+ 380              	.Letext0:
+ 381              		.file 5 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 382              		.file 6 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 383              		.file 7 "/home/lsk/paparazzi/sw/include/std.h"
+ 384              		.file 8 "./mcu_periph/link_device.h"
+ 385              		.file 9 "./subsystems/datalink/transport.h"
+ 386              		.file 10 "./subsystems/datalink/pprz_transport.h"
+ 387              		.file 11 "./subsystems/datalink/xbee.h"
+ 388              		.file 12 "./subsystems/datalink/downlink.h"
+ 389              		.file 13 "./subsystems/datalink/telemetry_common.h"
+ 390              		.file 14 "./subsystems/datalink/datalink.h"
+ 391              		.file 15 "./subsystems/datalink/w5100.h"
+ 392              		.file 16 "/home/lsk/paparazzi/var/aircrafts/kroozsd_lsk/ap/generated/periodic_telemetry.h"
+ 393              		.file 17 "./subsystems/datalink/telemetry.h"
+ 394              		.file 18 "../ext/libopencm3/include/libopencm3/cm3/systick.h"
+ 395              		.file 19 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 downlink.c
+     /tmp/ccdbzYAC.s:20     .text.send_downlink:00000000 $t
+     /tmp/ccdbzYAC.s:24     .text.send_downlink:00000000 send_downlink
+     /tmp/ccdbzYAC.s:295    .text.send_downlink:00000178 $d
+     /tmp/ccdbzYAC.s:305    .text.downlink_init:00000000 $t
+     /tmp/ccdbzYAC.s:310    .text.downlink_init:00000000 downlink_init
+     /tmp/ccdbzYAC.s:346    .text.downlink_init:00000020 $d
+     /tmp/ccdbzYAC.s:370    .bss.downlink:00000000 downlink
+     /tmp/ccdbzYAC.s:359    .bss.last_nb_bytes.9842:00000000 $d
+     /tmp/ccdbzYAC.s:363    .bss.last_nb_bytes.9842:00000000 last_nb_bytes.9842
+     /tmp/ccdbzYAC.s:366    .bss.downlink:00000000 $d
+     /tmp/ccdbzYAC.s:373    .bss.last_ts.9843:00000000 $d
+     /tmp/ccdbzYAC.s:377    .bss.last_ts.9843:00000000 last_ts.9843
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.modules.h.5.be642dc363672736d1d1e45a75aad0cf
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_algebra_float.h.32.544614e70075e1ed5693f00f6a441312
+                           .group:00000000 wm4.pprz_algebra_double.h.91.82ca62ae962f4b4f295322d977f2dad5
+                           .group:00000000 wm4.modules.h.24.27c8342510f0f30e64a55f4e4778474a
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.messages.h.9.6fd66bc411dd06866b086a1b57e0f309
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.datalink.h.28.0d234a7c203533b2ec538be3e18eddf4
+                           .group:00000000 wm4.dl_protocol.h.5.a12fe27a4b4a3cbb46fbca8acf33e3dd
+                           .group:00000000 wm4.datalink.h.46.36a5e0f36fb7d0784f1e7af767537c84
+                           .group:00000000 wm4.pprz_transport.h.57.167db0ee96032e142f5d6e570b3339aa
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.xbee24.h.29.a6677f8bcb71d3b07e11290a2de0e179
+                           .group:00000000 wm4.xbee.h.41.f36be817f95b74f883aef9324b53817b
+                           .group:00000000 wm4.w5100.h.29.d3529bed8de657ab3944b343be960f10
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.downlink.h.76.41034157e32fc9012166fd95ec7418fc
+                           .group:00000000 wm4.periodic_telemetry.h.11.45a44616e39ae884c5a68828f6bf143a
+
+UNDEFINED SYMBOLS
+systick_get_reload
+systick_get_value
+sys_time
+datalink_time
+pprz_transport_init
+register_periodic_telemetry
+pprz_tp
+pprz_telemetry

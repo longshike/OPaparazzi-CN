@@ -1,0 +1,883 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"telemetry.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.register_periodic_telemetry,"ax",%progbits
+  20              		.align	1
+  21              		.global	register_periodic_telemetry
+  22              		.thumb
+  23              		.thumb_func
+  25              	register_periodic_telemetry:
+  26              	.LFB2:
+  27              		.file 1 "subsystems/datalink/telemetry.c"
+   1:subsystems/datalink/telemetry.c **** /*
+   2:subsystems/datalink/telemetry.c ****  * Copyright (C) 2013 Gautier Hattenberger
+   3:subsystems/datalink/telemetry.c ****  *
+   4:subsystems/datalink/telemetry.c ****  * This file is part of paparazzi.
+   5:subsystems/datalink/telemetry.c ****  *
+   6:subsystems/datalink/telemetry.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/datalink/telemetry.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/datalink/telemetry.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/datalink/telemetry.c ****  * any later version.
+  10:subsystems/datalink/telemetry.c ****  *
+  11:subsystems/datalink/telemetry.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/datalink/telemetry.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/datalink/telemetry.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/datalink/telemetry.c ****  * GNU General Public License for more details.
+  15:subsystems/datalink/telemetry.c ****  *
+  16:subsystems/datalink/telemetry.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/datalink/telemetry.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/datalink/telemetry.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/datalink/telemetry.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/datalink/telemetry.c ****  *
+  21:subsystems/datalink/telemetry.c ****  */
+  22:subsystems/datalink/telemetry.c **** 
+  23:subsystems/datalink/telemetry.c **** /**
+  24:subsystems/datalink/telemetry.c ****  * @file subsystems/datalink/telemetry.c
+  25:subsystems/datalink/telemetry.c ****  *
+  26:subsystems/datalink/telemetry.c ****  * Periodic telemetry system utility function.
+  27:subsystems/datalink/telemetry.c ****  *
+  28:subsystems/datalink/telemetry.c ****  */
+  29:subsystems/datalink/telemetry.c **** 
+  30:subsystems/datalink/telemetry.c **** #include "subsystems/datalink/telemetry_common.h"
+  31:subsystems/datalink/telemetry.c **** #include "generated/periodic_telemetry.h"
+  32:subsystems/datalink/telemetry.c **** 
+  33:subsystems/datalink/telemetry.c **** /* Implement global structures from generated header
+  34:subsystems/datalink/telemetry.c ****  */
+  35:subsystems/datalink/telemetry.c **** telemetry_msg telemetry_msgs[TELEMETRY_NB_MSG] = TELEMETRY_MSG_NAMES;
+  36:subsystems/datalink/telemetry.c **** telemetry_cb telemetry_cbs[TELEMETRY_NB_MSG] = TELEMETRY_CBS_NULL;
+  37:subsystems/datalink/telemetry.c **** struct periodic_telemetry pprz_telemetry = { TELEMETRY_NB_MSG, telemetry_msgs, telemetry_cbs };
+  38:subsystems/datalink/telemetry.c **** 
+  39:subsystems/datalink/telemetry.c **** 
+  40:subsystems/datalink/telemetry.c **** /** Register a telemetry callback function.
+  41:subsystems/datalink/telemetry.c ****  * @param _pt periodic telemetry structure to register
+  42:subsystems/datalink/telemetry.c ****  * @param _msg message name (string) as defined in telemetry xml file
+  43:subsystems/datalink/telemetry.c ****  * @param _cb callback function, called according to telemetry mode and specified period
+  44:subsystems/datalink/telemetry.c ****  * @return TRUE if message registered with success, FALSE otherwise
+  45:subsystems/datalink/telemetry.c ****  */
+  46:subsystems/datalink/telemetry.c **** bool_t register_periodic_telemetry(struct periodic_telemetry *_pt, const char *_msg, telemetry_cb _
+  47:subsystems/datalink/telemetry.c **** {
+  28              		.loc 1 47 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              	.LVL0:
+  33 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+  34              		.cfi_def_cfa_offset 20
+  35              		.cfi_offset 4, -20
+  36              		.cfi_offset 5, -16
+  37              		.cfi_offset 6, -12
+  38              		.cfi_offset 7, -8
+  39              		.cfi_offset 14, -4
+  48:subsystems/datalink/telemetry.c ****   // return FALSE if NULL is passed as periodic_telemetry
+  49:subsystems/datalink/telemetry.c ****   if (_pt == NULL) { return FALSE; }
+  40              		.loc 1 49 0
+  41 0002 00B9     		cbnz	r0, .L12
+  42 0004 F0BD     		pop	{r4, r5, r6, r7, pc}
+  43              	.L12:
+  50:subsystems/datalink/telemetry.c ****   // look for message name
+  51:subsystems/datalink/telemetry.c ****   uint8_t i;
+  52:subsystems/datalink/telemetry.c ****   for (i = 0; i < _pt->nb; i++) {
+  44              		.loc 1 52 0
+  45 0006 0778     		ldrb	r7, [r0]	@ zero_extendqisi2
+  46 0008 0023     		movs	r3, #0
+  47              	.L10:
+  48              	.LVL1:
+  49              		.loc 1 52 0 is_stmt 0 discriminator 1
+  50 000a DCB2     		uxtb	r4, r3
+  51 000c BC42     		cmp	r4, r7
+  52 000e 0ED2     		bcs	.L15
+  53:subsystems/datalink/telemetry.c ****     if (str_equal(_pt->msgs[i], _msg)) {
+  53              		.loc 1 53 0 is_stmt 1
+  54 0010 4468     		ldr	r4, [r0, #4]
+  55 0012 04EB831C 		add	ip, r4, r3, lsl #6
+  56              	.LVL2:
+  57              	.LBB4:
+  58              	.LBB5:
+  59              		.file 2 "/home/lsk/paparazzi/sw/include/std.h"
+   1:/home/lsk/paparazzi/sw/include/std.h **** /*
+   2:/home/lsk/paparazzi/sw/include/std.h ****  * Copyright (C) 2005 Pascal Brisset, Antoine Drouin
+   3:/home/lsk/paparazzi/sw/include/std.h ****  *
+   4:/home/lsk/paparazzi/sw/include/std.h ****  * This file is part of paparazzi.
+   5:/home/lsk/paparazzi/sw/include/std.h ****  *
+   6:/home/lsk/paparazzi/sw/include/std.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:/home/lsk/paparazzi/sw/include/std.h ****  * it under the terms of the GNU General Public License as published by
+   8:/home/lsk/paparazzi/sw/include/std.h ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:/home/lsk/paparazzi/sw/include/std.h ****  * any later version.
+  10:/home/lsk/paparazzi/sw/include/std.h ****  *
+  11:/home/lsk/paparazzi/sw/include/std.h ****  * paparazzi is distributed in the hope that it will be useful,
+  12:/home/lsk/paparazzi/sw/include/std.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:/home/lsk/paparazzi/sw/include/std.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:/home/lsk/paparazzi/sw/include/std.h ****  * GNU General Public License for more details.
+  15:/home/lsk/paparazzi/sw/include/std.h ****  *
+  16:/home/lsk/paparazzi/sw/include/std.h ****  * You should have received a copy of the GNU General Public License
+  17:/home/lsk/paparazzi/sw/include/std.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:/home/lsk/paparazzi/sw/include/std.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:/home/lsk/paparazzi/sw/include/std.h ****  * Boston, MA 02111-1307, USA.
+  20:/home/lsk/paparazzi/sw/include/std.h ****  *
+  21:/home/lsk/paparazzi/sw/include/std.h ****  *
+  22:/home/lsk/paparazzi/sw/include/std.h ****  * a couple of fundamentals used in the avr code
+  23:/home/lsk/paparazzi/sw/include/std.h ****  *
+  24:/home/lsk/paparazzi/sw/include/std.h ****  */
+  25:/home/lsk/paparazzi/sw/include/std.h **** 
+  26:/home/lsk/paparazzi/sw/include/std.h **** #ifndef STD_H
+  27:/home/lsk/paparazzi/sw/include/std.h **** #define STD_H
+  28:/home/lsk/paparazzi/sw/include/std.h **** 
+  29:/home/lsk/paparazzi/sw/include/std.h **** #include <inttypes.h>
+  30:/home/lsk/paparazzi/sw/include/std.h **** #include <stdbool.h>
+  31:/home/lsk/paparazzi/sw/include/std.h **** #include <math.h>
+  32:/home/lsk/paparazzi/sw/include/std.h **** 
+  33:/home/lsk/paparazzi/sw/include/std.h **** /* some convenience macros to print debug/config messages at compile time */
+  34:/home/lsk/paparazzi/sw/include/std.h **** #include "message_pragmas.h"
+  35:/home/lsk/paparazzi/sw/include/std.h **** 
+  36:/home/lsk/paparazzi/sw/include/std.h **** /* stringify a define, e.g. one that was not quoted */
+  37:/home/lsk/paparazzi/sw/include/std.h **** #define _STRINGIFY(s) #s
+  38:/home/lsk/paparazzi/sw/include/std.h **** #define STRINGIFY(s) _STRINGIFY(s)
+  39:/home/lsk/paparazzi/sw/include/std.h **** 
+  40:/home/lsk/paparazzi/sw/include/std.h **** #ifndef FALSE
+  41:/home/lsk/paparazzi/sw/include/std.h **** #define FALSE 0
+  42:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  43:/home/lsk/paparazzi/sw/include/std.h **** #ifndef TRUE
+  44:/home/lsk/paparazzi/sw/include/std.h **** #define TRUE (!FALSE)
+  45:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  46:/home/lsk/paparazzi/sw/include/std.h **** 
+  47:/home/lsk/paparazzi/sw/include/std.h **** #ifndef NULL
+  48:/home/lsk/paparazzi/sw/include/std.h **** #ifdef __cplusplus
+  49:/home/lsk/paparazzi/sw/include/std.h **** #define NULL 0
+  50:/home/lsk/paparazzi/sw/include/std.h **** #else
+  51:/home/lsk/paparazzi/sw/include/std.h **** #define NULL ((void *)0)
+  52:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  53:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  54:/home/lsk/paparazzi/sw/include/std.h **** 
+  55:/home/lsk/paparazzi/sw/include/std.h **** /* Boolean values */
+  56:/home/lsk/paparazzi/sw/include/std.h **** #ifdef RTOS_IS_CHIBIOS
+  57:/home/lsk/paparazzi/sw/include/std.h **** /* make bool_t an alias to bool instead of uint8_t dor chibios port
+  58:/home/lsk/paparazzi/sw/include/std.h ****   probably a bad idea since sizeof(bool) is 4, and this will break
+  59:/home/lsk/paparazzi/sw/include/std.h ****   message coding/decoding **** FIX NEEDEED ****
+  60:/home/lsk/paparazzi/sw/include/std.h **** */
+  61:/home/lsk/paparazzi/sw/include/std.h **** typedef bool bool_t;
+  62:/home/lsk/paparazzi/sw/include/std.h **** #else
+  63:/home/lsk/paparazzi/sw/include/std.h **** typedef uint8_t bool_t;
+  64:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  65:/home/lsk/paparazzi/sw/include/std.h **** 
+  66:/home/lsk/paparazzi/sw/include/std.h **** /* Unit (void) values */
+  67:/home/lsk/paparazzi/sw/include/std.h **** typedef uint8_t unit_t;
+  68:/home/lsk/paparazzi/sw/include/std.h **** 
+  69:/home/lsk/paparazzi/sw/include/std.h **** #ifndef M_PI
+  70:/home/lsk/paparazzi/sw/include/std.h **** #define M_PI 3.14159265358979323846
+  71:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  72:/home/lsk/paparazzi/sw/include/std.h **** 
+  73:/home/lsk/paparazzi/sw/include/std.h **** #ifndef M_PI_4
+  74:/home/lsk/paparazzi/sw/include/std.h **** #define M_PI_4 (M_PI/4)
+  75:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  76:/home/lsk/paparazzi/sw/include/std.h **** 
+  77:/home/lsk/paparazzi/sw/include/std.h **** #ifndef M_PI_2
+  78:/home/lsk/paparazzi/sw/include/std.h **** #define M_PI_2 (M_PI/2)
+  79:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  80:/home/lsk/paparazzi/sw/include/std.h **** 
+  81:/home/lsk/paparazzi/sw/include/std.h **** 
+  82:/home/lsk/paparazzi/sw/include/std.h **** #ifndef bit_is_set
+  83:/home/lsk/paparazzi/sw/include/std.h **** #define bit_is_set(x, b) ((x >> b) & 0x1)
+  84:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  85:/home/lsk/paparazzi/sw/include/std.h **** 
+  86:/home/lsk/paparazzi/sw/include/std.h **** #ifndef _BV
+  87:/home/lsk/paparazzi/sw/include/std.h **** #define _BV(bit) (1 << (bit))
+  88:/home/lsk/paparazzi/sw/include/std.h **** #endif
+  89:/home/lsk/paparazzi/sw/include/std.h **** 
+  90:/home/lsk/paparazzi/sw/include/std.h **** #define SetBit(a, n) a |= (1 << n)
+  91:/home/lsk/paparazzi/sw/include/std.h **** #define ClearBit(a, n) a &= ~(1 << n)
+  92:/home/lsk/paparazzi/sw/include/std.h **** 
+  93:/home/lsk/paparazzi/sw/include/std.h **** #define NormRadAngle(x) { \
+  94:/home/lsk/paparazzi/sw/include/std.h ****     while (x > M_PI) x -= 2 * M_PI; \
+  95:/home/lsk/paparazzi/sw/include/std.h ****     while (x < -M_PI) x += 2 * M_PI; \
+  96:/home/lsk/paparazzi/sw/include/std.h ****   }
+  97:/home/lsk/paparazzi/sw/include/std.h **** #define DegOfRad(x) ((x) * (180. / M_PI))
+  98:/home/lsk/paparazzi/sw/include/std.h **** #define DeciDegOfRad(x) ((x) * (1800./ M_PI))
+  99:/home/lsk/paparazzi/sw/include/std.h **** #define RadOfDeg(x) ((x) * (M_PI/180.))
+ 100:/home/lsk/paparazzi/sw/include/std.h **** 
+ 101:/home/lsk/paparazzi/sw/include/std.h **** #define Min(x,y) (x < y ? x : y)
+ 102:/home/lsk/paparazzi/sw/include/std.h **** #define Max(x,y) (x > y ? x : y)
+ 103:/home/lsk/paparazzi/sw/include/std.h **** 
+ 104:/home/lsk/paparazzi/sw/include/std.h **** #ifndef ABS
+ 105:/home/lsk/paparazzi/sw/include/std.h **** #define ABS(val) ((val) < 0 ? -(val) : (val))
+ 106:/home/lsk/paparazzi/sw/include/std.h **** #endif
+ 107:/home/lsk/paparazzi/sw/include/std.h **** 
+ 108:/home/lsk/paparazzi/sw/include/std.h **** #define Bound(_x, _min, _max) { if (_x > (_max)) _x = (_max); else if (_x < (_min)) _x = (_min); }
+ 109:/home/lsk/paparazzi/sw/include/std.h **** #define BoundInverted(_x, _min, _max) {           \
+ 110:/home/lsk/paparazzi/sw/include/std.h ****     if ((_x < (_min)) && (_x > (_max))) {         \
+ 111:/home/lsk/paparazzi/sw/include/std.h ****       if (abs(_x - (_min)) < abs(_x - (_max)))    \
+ 112:/home/lsk/paparazzi/sw/include/std.h ****         _x = (_min);                              \
+ 113:/home/lsk/paparazzi/sw/include/std.h ****       else                                        \
+ 114:/home/lsk/paparazzi/sw/include/std.h ****         _x = (_max);                              \
+ 115:/home/lsk/paparazzi/sw/include/std.h ****     }                                             \
+ 116:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 117:/home/lsk/paparazzi/sw/include/std.h **** #define BoundWrapped(_x, _min, _max) {            \
+ 118:/home/lsk/paparazzi/sw/include/std.h ****     if ((_max) > (_min))                          \
+ 119:/home/lsk/paparazzi/sw/include/std.h ****       Bound(_x, _min, _max)                       \
+ 120:/home/lsk/paparazzi/sw/include/std.h ****     else                                          \
+ 121:/home/lsk/paparazzi/sw/include/std.h ****       BoundInverted(_x, _min, _max)               \
+ 122:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 123:/home/lsk/paparazzi/sw/include/std.h **** #define BoundAbs(_x, _max) Bound(_x, -(_max), (_max))
+ 124:/home/lsk/paparazzi/sw/include/std.h **** #define Chop(_x, _min, _max) ( (_x) < (_min) ? (_min) : (_x) > (_max) ? (_max) : (_x) )
+ 125:/home/lsk/paparazzi/sw/include/std.h **** #define ChopAbs(x, max) Chop(x, -(max), (max))
+ 126:/home/lsk/paparazzi/sw/include/std.h **** 
+ 127:/home/lsk/paparazzi/sw/include/std.h **** #define DeadBand(_x, _v) {						\
+ 128:/home/lsk/paparazzi/sw/include/std.h ****     if (_x > (_v))                              \
+ 129:/home/lsk/paparazzi/sw/include/std.h ****       _x = _x -(_v);                            \
+ 130:/home/lsk/paparazzi/sw/include/std.h ****     else if  (_x < -(_v))                       \
+ 131:/home/lsk/paparazzi/sw/include/std.h ****       _x = _x +(_v);                            \
+ 132:/home/lsk/paparazzi/sw/include/std.h ****     else                                        \
+ 133:/home/lsk/paparazzi/sw/include/std.h ****       _x = 0;                                   \
+ 134:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 135:/home/lsk/paparazzi/sw/include/std.h **** 
+ 136:/home/lsk/paparazzi/sw/include/std.h **** #define Blend(a, b, rho) (((rho)*(a))+(1-(rho))*(b))
+ 137:/home/lsk/paparazzi/sw/include/std.h **** 
+ 138:/home/lsk/paparazzi/sw/include/std.h **** #define RunOnceEvery(_prescaler, _code) {		\
+ 139:/home/lsk/paparazzi/sw/include/std.h ****     static uint16_t prescaler = 0;			\
+ 140:/home/lsk/paparazzi/sw/include/std.h ****     prescaler++;					\
+ 141:/home/lsk/paparazzi/sw/include/std.h ****     if (prescaler >= _prescaler) {			\
+ 142:/home/lsk/paparazzi/sw/include/std.h ****       prescaler = 0;					\
+ 143:/home/lsk/paparazzi/sw/include/std.h ****       _code;						\
+ 144:/home/lsk/paparazzi/sw/include/std.h ****     }							\
+ 145:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 146:/home/lsk/paparazzi/sw/include/std.h **** 
+ 147:/home/lsk/paparazzi/sw/include/std.h **** #define RunXTimesEvery(_jumpstart, _prescaler, _interval, _xtimes, _code) {		\
+ 148:/home/lsk/paparazzi/sw/include/std.h ****   static uint16_t prescaler = _jumpstart;			\
+ 149:/home/lsk/paparazzi/sw/include/std.h ****   static uint16_t xtimes = 0;                   \
+ 150:/home/lsk/paparazzi/sw/include/std.h ****   prescaler++;					\
+ 151:/home/lsk/paparazzi/sw/include/std.h ****   if (prescaler >= _prescaler + _interval*xtimes && xtimes < _xtimes) {			\
+ 152:/home/lsk/paparazzi/sw/include/std.h ****     _code;						\
+ 153:/home/lsk/paparazzi/sw/include/std.h ****     xtimes++;						\
+ 154:/home/lsk/paparazzi/sw/include/std.h ****     }							\
+ 155:/home/lsk/paparazzi/sw/include/std.h ****   if (xtimes >= _xtimes) {				\
+ 156:/home/lsk/paparazzi/sw/include/std.h ****     xtimes = 0;					\
+ 157:/home/lsk/paparazzi/sw/include/std.h ****     prescaler = 0;					\
+ 158:/home/lsk/paparazzi/sw/include/std.h ****     }							\
+ 159:/home/lsk/paparazzi/sw/include/std.h **** }
+ 160:/home/lsk/paparazzi/sw/include/std.h **** 
+ 161:/home/lsk/paparazzi/sw/include/std.h **** 
+ 162:/home/lsk/paparazzi/sw/include/std.h **** #define PeriodicPrescaleBy5( _code_0, _code_1, _code_2, _code_3, _code_4) { \
+ 163:/home/lsk/paparazzi/sw/include/std.h ****     static uint8_t _50hz = 0;						\
+ 164:/home/lsk/paparazzi/sw/include/std.h ****     _50hz++;								\
+ 165:/home/lsk/paparazzi/sw/include/std.h ****     if (_50hz >= 5) _50hz = 0;						\
+ 166:/home/lsk/paparazzi/sw/include/std.h ****     switch (_50hz) {							\
+ 167:/home/lsk/paparazzi/sw/include/std.h ****     case 0:								\
+ 168:/home/lsk/paparazzi/sw/include/std.h ****       _code_0;								\
+ 169:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 170:/home/lsk/paparazzi/sw/include/std.h ****     case 1:								\
+ 171:/home/lsk/paparazzi/sw/include/std.h ****       _code_1;								\
+ 172:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 173:/home/lsk/paparazzi/sw/include/std.h ****     case 2:								\
+ 174:/home/lsk/paparazzi/sw/include/std.h ****       _code_2;								\
+ 175:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 176:/home/lsk/paparazzi/sw/include/std.h ****     case 3:								\
+ 177:/home/lsk/paparazzi/sw/include/std.h ****       _code_3;								\
+ 178:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 179:/home/lsk/paparazzi/sw/include/std.h ****     case 4:								\
+ 180:/home/lsk/paparazzi/sw/include/std.h ****       _code_4;								\
+ 181:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 182:/home/lsk/paparazzi/sw/include/std.h ****     }									\
+ 183:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 184:/home/lsk/paparazzi/sw/include/std.h **** 
+ 185:/home/lsk/paparazzi/sw/include/std.h **** #define PeriodicPrescaleBy10( _code_0, _code_1, _code_2, _code_3, _code_4, _code_5, _code_6, _code_
+ 186:/home/lsk/paparazzi/sw/include/std.h ****     static uint8_t _cnt = 0;						\
+ 187:/home/lsk/paparazzi/sw/include/std.h ****     _cnt++;								\
+ 188:/home/lsk/paparazzi/sw/include/std.h ****     if (_cnt >= 10) _cnt = 0;						\
+ 189:/home/lsk/paparazzi/sw/include/std.h ****     switch (_cnt) {							\
+ 190:/home/lsk/paparazzi/sw/include/std.h ****     case 0:								\
+ 191:/home/lsk/paparazzi/sw/include/std.h ****       _code_0;								\
+ 192:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 193:/home/lsk/paparazzi/sw/include/std.h ****     case 1:								\
+ 194:/home/lsk/paparazzi/sw/include/std.h ****       _code_1;								\
+ 195:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 196:/home/lsk/paparazzi/sw/include/std.h ****     case 2:								\
+ 197:/home/lsk/paparazzi/sw/include/std.h ****       _code_2;								\
+ 198:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 199:/home/lsk/paparazzi/sw/include/std.h ****     case 3:								\
+ 200:/home/lsk/paparazzi/sw/include/std.h ****       _code_3;								\
+ 201:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 202:/home/lsk/paparazzi/sw/include/std.h ****     case 4:								\
+ 203:/home/lsk/paparazzi/sw/include/std.h ****       _code_4;								\
+ 204:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 205:/home/lsk/paparazzi/sw/include/std.h ****     case 5:								\
+ 206:/home/lsk/paparazzi/sw/include/std.h ****       _code_5;								\
+ 207:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 208:/home/lsk/paparazzi/sw/include/std.h ****     case 6:								\
+ 209:/home/lsk/paparazzi/sw/include/std.h ****       _code_6;								\
+ 210:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 211:/home/lsk/paparazzi/sw/include/std.h ****     case 7:								\
+ 212:/home/lsk/paparazzi/sw/include/std.h ****       _code_7;								\
+ 213:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 214:/home/lsk/paparazzi/sw/include/std.h ****     case 8:								\
+ 215:/home/lsk/paparazzi/sw/include/std.h ****       _code_8;								\
+ 216:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 217:/home/lsk/paparazzi/sw/include/std.h ****     case 9:								\
+ 218:/home/lsk/paparazzi/sw/include/std.h ****     default:								\
+ 219:/home/lsk/paparazzi/sw/include/std.h ****       _code_9;								\
+ 220:/home/lsk/paparazzi/sw/include/std.h ****       break;								\
+ 221:/home/lsk/paparazzi/sw/include/std.h ****     }									\
+ 222:/home/lsk/paparazzi/sw/include/std.h ****   }
+ 223:/home/lsk/paparazzi/sw/include/std.h **** 
+ 224:/home/lsk/paparazzi/sw/include/std.h **** static inline bool_t str_equal(const char * a, const char * b) {
+ 225:/home/lsk/paparazzi/sw/include/std.h ****   int i = 0;
+  60              		.loc 2 225 0
+  61 0016 0024     		movs	r4, #0
+  62              	.LVL3:
+  63              	.L4:
+ 226:/home/lsk/paparazzi/sw/include/std.h ****   while (!(a[i] == 0 && b[i] == 0)) {
+  64              		.loc 2 226 0
+  65 0018 1CF80460 		ldrb	r6, [ip, r4]	@ zero_extendqisi2
+  66 001c 0D5D     		ldrb	r5, [r1, r4]	@ zero_extendqisi2
+  67 001e 1EB1     		cbz	r6, .L17
+  68              	.L6:
+ 227:/home/lsk/paparazzi/sw/include/std.h ****     if (a[i] != b[i]) return FALSE;
+  69              		.loc 2 227 0
+  70 0020 B542     		cmp	r5, r6
+  71 0022 0FD1     		bne	.L5
+ 228:/home/lsk/paparazzi/sw/include/std.h ****     i++;
+  72              		.loc 2 228 0
+  73 0024 0134     		adds	r4, r4, #1
+  74              	.LVL4:
+  75 0026 F7E7     		b	.L4
+  76              	.L17:
+ 226:/home/lsk/paparazzi/sw/include/std.h ****   while (!(a[i] == 0 && b[i] == 0)) {
+  77              		.loc 2 226 0
+  78 0028 002D     		cmp	r5, #0
+  79 002a F9D1     		bne	.L6
+  80 002c 01E0     		b	.L18
+  81              	.LVL5:
+  82              	.L15:
+  83              	.LBE5:
+  84              	.LBE4:
+  49:subsystems/datalink/telemetry.c ****   if (_pt == NULL) { return FALSE; }
+  85              		.loc 1 49 0
+  86 002e 0020     		movs	r0, #0
+  87 0030 F0BD     		pop	{r4, r5, r6, r7, pc}
+  88              	.LVL6:
+  89              	.L18:
+  54:subsystems/datalink/telemetry.c ****       // register callback if not already done
+  55:subsystems/datalink/telemetry.c ****       if (_pt->cbs[i] == NULL) {
+  90              		.loc 1 55 0
+  91 0032 8168     		ldr	r1, [r0, #8]
+  92              	.LVL7:
+  93 0034 51F82300 		ldr	r0, [r1, r3, lsl #2]
+  94              	.LVL8:
+  95 0038 0028     		cmp	r0, #0
+  96 003a F8D1     		bne	.L15
+  56:subsystems/datalink/telemetry.c ****         _pt->cbs[i] = _cb;
+  97              		.loc 1 56 0
+  98 003c 41F82320 		str	r2, [r1, r3, lsl #2]
+  57:subsystems/datalink/telemetry.c ****         return TRUE;
+  99              		.loc 1 57 0
+ 100 0040 0120     		movs	r0, #1
+ 101 0042 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 102              	.LVL9:
+ 103              	.L5:
+ 104 0044 0133     		adds	r3, r3, #1
+ 105              	.LVL10:
+ 106 0046 E0E7     		b	.L10
+ 107              		.cfi_endproc
+ 108              	.LFE2:
+ 110              		.global	pprz_telemetry
+ 111              		.global	telemetry_cbs
+ 112              		.global	telemetry_msgs
+ 113              		.section	.data.pprz_telemetry,"aw",%progbits
+ 114              		.align	2
+ 117              	pprz_telemetry:
+ 118 0000 33       		.byte	51
+ 119 0001 000000   		.space	3
+ 120 0004 00000000 		.word	telemetry_msgs
+ 121 0008 00000000 		.word	telemetry_cbs
+ 122              		.section	.bss.telemetry_cbs,"aw",%nobits
+ 123              		.align	2
+ 126              	telemetry_cbs:
+ 127 0000 00000000 		.space	204
+ 127      00000000 
+ 127      00000000 
+ 127      00000000 
+ 127      00000000 
+ 128              		.section	.rodata.telemetry_msgs,"a",%progbits
+ 131              	telemetry_msgs:
+ 132 0000 494D555F 		.ascii	"IMU_ACCEL_RAW\000"
+ 132      41434345 
+ 132      4C5F5241 
+ 132      5700
+ 133 000e 00000000 		.space	50
+ 133      00000000 
+ 133      00000000 
+ 133      00000000 
+ 133      00000000 
+ 134 0040 524F544F 		.ascii	"ROTORCRAFT_STATUS\000"
+ 134      52435241 
+ 134      46545F53 
+ 134      54415455 
+ 134      5300
+ 135 0052 00000000 		.space	46
+ 135      00000000 
+ 135      00000000 
+ 135      00000000 
+ 135      00000000 
+ 136 0080 46494C54 		.ascii	"FILTER_ALIGNER\000"
+ 136      45525F41 
+ 136      4C49474E 
+ 136      455200
+ 137 008f 00000000 		.space	49
+ 137      00000000 
+ 137      00000000 
+ 137      00000000 
+ 137      00000000 
+ 138 00c0 47554944 		.ascii	"GUIDANCE_H_INT\000"
+ 138      414E4345 
+ 138      5F485F49 
+ 138      4E5400
+ 139 00cf 00000000 		.space	49
+ 139      00000000 
+ 139      00000000 
+ 139      00000000 
+ 139      00000000 
+ 140 0100 48464600 		.ascii	"HFF\000"
+ 141 0104 00000000 		.space	60
+ 141      00000000 
+ 141      00000000 
+ 141      00000000 
+ 141      00000000 
+ 142 0140 47454F5F 		.ascii	"GEO_MAG\000"
+ 142      4D414700 
+ 143 0148 00000000 		.space	56
+ 143      00000000 
+ 143      00000000 
+ 143      00000000 
+ 143      00000000 
+ 144 0180 494D555F 		.ascii	"IMU_ACCEL_SCALED\000"
+ 144      41434345 
+ 144      4C5F5343 
+ 144      414C4544 
+ 144      00
+ 145 0191 00000000 		.space	47
+ 145      00000000 
+ 145      00000000 
+ 145      00000000 
+ 145      00000000 
+ 146 01c0 50504D00 		.ascii	"PPM\000"
+ 147 01c4 00000000 		.space	60
+ 147      00000000 
+ 147      00000000 
+ 147      00000000 
+ 147      00000000 
+ 148 0200 524F544F 		.ascii	"ROTORCRAFT_RADIO_CONTROL\000"
+ 148      52435241 
+ 148      46545F52 
+ 148      4144494F 
+ 148      5F434F4E 
+ 149 0219 00000000 		.space	39
+ 149      00000000 
+ 149      00000000 
+ 149      00000000 
+ 149      00000000 
+ 150 0240 4149525F 		.ascii	"AIR_DATA\000"
+ 150      44415441 
+ 150      00
+ 151 0249 00000000 		.space	55
+ 151      00000000 
+ 151      00000000 
+ 151      00000000 
+ 151      00000000 
+ 152 0280 56464600 		.ascii	"VFF\000"
+ 153 0284 00000000 		.space	60
+ 153      00000000 
+ 153      00000000 
+ 153      00000000 
+ 153      00000000 
+ 154 02c0 4932435F 		.ascii	"I2C_ERRORS\000"
+ 154      4552524F 
+ 154      525300
+ 155 02cb 00000000 		.space	53
+ 155      00000000 
+ 155      00000000 
+ 155      00000000 
+ 155      00000000 
+ 156 0300 454E4552 		.ascii	"ENERGY\000"
+ 156      475900
+ 157 0307 00000000 		.space	57
+ 157      00000000 
+ 157      00000000 
+ 157      00000000 
+ 157      00000000 
+ 158 0340 41485253 		.ascii	"AHRS_EULER_INT\000"
+ 158      5F45554C 
+ 158      45525F49 
+ 158      4E5400
+ 159 034f 00000000 		.space	49
+ 159      00000000 
+ 159      00000000 
+ 159      00000000 
+ 159      00000000 
+ 160 0380 4155544F 		.ascii	"AUTOPILOT_VERSION\000"
+ 160      50494C4F 
+ 160      545F5645 
+ 160      5253494F 
+ 160      4E00
+ 161 0392 00000000 		.space	46
+ 161      00000000 
+ 161      00000000 
+ 161      00000000 
+ 161      00000000 
+ 162 03c0 56455254 		.ascii	"VERT_LOOP\000"
+ 162      5F4C4F4F 
+ 162      5000
+ 163 03ca 00000000 		.space	54
+ 163      00000000 
+ 163      00000000 
+ 163      00000000 
+ 163      00000000 
+ 164 0400 53544142 		.ascii	"STAB_ATTITUDE\000"
+ 164      5F415454 
+ 164      49545544 
+ 164      4500
+ 165 040e 00000000 		.space	50
+ 165      00000000 
+ 165      00000000 
+ 165      00000000 
+ 165      00000000 
+ 166 0440 53544154 		.ascii	"STATE_FILTER_STATUS\000"
+ 166      455F4649 
+ 166      4C544552 
+ 166      5F535441 
+ 166      54555300 
+ 167 0454 00000000 		.space	44
+ 167      00000000 
+ 167      00000000 
+ 167      00000000 
+ 167      00000000 
+ 168 0480 55415254 		.ascii	"UART_ERRORS\000"
+ 168      5F455252 
+ 168      4F525300 
+ 169 048c 00000000 		.space	52
+ 169      00000000 
+ 169      00000000 
+ 169      00000000 
+ 169      00000000 
+ 170 04c0 4241524F 		.ascii	"BARO_RAW\000"
+ 170      5F524157 
+ 170      00
+ 171 04c9 00000000 		.space	55
+ 171      00000000 
+ 171      00000000 
+ 171      00000000 
+ 171      00000000 
+ 172 0500 494E5300 		.ascii	"INS\000"
+ 173 0504 00000000 		.space	60
+ 173      00000000 
+ 173      00000000 
+ 173      00000000 
+ 173      00000000 
+ 174 0540 46494C54 		.ascii	"FILTER\000"
+ 174      455200
+ 175 0547 00000000 		.space	57
+ 175      00000000 
+ 175      00000000 
+ 175      00000000 
+ 175      00000000 
+ 176 0580 524F544F 		.ascii	"ROTORCRAFT_CAM\000"
+ 176      52435241 
+ 176      46545F43 
+ 176      414D00
+ 177 058f 00000000 		.space	49
+ 177      00000000 
+ 177      00000000 
+ 177      00000000 
+ 177      00000000 
+ 178 05c0 524F544F 		.ascii	"ROTORCRAFT_NAV_STATUS\000"
+ 178      52435241 
+ 178      46545F4E 
+ 178      41565F53 
+ 178      54415455 
+ 179 05d6 00000000 		.space	42
+ 179      00000000 
+ 179      00000000 
+ 179      00000000 
+ 179      00000000 
+ 180 0600 524F544F 		.ascii	"ROTORCRAFT_FP\000"
+ 180      52435241 
+ 180      46545F46 
+ 180      5000
+ 181 060e 00000000 		.space	50
+ 181      00000000 
+ 181      00000000 
+ 181      00000000 
+ 181      00000000 
+ 182 0640 4846465F 		.ascii	"HFF_GPS\000"
+ 182      47505300 
+ 183 0648 00000000 		.space	56
+ 183      00000000 
+ 183      00000000 
+ 183      00000000 
+ 183      00000000 
+ 184 0680 5646465F 		.ascii	"VFF_EXTENDED\000"
+ 184      45585445 
+ 184      4E444544 
+ 184      00
+ 185 068d 00000000 		.space	51
+ 185      00000000 
+ 185      00000000 
+ 185      00000000 
+ 185      00000000 
+ 186 06c0 41485253 		.ascii	"AHRS_REF_QUAT\000"
+ 186      5F524546 
+ 186      5F515541 
+ 186      5400
+ 187 06ce 00000000 		.space	50
+ 187      00000000 
+ 187      00000000 
+ 187      00000000 
+ 187      00000000 
+ 188 0700 524F544F 		.ascii	"ROTORCRAFT_TUNE_HOVER\000"
+ 188      52435241 
+ 188      46545F54 
+ 188      554E455F 
+ 188      484F5645 
+ 189 0716 00000000 		.space	42
+ 189      00000000 
+ 189      00000000 
+ 189      00000000 
+ 189      00000000 
+ 190 0740 494D555F 		.ascii	"IMU_MAG_SCALED\000"
+ 190      4D41475F 
+ 190      5343414C 
+ 190      454400
+ 191 074f 00000000 		.space	49
+ 191      00000000 
+ 191      00000000 
+ 191      00000000 
+ 191      00000000 
+ 192 0780 53555045 		.ascii	"SUPERBITRF\000"
+ 192      52424954 
+ 192      524600
+ 193 078b 00000000 		.space	53
+ 193      00000000 
+ 193      00000000 
+ 193      00000000 
+ 193      00000000 
+ 194 07c0 47554944 		.ascii	"GUIDANCE_H_REF\000"
+ 194      414E4345 
+ 194      5F485F52 
+ 194      454600
+ 195 07cf 00000000 		.space	49
+ 195      00000000 
+ 195      00000000 
+ 195      00000000 
+ 195      00000000 
+ 196 0800 524300   		.ascii	"RC\000"
+ 197 0803 00000000 		.space	61
+ 197      00000000 
+ 197      00000000 
+ 197      00000000 
+ 197      00000000 
+ 198 0840 524F544F 		.ascii	"ROTORCRAFT_CMD\000"
+ 198      52435241 
+ 198      46545F43 
+ 198      4D4400
+ 199 084f 00000000 		.space	49
+ 199      00000000 
+ 199      00000000 
+ 199      00000000 
+ 199      00000000 
+ 200 0880 57505F4D 		.ascii	"WP_MOVED\000"
+ 200      4F564544 
+ 200      00
+ 201 0889 00000000 		.space	55
+ 201      00000000 
+ 201      00000000 
+ 201      00000000 
+ 201      00000000 
+ 202 08c0 52415445 		.ascii	"RATE_LOOP\000"
+ 202      5F4C4F4F 
+ 202      5000
+ 203 08ca 00000000 		.space	54
+ 203      00000000 
+ 203      00000000 
+ 203      00000000 
+ 203      00000000 
+ 204 0900 4846465F 		.ascii	"HFF_DBG\000"
+ 204      44424700 
+ 205 0908 00000000 		.space	56
+ 205      00000000 
+ 205      00000000 
+ 205      00000000 
+ 205      00000000 
+ 206 0940 53544142 		.ascii	"STAB_ATTITUDE_REF\000"
+ 206      5F415454 
+ 206      49545544 
+ 206      455F5245 
+ 206      4600
+ 207 0952 00000000 		.space	46
+ 207      00000000 
+ 207      00000000 
+ 207      00000000 
+ 207      00000000 
+ 208 0980 494D555F 		.ascii	"IMU_GYRO_RAW\000"
+ 208      4759524F 
+ 208      5F524157 
+ 208      00
+ 209 098d 00000000 		.space	51
+ 209      00000000 
+ 209      00000000 
+ 209      00000000 
+ 209      00000000 
+ 210 09c0 4750535F 		.ascii	"GPS_INT\000"
+ 210      494E5400 
+ 211 09c8 00000000 		.space	56
+ 211      00000000 
+ 211      00000000 
+ 211      00000000 
+ 211      00000000 
+ 212 0a00 53555256 		.ascii	"SURVEY\000"
+ 212      455900
+ 213 0a07 00000000 		.space	57
+ 213      00000000 
+ 213      00000000 
+ 213      00000000 
+ 213      00000000 
+ 214 0a40 484F5645 		.ascii	"HOVER_LOOP\000"
+ 214      525F4C4F 
+ 214      4F5000
+ 215 0a4b 00000000 		.space	53
+ 215      00000000 
+ 215      00000000 
+ 215      00000000 
+ 215      00000000 
+ 216 0a80 41485253 		.ascii	"AHRS_GYRO_BIAS_INT\000"
+ 216      5F475952 
+ 216      4F5F4249 
+ 216      41535F49 
+ 216      4E5400
+ 217 0a93 00000000 		.space	45
+ 217      00000000 
+ 217      00000000 
+ 217      00000000 
+ 217      00000000 
+ 218 0ac0 494D555F 		.ascii	"IMU_GYRO_SCALED\000"
+ 218      4759524F 
+ 218      5F534341 
+ 218      4C454400 
+ 219 0ad0 00000000 		.space	48
+ 219      00000000 
+ 219      00000000 
+ 219      00000000 
+ 219      00000000 
+ 220 0b00 494D555F 		.ascii	"IMU_MAG_RAW\000"
+ 220      4D41475F 
+ 220      52415700 
+ 221 0b0c 00000000 		.space	52
+ 221      00000000 
+ 221      00000000 
+ 221      00000000 
+ 221      00000000 
+ 222 0b40 414C4956 		.ascii	"ALIVE\000"
+ 222      4500
+ 223 0b46 00000000 		.space	58
+ 223      00000000 
+ 223      00000000 
+ 223      00000000 
+ 223      00000000 
+ 224 0b80 44415441 		.ascii	"DATALINK_REPORT\000"
+ 224      4C494E4B 
+ 224      5F524550 
+ 224      4F525400 
+ 225 0b90 00000000 		.space	48
+ 225      00000000 
+ 225      00000000 
+ 225      00000000 
+ 225      00000000 
+ 226 0bc0 444C5F56 		.ascii	"DL_VALUE\000"
+ 226      414C5545 
+ 226      00
+ 227 0bc9 00000000 		.space	55
+ 227      00000000 
+ 227      00000000 
+ 227      00000000 
+ 227      00000000 
+ 228 0c00 41435455 		.ascii	"ACTUATORS_BEBOP\000"
+ 228      41544F52 
+ 228      535F4245 
+ 228      424F5000 
+ 229 0c10 00000000 		.space	48
+ 229      00000000 
+ 229      00000000 
+ 229      00000000 
+ 229      00000000 
+ 230 0c40 41485253 		.ascii	"AHRS_QUAT_INT\000"
+ 230      5F515541 
+ 230      545F494E 
+ 230      5400
+ 231 0c4e 00000000 		.space	50
+ 231      00000000 
+ 231      00000000 
+ 231      00000000 
+ 231      00000000 
+ 232 0c80 494E535F 		.ascii	"INS_REF\000"
+ 232      52454600 
+ 233 0c88 00000000 		.space	56
+ 233      00000000 
+ 233      00000000 
+ 233      00000000 
+ 233      00000000 
+ 234              		.text
+ 235              	.Letext0:
+ 236              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 237              		.file 4 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 238              		.file 5 "./mcu_periph/link_device.h"
+ 239              		.file 6 "./subsystems/datalink/transport.h"
+ 240              		.file 7 "./subsystems/datalink/telemetry_common.h"
+ 241              		.file 8 "/home/lsk/paparazzi/var/aircrafts/kroozsd_lsk/ap/generated/periodic_telemetry.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 telemetry.c
+     /tmp/cc68E4Zg.s:20     .text.register_periodic_telemetry:00000000 $t
+     /tmp/cc68E4Zg.s:25     .text.register_periodic_telemetry:00000000 register_periodic_telemetry
+     /tmp/cc68E4Zg.s:117    .data.pprz_telemetry:00000000 pprz_telemetry
+     /tmp/cc68E4Zg.s:126    .bss.telemetry_cbs:00000000 telemetry_cbs
+     /tmp/cc68E4Zg.s:131    .rodata.telemetry_msgs:00000000 telemetry_msgs
+     /tmp/cc68E4Zg.s:114    .data.pprz_telemetry:00000000 $d
+     /tmp/cc68E4Zg.s:123    .bss.telemetry_cbs:00000000 $d
+     /tmp/cc68E4Zg.s:133    .rodata.telemetry_msgs:0000000e $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.periodic_telemetry.h.11.45a44616e39ae884c5a68828f6bf143a
+
+NO UNDEFINED SYMBOLS

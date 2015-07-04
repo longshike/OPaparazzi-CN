@@ -1,0 +1,491 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"electrical.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.electrical_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	electrical_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	electrical_init:
+  26              	.LFB1:
+  27              		.file 1 "subsystems/electrical.c"
+   1:subsystems/electrical.c **** /*
+   2:subsystems/electrical.c ****  * Copyright (C) 2010-2013 The Paparazzi Team
+   3:subsystems/electrical.c ****  *
+   4:subsystems/electrical.c ****  * This file is part of paparazzi.
+   5:subsystems/electrical.c ****  *
+   6:subsystems/electrical.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/electrical.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/electrical.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/electrical.c ****  * any later version.
+  10:subsystems/electrical.c ****  *
+  11:subsystems/electrical.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/electrical.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/electrical.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/electrical.c ****  * GNU General Public License for more details.
+  15:subsystems/electrical.c ****  *
+  16:subsystems/electrical.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/electrical.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/electrical.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/electrical.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/electrical.c ****  */
+  21:subsystems/electrical.c **** 
+  22:subsystems/electrical.c **** /**
+  23:subsystems/electrical.c ****  * @file subsystems/electrical.c
+  24:subsystems/electrical.c ****  *
+  25:subsystems/electrical.c ****  * Implemnetation for electrical status: supply voltage, current, battery status, etc.
+  26:subsystems/electrical.c ****  */
+  27:subsystems/electrical.c **** 
+  28:subsystems/electrical.c **** #include "subsystems/electrical.h"
+  29:subsystems/electrical.c **** 
+  30:subsystems/electrical.c **** #include "mcu_periph/adc.h"
+  31:subsystems/electrical.c **** #include "subsystems/commands.h"
+  32:subsystems/electrical.c **** 
+  33:subsystems/electrical.c **** #include "generated/airframe.h"
+  34:subsystems/electrical.c **** #include BOARD_CONFIG
+  35:subsystems/electrical.c **** 
+  36:subsystems/electrical.c **** #ifdef MILLIAMP_PER_PERCENT
+  37:subsystems/electrical.c **** #warning "deprecated MILLIAMP_PER_PERCENT --> Please use MILLIAMP_AT_FULL_THROTTLE"
+  38:subsystems/electrical.c **** #endif
+  39:subsystems/electrical.c **** #if defined BATTERY_SENS || defined BATTERY_OFFSET
+  40:subsystems/electrical.c **** #warning "BATTERY_SENS and BATTERY_OFFSET are deprecated, please remove them --> if you want to cha
+  41:subsystems/electrical.c **** #endif
+  42:subsystems/electrical.c **** 
+  43:subsystems/electrical.c **** #if defined COMMAND_THROTTLE
+  44:subsystems/electrical.c **** #define COMMAND_CURRENT_ESTIMATION COMMAND_THROTTLE
+  45:subsystems/electrical.c **** #elif defined COMMAND_THRUST
+  46:subsystems/electrical.c **** #define COMMAND_CURRENT_ESTIMATION COMMAND_THRUST
+  47:subsystems/electrical.c **** #endif
+  48:subsystems/electrical.c **** 
+  49:subsystems/electrical.c **** #ifndef BAT_CHECKER_DELAY
+  50:subsystems/electrical.c **** #define BAT_CHECKER_DELAY 5
+  51:subsystems/electrical.c **** #endif
+  52:subsystems/electrical.c **** 
+  53:subsystems/electrical.c **** #define ELECTRICAL_PERIODIC_FREQ 10
+  54:subsystems/electrical.c **** 
+  55:subsystems/electrical.c **** #ifndef MIN_BAT_LEVEL
+  56:subsystems/electrical.c **** #define MIN_BAT_LEVEL 3
+  57:subsystems/electrical.c **** #endif
+  58:subsystems/electrical.c **** 
+  59:subsystems/electrical.c **** PRINT_CONFIG_VAR(LOW_BAT_LEVEL)
+  60:subsystems/electrical.c **** PRINT_CONFIG_VAR(CRITIC_BAT_LEVEL)
+  61:subsystems/electrical.c **** PRINT_CONFIG_VAR(MIN_BAT_LEVEL)
+  62:subsystems/electrical.c **** 
+  63:subsystems/electrical.c **** struct Electrical electrical;
+  64:subsystems/electrical.c **** 
+  65:subsystems/electrical.c **** #if defined ADC_CHANNEL_VSUPPLY || defined ADC_CHANNEL_CURRENT || defined MILLIAMP_AT_FULL_THROTTLE
+  66:subsystems/electrical.c **** static struct {
+  67:subsystems/electrical.c **** #ifdef ADC_CHANNEL_VSUPPLY
+  68:subsystems/electrical.c ****   struct adc_buf vsupply_adc_buf;
+  69:subsystems/electrical.c **** #endif
+  70:subsystems/electrical.c **** #ifdef ADC_CHANNEL_CURRENT
+  71:subsystems/electrical.c ****   struct adc_buf current_adc_buf;
+  72:subsystems/electrical.c **** #endif
+  73:subsystems/electrical.c **** #ifdef MILLIAMP_AT_FULL_THROTTLE
+  74:subsystems/electrical.c ****   float nonlin_factor;
+  75:subsystems/electrical.c **** #endif
+  76:subsystems/electrical.c **** } electrical_priv;
+  77:subsystems/electrical.c **** #endif
+  78:subsystems/electrical.c **** 
+  79:subsystems/electrical.c **** #ifndef VoltageOfAdc
+  80:subsystems/electrical.c **** #define VoltageOfAdc(adc) DefaultVoltageOfAdc(adc)
+  81:subsystems/electrical.c **** #endif
+  82:subsystems/electrical.c **** #ifndef MilliAmpereOfAdc
+  83:subsystems/electrical.c **** #define MilliAmpereOfAdc(adc) DefaultMilliAmpereOfAdc(adc)
+  84:subsystems/electrical.c **** #endif
+  85:subsystems/electrical.c **** 
+  86:subsystems/electrical.c **** #ifndef CURRENT_ESTIMATION_NONLINEARITY
+  87:subsystems/electrical.c **** #define CURRENT_ESTIMATION_NONLINEARITY 1.2
+  88:subsystems/electrical.c **** #endif
+  89:subsystems/electrical.c **** 
+  90:subsystems/electrical.c **** void electrical_init(void)
+  91:subsystems/electrical.c **** {
+  28              		.loc 1 91 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  92:subsystems/electrical.c ****   electrical.vsupply = 0;
+  33              		.loc 1 92 0
+  34 0000 054B     		ldr	r3, .L2
+  93:subsystems/electrical.c ****   electrical.current = 0;
+  94:subsystems/electrical.c ****   electrical.energy = 0;
+  95:subsystems/electrical.c **** 
+  96:subsystems/electrical.c ****   electrical.bat_low = FALSE;
+  97:subsystems/electrical.c ****   electrical.bat_critical = FALSE;
+  98:subsystems/electrical.c **** 
+  99:subsystems/electrical.c **** #if defined ADC_CHANNEL_VSUPPLY
+ 100:subsystems/electrical.c ****   adc_buf_channel(ADC_CHANNEL_VSUPPLY, &electrical_priv.vsupply_adc_buf, DEFAULT_AV_NB_SAMPLE);
+  35              		.loc 1 100 0
+  36 0002 0649     		ldr	r1, .L2+4
+  94:subsystems/electrical.c ****   electrical.energy = 0;
+  37              		.loc 1 94 0
+  38 0004 0022     		movs	r2, #0
+  92:subsystems/electrical.c ****   electrical.vsupply = 0;
+  39              		.loc 1 92 0
+  40 0006 0020     		movs	r0, #0
+  94:subsystems/electrical.c ****   electrical.energy = 0;
+  41              		.loc 1 94 0
+  42 0008 DA60     		str	r2, [r3, #12]	@ float
+  43              		.loc 1 100 0
+  44 000a 2022     		movs	r2, #32
+  92:subsystems/electrical.c ****   electrical.vsupply = 0;
+  45              		.loc 1 92 0
+  46 000c 1880     		strh	r0, [r3]	@ movhi
+  93:subsystems/electrical.c ****   electrical.current = 0;
+  47              		.loc 1 93 0
+  48 000e 5860     		str	r0, [r3, #4]
+  96:subsystems/electrical.c ****   electrical.bat_low = FALSE;
+  49              		.loc 1 96 0
+  50 0010 1874     		strb	r0, [r3, #16]
+  97:subsystems/electrical.c ****   electrical.bat_critical = FALSE;
+  51              		.loc 1 97 0
+  52 0012 5874     		strb	r0, [r3, #17]
+  53              		.loc 1 100 0
+  54 0014 FFF7FEBF 		b	adc_buf_channel
+  55              	.LVL0:
+  56              	.L3:
+  57              		.align	2
+  58              	.L2:
+  59 0018 00000000 		.word	.LANCHOR0
+  60 001c 00000000 		.word	.LANCHOR1
+  61              		.cfi_endproc
+  62              	.LFE1:
+  64              		.global	__aeabi_ui2d
+  65              		.global	__aeabi_dmul
+  66              		.global	__aeabi_d2uiz
+  67              		.global	__aeabi_i2d
+  68              		.global	__aeabi_dcmplt
+  69              		.section	.text.electrical_periodic,"ax",%progbits
+  70              		.align	1
+  71              		.global	electrical_periodic
+  72              		.thumb
+  73              		.thumb_func
+  75              	electrical_periodic:
+  76              	.LFB2:
+ 101:subsystems/electrical.c **** #endif
+ 102:subsystems/electrical.c **** 
+ 103:subsystems/electrical.c ****   /* measure current if available, otherwise estimate it */
+ 104:subsystems/electrical.c **** #if defined ADC_CHANNEL_CURRENT && !defined SITL
+ 105:subsystems/electrical.c ****   adc_buf_channel(ADC_CHANNEL_CURRENT, &electrical_priv.current_adc_buf, DEFAULT_AV_NB_SAMPLE);
+ 106:subsystems/electrical.c **** #elif defined MILLIAMP_AT_FULL_THROTTLE
+ 107:subsystems/electrical.c ****   PRINT_CONFIG_VAR(CURRENT_ESTIMATION_NONLINEARITY)
+ 108:subsystems/electrical.c ****   electrical_priv.nonlin_factor = CURRENT_ESTIMATION_NONLINEARITY;
+ 109:subsystems/electrical.c **** #endif
+ 110:subsystems/electrical.c **** }
+ 111:subsystems/electrical.c **** 
+ 112:subsystems/electrical.c **** void electrical_periodic(void)
+ 113:subsystems/electrical.c **** {
+  77              		.loc 1 113 0
+  78              		.cfi_startproc
+  79              		@ args = 0, pretend = 0, frame = 0
+  80              		@ frame_needed = 0, uses_anonymous_args = 0
+  81 0000 70B5     		push	{r4, r5, r6, lr}
+  82              		.cfi_def_cfa_offset 16
+  83              		.cfi_offset 4, -16
+  84              		.cfi_offset 5, -12
+  85              		.cfi_offset 6, -8
+  86              		.cfi_offset 14, -4
+ 114:subsystems/electrical.c ****   static uint32_t bat_low_counter = 0;
+ 115:subsystems/electrical.c ****   static uint32_t bat_critical_counter = 0;
+ 116:subsystems/electrical.c ****   static bool_t vsupply_check_started = FALSE;
+ 117:subsystems/electrical.c **** 
+ 118:subsystems/electrical.c **** #if defined(ADC_CHANNEL_VSUPPLY) && !defined(SITL)
+ 119:subsystems/electrical.c ****   electrical.vsupply = 10 * VoltageOfAdc((electrical_priv.vsupply_adc_buf.sum /
+  87              		.loc 1 119 0
+  88 0002 334B     		ldr	r3, .L27+16
+  89 0004 1868     		ldr	r0, [r3]
+  90 0006 93F84520 		ldrb	r2, [r3, #69]	@ zero_extendqisi2
+  91 000a B0FBF2F0 		udiv	r0, r0, r2
+  92 000e FFF7FEFF 		bl	__aeabi_ui2d
+  93              	.LVL1:
+  94 0012 2BA3     		adr	r3, .L27
+  95 0014 D3E90023 		ldrd	r2, [r3]
+  96 0018 FFF7FEFF 		bl	__aeabi_dmul
+  97              	.LVL2:
+  98 001c 0022     		movs	r2, #0
+  99 001e 2D4B     		ldr	r3, .L27+20
+ 100 0020 FFF7FEFF 		bl	__aeabi_dmul
+ 101              	.LVL3:
+ 102 0024 FFF7FEFF 		bl	__aeabi_d2uiz
+ 103              	.LVL4:
+ 104 0028 2B4B     		ldr	r3, .L27+24
+ 120:subsystems/electrical.c ****                                           electrical_priv.vsupply_adc_buf.av_nb_sample));
+ 121:subsystems/electrical.c **** #endif
+ 122:subsystems/electrical.c **** 
+ 123:subsystems/electrical.c **** #ifdef ADC_CHANNEL_CURRENT
+ 124:subsystems/electrical.c **** #ifndef SITL
+ 125:subsystems/electrical.c ****   int32_t current_adc = electrical_priv.current_adc_buf.sum / electrical_priv.current_adc_buf.av_nb
+ 126:subsystems/electrical.c ****   electrical.current = MilliAmpereOfAdc(current_adc);
+ 127:subsystems/electrical.c ****   /* Prevent an overflow on high current spikes when using the motor brake */
+ 128:subsystems/electrical.c ****   BoundAbs(electrical.current, 65000);
+ 129:subsystems/electrical.c **** #endif
+ 130:subsystems/electrical.c **** #elif defined MILLIAMP_AT_FULL_THROTTLE && defined COMMAND_CURRENT_ESTIMATION
+ 131:subsystems/electrical.c ****   /*
+ 132:subsystems/electrical.c ****    * Superellipse: abs(x/a)^n + abs(y/b)^n = 1
+ 133:subsystems/electrical.c ****    * with a = 1
+ 134:subsystems/electrical.c ****    * b = mA at full throttle
+ 135:subsystems/electrical.c ****    * n = 1.2     This defines nonlinearity (1 = linear)
+ 136:subsystems/electrical.c ****    * x = throttle
+ 137:subsystems/electrical.c ****    * y = current
+ 138:subsystems/electrical.c ****    *
+ 139:subsystems/electrical.c ****    * define CURRENT_ESTIMATION_NONLINEARITY in your airframe file to change the default nonlinearit
+ 140:subsystems/electrical.c ****    */
+ 141:subsystems/electrical.c ****   float b = (float)MILLIAMP_AT_FULL_THROTTLE;
+ 142:subsystems/electrical.c ****   float x = ((float)commands[COMMAND_CURRENT_ESTIMATION]) / ((float)MAX_PPRZ);
+ 143:subsystems/electrical.c ****   /* electrical.current y = ( b^n - (b* x/a)^n )^1/n
+ 144:subsystems/electrical.c ****    * a=1, n = electrical_priv.nonlin_factor
+ 145:subsystems/electrical.c ****    */
+ 146:subsystems/electrical.c ****   electrical.current = b - pow((pow(b, electrical_priv.nonlin_factor) - pow((b * x), electrical_pri
+ 147:subsystems/electrical.c ****                                (1. / electrical_priv.nonlin_factor));
+ 148:subsystems/electrical.c **** #endif /* ADC_CHANNEL_CURRENT */
+ 149:subsystems/electrical.c **** 
+ 150:subsystems/electrical.c ****   // mAh = mA * dt (10Hz -> hours)
+ 151:subsystems/electrical.c ****   electrical.energy += ((float)electrical.current) / 3600.0f / ELECTRICAL_PERIODIC_FREQ;
+ 105              		.loc 1 151 0
+ 106 002a D3ED017A 		flds	s15, [r3, #4]	@ int
+ 107 002e B8EEE77A 		fsitos	s14, s15
+ 108 0032 DFED2A7A 		flds	s15, .L27+28
+ 109 0036 C7EE277A 		fdivs	s15, s14, s15
+ 119:subsystems/electrical.c ****   electrical.vsupply = 10 * VoltageOfAdc((electrical_priv.vsupply_adc_buf.sum /
+ 110              		.loc 1 119 0
+ 111 003a 80B2     		uxth	r0, r0
+ 112 003c 1880     		strh	r0, [r3]	@ movhi
+ 152:subsystems/electrical.c **** 
+ 153:subsystems/electrical.c ****   /*if valid voltage is seen then start checking. Set min level to 0 to always start*/
+ 154:subsystems/electrical.c ****   if (electrical.vsupply >= MIN_BAT_LEVEL * 10) {
+ 113              		.loc 1 154 0
+ 114 003e 1D28     		cmp	r0, #29
+ 115 0040 1E46     		mov	r6, r3
+ 155:subsystems/electrical.c ****     vsupply_check_started = TRUE;
+ 116              		.loc 1 155 0
+ 117 0042 88BF     		it	hi
+ 118 0044 0122     		movhi	r2, #1
+ 151:subsystems/electrical.c ****   electrical.energy += ((float)electrical.current) / 3600.0f / ELECTRICAL_PERIODIC_FREQ;
+ 119              		.loc 1 151 0
+ 120 0046 B2EE047A 		fconsts	s14, #36
+ 121 004a C7EE877A 		fdivs	s15, s15, s14
+ 122 004e 93ED037A 		flds	s14, [r3, #12]
+ 123 0052 77EE277A 		fadds	s15, s14, s15
+ 124 0056 C3ED037A 		fsts	s15, [r3, #12]
+ 125 005a 214B     		ldr	r3, .L27+32
+ 126              		.loc 1 155 0
+ 127 005c 88BF     		it	hi
+ 128 005e 1A70     		strbhi	r2, [r3]
+ 156:subsystems/electrical.c ****   }
+ 157:subsystems/electrical.c **** 
+ 158:subsystems/electrical.c ****   if (vsupply_check_started) {
+ 129              		.loc 1 158 0
+ 130 0060 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 131 0062 53B3     		cbz	r3, .L4
+ 159:subsystems/electrical.c ****     if (electrical.vsupply < LOW_BAT_LEVEL * 10) {
+ 132              		.loc 1 159 0
+ 133 0064 FFF7FEFF 		bl	__aeabi_i2d
+ 134              	.LVL5:
+ 135 0068 17A3     		adr	r3, .L27+8
+ 136 006a D3E90023 		ldrd	r2, [r3]
+ 137 006e 0446     		mov	r4, r0
+ 138 0070 0D46     		mov	r5, r1
+ 139 0072 FFF7FEFF 		bl	__aeabi_dcmplt
+ 140              	.LVL6:
+ 141 0076 1B4B     		ldr	r3, .L27+36
+ 142 0078 40B1     		cbz	r0, .L24
+ 160:subsystems/electrical.c ****       if (bat_low_counter > 0) {
+ 143              		.loc 1 160 0
+ 144 007a 1A68     		ldr	r2, [r3]
+ 145 007c 0AB1     		cbz	r2, .L10
+ 161:subsystems/electrical.c ****         bat_low_counter--;
+ 146              		.loc 1 161 0
+ 147 007e 013A     		subs	r2, r2, #1
+ 148 0080 1A60     		str	r2, [r3]
+ 149              	.L10:
+ 162:subsystems/electrical.c ****       }
+ 163:subsystems/electrical.c ****       if (bat_low_counter == 0) {
+ 150              		.loc 1 163 0
+ 151 0082 1B68     		ldr	r3, [r3]
+ 152 0084 2BB9     		cbnz	r3, .L11
+ 164:subsystems/electrical.c ****         electrical.bat_low = TRUE;
+ 153              		.loc 1 164 0
+ 154 0086 0123     		movs	r3, #1
+ 155 0088 3374     		strb	r3, [r6, #16]
+ 156 008a 02E0     		b	.L11
+ 157              	.L24:
+ 165:subsystems/electrical.c ****       }
+ 166:subsystems/electrical.c ****     } else {
+ 167:subsystems/electrical.c ****       // reset battery low status and counter
+ 168:subsystems/electrical.c ****       bat_low_counter = BAT_CHECKER_DELAY * ELECTRICAL_PERIODIC_FREQ;
+ 158              		.loc 1 168 0
+ 159 008c 3222     		movs	r2, #50
+ 160 008e 1A60     		str	r2, [r3]
+ 169:subsystems/electrical.c ****       electrical.bat_low = FALSE;
+ 161              		.loc 1 169 0
+ 162 0090 3074     		strb	r0, [r6, #16]
+ 163              	.L11:
+ 170:subsystems/electrical.c ****     }
+ 171:subsystems/electrical.c **** 
+ 172:subsystems/electrical.c ****     if (electrical.vsupply < CRITIC_BAT_LEVEL * 10) {
+ 164              		.loc 1 172 0
+ 165 0092 154B     		ldr	r3, .L27+40
+ 166 0094 2046     		mov	r0, r4
+ 167 0096 2946     		mov	r1, r5
+ 168 0098 0022     		movs	r2, #0
+ 169 009a FFF7FEFF 		bl	__aeabi_dcmplt
+ 170              	.LVL7:
+ 171 009e 134B     		ldr	r3, .L27+44
+ 172 00a0 40B1     		cbz	r0, .L25
+ 173:subsystems/electrical.c ****       if (bat_critical_counter > 0) {
+ 173              		.loc 1 173 0
+ 174 00a2 1A68     		ldr	r2, [r3]
+ 175 00a4 0AB1     		cbz	r2, .L14
+ 174:subsystems/electrical.c ****         bat_critical_counter--;
+ 176              		.loc 1 174 0
+ 177 00a6 013A     		subs	r2, r2, #1
+ 178 00a8 1A60     		str	r2, [r3]
+ 179              	.L14:
+ 175:subsystems/electrical.c ****       }
+ 176:subsystems/electrical.c ****       if (bat_critical_counter == 0) {
+ 180              		.loc 1 176 0
+ 181 00aa 1B68     		ldr	r3, [r3]
+ 182 00ac 2BB9     		cbnz	r3, .L4
+ 177:subsystems/electrical.c ****         electrical.bat_critical = TRUE;
+ 183              		.loc 1 177 0
+ 184 00ae 0123     		movs	r3, #1
+ 185 00b0 7374     		strb	r3, [r6, #17]
+ 186 00b2 70BD     		pop	{r4, r5, r6, pc}
+ 187              	.L25:
+ 178:subsystems/electrical.c ****       }
+ 179:subsystems/electrical.c ****     } else {
+ 180:subsystems/electrical.c ****       // reset battery critical status and counter
+ 181:subsystems/electrical.c ****       bat_critical_counter = BAT_CHECKER_DELAY * ELECTRICAL_PERIODIC_FREQ;
+ 188              		.loc 1 181 0
+ 189 00b4 3222     		movs	r2, #50
+ 190 00b6 1A60     		str	r2, [r3]
+ 182:subsystems/electrical.c ****       electrical.bat_critical = FALSE;
+ 191              		.loc 1 182 0
+ 192 00b8 7074     		strb	r0, [r6, #17]
+ 193              	.L4:
+ 194 00ba 70BD     		pop	{r4, r5, r6, pc}
+ 195              	.L28:
+ 196 00bc AFF30080 		.align	3
+ 197              	.L27:
+ 198 00c0 E412471E 		.word	507974372
+ 199 00c4 882C823F 		.word	1065495688
+ 200 00c8 00000000 		.word	0
+ 201 00cc 00C05B40 		.word	1079754752
+ 202 00d0 00000000 		.word	.LANCHOR1
+ 203 00d4 00002440 		.word	1076101120
+ 204 00d8 00000000 		.word	.LANCHOR0
+ 205 00dc 00006145 		.word	1163984896
+ 206 00e0 00000000 		.word	.LANCHOR2
+ 207 00e4 00000000 		.word	.LANCHOR3
+ 208 00e8 00405940 		.word	1079590912
+ 209 00ec 00000000 		.word	.LANCHOR4
+ 210              		.cfi_endproc
+ 211              	.LFE2:
+ 213              		.global	electrical
+ 214              		.section	.bss.electrical_priv,"aw",%nobits
+ 215              		.align	2
+ 216              		.set	.LANCHOR1,. + 0
+ 219              	electrical_priv:
+ 220 0000 00000000 		.space	72
+ 220      00000000 
+ 220      00000000 
+ 220      00000000 
+ 220      00000000 
+ 221              		.section	.bss.bat_critical_counter.4854,"aw",%nobits
+ 222              		.align	2
+ 223              		.set	.LANCHOR4,. + 0
+ 226              	bat_critical_counter.4854:
+ 227 0000 00000000 		.space	4
+ 228              		.section	.bss.electrical,"aw",%nobits
+ 229              		.align	2
+ 230              		.set	.LANCHOR0,. + 0
+ 233              	electrical:
+ 234 0000 00000000 		.space	20
+ 234      00000000 
+ 234      00000000 
+ 234      00000000 
+ 234      00000000 
+ 235              		.section	.bss.bat_low_counter.4853,"aw",%nobits
+ 236              		.align	2
+ 237              		.set	.LANCHOR3,. + 0
+ 240              	bat_low_counter.4853:
+ 241 0000 00000000 		.space	4
+ 242              		.section	.bss.vsupply_check_started.4855,"aw",%nobits
+ 243              		.set	.LANCHOR2,. + 0
+ 246              	vsupply_check_started.4855:
+ 247 0000 00       		.space	1
+ 248              		.text
+ 249              	.Letext0:
+ 250              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 251              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 252              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 253              		.file 5 "./subsystems/electrical.h"
+ 254              		.file 6 "./mcu_periph/adc.h"
+ 255              		.file 7 "/home/lsk/paparazzi/sw/airborne/arch/stm32/mcu_periph/adc_arch.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 electrical.c
+     /tmp/cc7OFnNq.s:20     .text.electrical_init:00000000 $t
+     /tmp/cc7OFnNq.s:25     .text.electrical_init:00000000 electrical_init
+     /tmp/cc7OFnNq.s:59     .text.electrical_init:00000018 $d
+     /tmp/cc7OFnNq.s:70     .text.electrical_periodic:00000000 $t
+     /tmp/cc7OFnNq.s:75     .text.electrical_periodic:00000000 electrical_periodic
+     /tmp/cc7OFnNq.s:198    .text.electrical_periodic:000000c0 $d
+     /tmp/cc7OFnNq.s:233    .bss.electrical:00000000 electrical
+     /tmp/cc7OFnNq.s:215    .bss.electrical_priv:00000000 $d
+     /tmp/cc7OFnNq.s:219    .bss.electrical_priv:00000000 electrical_priv
+     /tmp/cc7OFnNq.s:222    .bss.bat_critical_counter.4854:00000000 $d
+     /tmp/cc7OFnNq.s:226    .bss.bat_critical_counter.4854:00000000 bat_critical_counter.4854
+     /tmp/cc7OFnNq.s:229    .bss.electrical:00000000 $d
+     /tmp/cc7OFnNq.s:236    .bss.bat_low_counter.4853:00000000 $d
+     /tmp/cc7OFnNq.s:240    .bss.bat_low_counter.4853:00000000 bat_low_counter.4853
+     /tmp/cc7OFnNq.s:246    .bss.vsupply_check_started.4855:00000000 vsupply_check_started.4855
+     /tmp/cc7OFnNq.s:247    .bss.vsupply_check_started.4855:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.adc.h.40.1a39266ea7e49764800ee7652a642a83
+                           .group:00000000 wm4.paparazzi.h.2.903792c4429b74b43ba66cc0d2531abd
+
+UNDEFINED SYMBOLS
+adc_buf_channel
+__aeabi_ui2d
+__aeabi_dmul
+__aeabi_d2uiz
+__aeabi_i2d
+__aeabi_dcmplt

@@ -1,0 +1,677 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"baro_board_ms5611_i2c.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.baro_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	baro_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	baro_init:
+  26              	.LFB385:
+  27              		.file 1 "boards/baro_board_ms5611_i2c.c"
+   1:boards/baro_board_ms5611_i2c.c **** /*
+   2:boards/baro_board_ms5611_i2c.c ****  * Copyright (C) 2011-2013 The Paparazzi Team
+   3:boards/baro_board_ms5611_i2c.c ****  *
+   4:boards/baro_board_ms5611_i2c.c ****  * This file is part of paparazzi.
+   5:boards/baro_board_ms5611_i2c.c ****  *
+   6:boards/baro_board_ms5611_i2c.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:boards/baro_board_ms5611_i2c.c ****  * it under the terms of the GNU General Public License as published by
+   8:boards/baro_board_ms5611_i2c.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:boards/baro_board_ms5611_i2c.c ****  * any later version.
+  10:boards/baro_board_ms5611_i2c.c ****  *
+  11:boards/baro_board_ms5611_i2c.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:boards/baro_board_ms5611_i2c.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:boards/baro_board_ms5611_i2c.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:boards/baro_board_ms5611_i2c.c ****  * GNU General Public License for more details.
+  15:boards/baro_board_ms5611_i2c.c ****  *
+  16:boards/baro_board_ms5611_i2c.c ****  * You should have received a copy of the GNU General Public License
+  17:boards/baro_board_ms5611_i2c.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:boards/baro_board_ms5611_i2c.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:boards/baro_board_ms5611_i2c.c ****  * Boston, MA 02111-1307, USA.
+  20:boards/baro_board_ms5611_i2c.c ****  *
+  21:boards/baro_board_ms5611_i2c.c ****  */
+  22:boards/baro_board_ms5611_i2c.c **** 
+  23:boards/baro_board_ms5611_i2c.c **** /**
+  24:boards/baro_board_ms5611_i2c.c ****  * @file boards/baro_board_ms5611_i2c.c
+  25:boards/baro_board_ms5611_i2c.c ****  *
+  26:boards/baro_board_ms5611_i2c.c ****  * Driver for onboard MS5611 baro via I2C.
+  27:boards/baro_board_ms5611_i2c.c ****  *
+  28:boards/baro_board_ms5611_i2c.c ****  */
+  29:boards/baro_board_ms5611_i2c.c **** 
+  30:boards/baro_board_ms5611_i2c.c **** #include "subsystems/sensors/baro.h"
+  31:boards/baro_board_ms5611_i2c.c **** #include "peripherals/ms5611_i2c.h"
+  32:boards/baro_board_ms5611_i2c.c **** 
+  33:boards/baro_board_ms5611_i2c.c **** #include "mcu_periph/sys_time.h"
+  34:boards/baro_board_ms5611_i2c.c **** #include "led.h"
+  35:boards/baro_board_ms5611_i2c.c **** #include "std.h"
+  36:boards/baro_board_ms5611_i2c.c **** #include "subsystems/abi.h"
+  37:boards/baro_board_ms5611_i2c.c **** 
+  38:boards/baro_board_ms5611_i2c.c **** #include "mcu_periph/uart.h"
+  39:boards/baro_board_ms5611_i2c.c **** #include "messages.h"
+  40:boards/baro_board_ms5611_i2c.c **** #include "subsystems/datalink/downlink.h"
+  41:boards/baro_board_ms5611_i2c.c **** 
+  42:boards/baro_board_ms5611_i2c.c **** #ifdef BARO_PERIODIC_FREQUENCY
+  43:boards/baro_board_ms5611_i2c.c **** #if BARO_PERIODIC_FREQUENCY > 100
+  44:boards/baro_board_ms5611_i2c.c **** #error "For MS5611 BARO_PERIODIC_FREQUENCY has to be < 100"
+  45:boards/baro_board_ms5611_i2c.c **** #endif
+  46:boards/baro_board_ms5611_i2c.c **** #endif
+  47:boards/baro_board_ms5611_i2c.c **** 
+  48:boards/baro_board_ms5611_i2c.c **** 
+  49:boards/baro_board_ms5611_i2c.c **** /** default i2c address
+  50:boards/baro_board_ms5611_i2c.c ****  * when CSB is set to GND addr is 0xEE
+  51:boards/baro_board_ms5611_i2c.c ****  * when CSB is set to VCC addr is 0xEC
+  52:boards/baro_board_ms5611_i2c.c ****  *
+  53:boards/baro_board_ms5611_i2c.c ****  * Note: Aspirin 2.1 has CSB bound to GND.
+  54:boards/baro_board_ms5611_i2c.c ****  */
+  55:boards/baro_board_ms5611_i2c.c **** #ifndef BB_MS5611_SLAVE_ADDR
+  56:boards/baro_board_ms5611_i2c.c **** #define BB_MS5611_SLAVE_ADDR 0xEE
+  57:boards/baro_board_ms5611_i2c.c **** #endif
+  58:boards/baro_board_ms5611_i2c.c **** 
+  59:boards/baro_board_ms5611_i2c.c **** /// set to TRUE if baro is actually a MS5607
+  60:boards/baro_board_ms5611_i2c.c **** #ifndef BB_MS5611_TYPE_MS5607
+  61:boards/baro_board_ms5611_i2c.c **** #define BB_MS5611_TYPE_MS5607 FALSE
+  62:boards/baro_board_ms5611_i2c.c **** #endif
+  63:boards/baro_board_ms5611_i2c.c **** PRINT_CONFIG_VAR(BB_MS5611_TYPE_MS5607)
+  64:boards/baro_board_ms5611_i2c.c **** 
+  65:boards/baro_board_ms5611_i2c.c **** struct Ms5611_I2c bb_ms5611;
+  66:boards/baro_board_ms5611_i2c.c **** 
+  67:boards/baro_board_ms5611_i2c.c **** 
+  68:boards/baro_board_ms5611_i2c.c **** void baro_init(void)
+  69:boards/baro_board_ms5611_i2c.c **** {
+  28              		.loc 1 69 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  70:boards/baro_board_ms5611_i2c.c ****   ms5611_i2c_init(&bb_ms5611, &BB_MS5611_I2C_DEV, BB_MS5611_SLAVE_ADDR, BB_MS5611_TYPE_MS5607);
+  33              		.loc 1 70 0
+  34 0000 0248     		ldr	r0, .L2
+  35 0002 0349     		ldr	r1, .L2+4
+  36 0004 EC22     		movs	r2, #236
+  37 0006 0023     		movs	r3, #0
+  38 0008 FFF7FEBF 		b	ms5611_i2c_init
+  39              	.LVL0:
+  40              	.L3:
+  41              		.align	2
+  42              	.L2:
+  43 000c 00000000 		.word	.LANCHOR0
+  44 0010 00000000 		.word	i2c2
+  45              		.cfi_endproc
+  46              	.LFE385:
+  48              		.section	.text.baro_periodic,"ax",%progbits
+  49              		.align	1
+  50              		.global	baro_periodic
+  51              		.thumb
+  52              		.thumb_func
+  54              	baro_periodic:
+  55              	.LFB386:
+  71:boards/baro_board_ms5611_i2c.c **** 
+  72:boards/baro_board_ms5611_i2c.c **** #ifdef BARO_LED
+  73:boards/baro_board_ms5611_i2c.c ****   LED_OFF(BARO_LED);
+  74:boards/baro_board_ms5611_i2c.c **** #endif
+  75:boards/baro_board_ms5611_i2c.c **** }
+  76:boards/baro_board_ms5611_i2c.c **** 
+  77:boards/baro_board_ms5611_i2c.c **** void baro_periodic(void)
+  78:boards/baro_board_ms5611_i2c.c **** {
+  56              		.loc 1 78 0
+  57              		.cfi_startproc
+  58              		@ args = 0, pretend = 0, frame = 0
+  59              		@ frame_needed = 0, uses_anonymous_args = 0
+  60 0000 08B5     		push	{r3, lr}
+  61              		.cfi_def_cfa_offset 8
+  62              		.cfi_offset 3, -8
+  63              		.cfi_offset 14, -4
+  79:boards/baro_board_ms5611_i2c.c ****   if (sys_time.nb_sec > 1) {
+  64              		.loc 1 79 0
+  65 0002 094B     		ldr	r3, .L9
+  66 0004 1B68     		ldr	r3, [r3]
+  67 0006 012B     		cmp	r3, #1
+  68 0008 0DD9     		bls	.L4
+  69              	.LVL1:
+  70              	.LBB8:
+  71              	.LBB9:
+  72              	.LBB10:
+  73              	.LBB11:
+  74              		.file 2 "./peripherals/ms5611_i2c.h"
+   1:./peripherals/ms5611_i2c.h **** /*
+   2:./peripherals/ms5611_i2c.h ****  * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
+   3:./peripherals/ms5611_i2c.h ****  *
+   4:./peripherals/ms5611_i2c.h ****  * This file is part of paparazzi.
+   5:./peripherals/ms5611_i2c.h ****  *
+   6:./peripherals/ms5611_i2c.h ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:./peripherals/ms5611_i2c.h ****  * it under the terms of the GNU General Public License as published by
+   8:./peripherals/ms5611_i2c.h ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:./peripherals/ms5611_i2c.h ****  * any later version.
+  10:./peripherals/ms5611_i2c.h ****  *
+  11:./peripherals/ms5611_i2c.h ****  * paparazzi is distributed in the hope that it will be useful,
+  12:./peripherals/ms5611_i2c.h ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:./peripherals/ms5611_i2c.h ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:./peripherals/ms5611_i2c.h ****  * GNU General Public License for more details.
+  15:./peripherals/ms5611_i2c.h ****  *
+  16:./peripherals/ms5611_i2c.h ****  * You should have received a copy of the GNU General Public License
+  17:./peripherals/ms5611_i2c.h ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:./peripherals/ms5611_i2c.h ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:./peripherals/ms5611_i2c.h ****  * Boston, MA 02111-1307, USA.
+  20:./peripherals/ms5611_i2c.h ****  */
+  21:./peripherals/ms5611_i2c.h **** 
+  22:./peripherals/ms5611_i2c.h **** /**
+  23:./peripherals/ms5611_i2c.h ****  * @file peripherals/ms5611_i2c.h
+  24:./peripherals/ms5611_i2c.h ****  *
+  25:./peripherals/ms5611_i2c.h ****  * Measurement Specialties (Intersema) MS5611-01BA and MS5607-02BA03 pressure/temperature sensor in
+  26:./peripherals/ms5611_i2c.h ****  */
+  27:./peripherals/ms5611_i2c.h **** 
+  28:./peripherals/ms5611_i2c.h **** #ifndef MS5611_I2C_H
+  29:./peripherals/ms5611_i2c.h **** #define MS5611_I2C_H
+  30:./peripherals/ms5611_i2c.h **** 
+  31:./peripherals/ms5611_i2c.h **** #include "mcu_periph/i2c.h"
+  32:./peripherals/ms5611_i2c.h **** 
+  33:./peripherals/ms5611_i2c.h **** /* Include common MS5611 definitions */
+  34:./peripherals/ms5611_i2c.h **** #include "peripherals/ms5611.h"
+  35:./peripherals/ms5611_i2c.h **** 
+  36:./peripherals/ms5611_i2c.h **** struct Ms5611_I2c {
+  37:./peripherals/ms5611_i2c.h ****   struct i2c_periph *i2c_p;
+  38:./peripherals/ms5611_i2c.h ****   struct i2c_transaction i2c_trans;
+  39:./peripherals/ms5611_i2c.h ****   enum Ms5611Status status;
+  40:./peripherals/ms5611_i2c.h ****   bool_t is_ms5607;                   ///< TRUE if MS5607, FALSE if MS5611
+  41:./peripherals/ms5611_i2c.h ****   bool_t initialized;                 ///< config done flag
+  42:./peripherals/ms5611_i2c.h ****   volatile bool_t data_available;     ///< data ready flag
+  43:./peripherals/ms5611_i2c.h ****   struct Ms5611Data data;
+  44:./peripherals/ms5611_i2c.h ****   int32_t prom_cnt;                   ///< number of bytes read from PROM
+  45:./peripherals/ms5611_i2c.h **** };
+  46:./peripherals/ms5611_i2c.h **** 
+  47:./peripherals/ms5611_i2c.h **** // Functions
+  48:./peripherals/ms5611_i2c.h **** extern void ms5611_i2c_init(struct Ms5611_I2c *ms, struct i2c_periph *i2c_p, uint8_t addr,
+  49:./peripherals/ms5611_i2c.h ****                             bool_t is_ms5607);
+  50:./peripherals/ms5611_i2c.h **** extern void ms5611_i2c_start_configure(struct Ms5611_I2c *ms);
+  51:./peripherals/ms5611_i2c.h **** extern void ms5611_i2c_start_conversion(struct Ms5611_I2c *ms);
+  52:./peripherals/ms5611_i2c.h **** extern void ms5611_i2c_periodic_check(struct Ms5611_I2c *ms);
+  53:./peripherals/ms5611_i2c.h **** extern void ms5611_i2c_event(struct Ms5611_I2c *ms);
+  54:./peripherals/ms5611_i2c.h **** 
+  55:./peripherals/ms5611_i2c.h **** /** convenience function to trigger new measurement.
+  56:./peripherals/ms5611_i2c.h ****  * (or start configuration if not already initialized)
+  57:./peripherals/ms5611_i2c.h ****  * Still need to regularly run ms5611_i2c_periodic_check to complete the measurement.
+  58:./peripherals/ms5611_i2c.h ****  */
+  59:./peripherals/ms5611_i2c.h **** static inline void ms5611_i2c_read(struct Ms5611_I2c *ms)
+  60:./peripherals/ms5611_i2c.h **** {
+  61:./peripherals/ms5611_i2c.h ****   if (ms->initialized) {
+  75              		.loc 2 61 0
+  76 000a 0848     		ldr	r0, .L9+4
+  77 000c 90F82C30 		ldrb	r3, [r0, #44]	@ zero_extendqisi2
+  78 0010 13B1     		cbz	r3, .L6
+  62:./peripherals/ms5611_i2c.h ****     ms5611_i2c_start_conversion(ms);
+  79              		.loc 2 62 0
+  80 0012 FFF7FEFF 		bl	ms5611_i2c_start_conversion
+  81              	.LVL2:
+  82 0016 01E0     		b	.L7
+  83              	.L6:
+  63:./peripherals/ms5611_i2c.h ****   } else {
+  64:./peripherals/ms5611_i2c.h ****     ms5611_i2c_start_configure(ms);
+  84              		.loc 2 64 0
+  85 0018 FFF7FEFF 		bl	ms5611_i2c_start_configure
+  86              	.LVL3:
+  87              	.L7:
+  88              	.LBE11:
+  89              	.LBE10:
+  65:./peripherals/ms5611_i2c.h ****   }
+  66:./peripherals/ms5611_i2c.h **** }
+  67:./peripherals/ms5611_i2c.h **** 
+  68:./peripherals/ms5611_i2c.h **** /// convenience function
+  69:./peripherals/ms5611_i2c.h **** static inline void ms5611_i2c_periodic(struct Ms5611_I2c *ms)
+  70:./peripherals/ms5611_i2c.h **** {
+  71:./peripherals/ms5611_i2c.h ****   ms5611_i2c_read(ms);
+  72:./peripherals/ms5611_i2c.h ****   ms5611_i2c_periodic_check(ms);
+  90              		.loc 2 72 0
+  91 001c 0348     		ldr	r0, .L9+4
+  92              	.LBE9:
+  93              	.LBE8:
+  80:boards/baro_board_ms5611_i2c.c **** 
+  81:boards/baro_board_ms5611_i2c.c ****     /* call the convenience periodic that initializes the sensor and starts reading*/
+  82:boards/baro_board_ms5611_i2c.c ****     ms5611_i2c_periodic(&bb_ms5611);
+  83:boards/baro_board_ms5611_i2c.c **** 
+  84:boards/baro_board_ms5611_i2c.c **** #if DEBUG
+  85:boards/baro_board_ms5611_i2c.c ****     if (bb_ms5611.initialized)
+  86:boards/baro_board_ms5611_i2c.c ****       RunOnceEvery((50 * 30), DOWNLINK_SEND_MS5611_COEFF(DefaultChannel, DefaultDevice,
+  87:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[0],
+  88:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[1],
+  89:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[2],
+  90:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[3],
+  91:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[4],
+  92:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[5],
+  93:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[6],
+  94:boards/baro_board_ms5611_i2c.c ****                    &bb_ms5611.data.c[7]));
+  95:boards/baro_board_ms5611_i2c.c **** #endif
+  96:boards/baro_board_ms5611_i2c.c ****   }
+  97:boards/baro_board_ms5611_i2c.c **** }
+  94              		.loc 1 97 0
+  95 001e BDE80840 		pop	{r3, lr}
+  96              	.LBB13:
+  97              	.LBB12:
+  98              		.loc 2 72 0
+  99 0022 FFF7FEBF 		b	ms5611_i2c_periodic_check
+ 100              	.LVL4:
+ 101              	.L4:
+ 102 0026 08BD     		pop	{r3, pc}
+ 103              	.L10:
+ 104              		.align	2
+ 105              	.L9:
+ 106 0028 00000000 		.word	sys_time
+ 107 002c 00000000 		.word	.LANCHOR0
+ 108              	.LBE12:
+ 109              	.LBE13:
+ 110              		.cfi_endproc
+ 111              	.LFE386:
+ 113              		.section	.text.baro_event,"ax",%progbits
+ 114              		.align	1
+ 115              		.global	baro_event
+ 116              		.thumb
+ 117              		.thumb_func
+ 119              	baro_event:
+ 120              	.LFB387:
+  98:boards/baro_board_ms5611_i2c.c **** 
+  99:boards/baro_board_ms5611_i2c.c **** void baro_event(void)
+ 100:boards/baro_board_ms5611_i2c.c **** {
+ 121              		.loc 1 100 0
+ 122              		.cfi_startproc
+ 123              		@ args = 0, pretend = 0, frame = 0
+ 124              		@ frame_needed = 0, uses_anonymous_args = 0
+ 125 0000 70B5     		push	{r4, r5, r6, lr}
+ 126              		.cfi_def_cfa_offset 16
+ 127              		.cfi_offset 4, -16
+ 128              		.cfi_offset 5, -12
+ 129              		.cfi_offset 6, -8
+ 130              		.cfi_offset 14, -4
+ 101:boards/baro_board_ms5611_i2c.c ****   if (sys_time.nb_sec > 1) {
+ 131              		.loc 1 101 0
+ 132 0002 1C4B     		ldr	r3, .L26
+ 133 0004 1B68     		ldr	r3, [r3]
+ 134 0006 012B     		cmp	r3, #1
+ 100:boards/baro_board_ms5611_i2c.c **** {
+ 135              		.loc 1 100 0
+ 136 0008 2DED028B 		fstmfdd	sp!, {d8}
+ 137              		.cfi_def_cfa_offset 24
+ 138              		.cfi_offset 80, -24
+ 139              		.loc 1 101 0
+ 140 000c 2ED9     		bls	.L11
+ 102:boards/baro_board_ms5611_i2c.c ****     ms5611_i2c_event(&bb_ms5611);
+ 141              		.loc 1 102 0
+ 142 000e 1A4D     		ldr	r5, .L26+4
+ 143 0010 2846     		mov	r0, r5
+ 144 0012 FFF7FEFF 		bl	ms5611_i2c_event
+ 145              	.LVL5:
+ 103:boards/baro_board_ms5611_i2c.c **** 
+ 104:boards/baro_board_ms5611_i2c.c ****     if (bb_ms5611.data_available) {
+ 146              		.loc 1 104 0
+ 147 0016 95F82D30 		ldrb	r3, [r5, #45]	@ zero_extendqisi2
+ 148 001a 3BB3     		cbz	r3, .L11
+ 149              	.LBB21:
+ 150              	.LBB22:
+ 151              	.LBB23:
+ 152              		.file 3 "/home/lsk/paparazzi/var/include/abi_messages.h"
+   1:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Automatically generated by gen_abi from /home/lsk/paparazzi/conf/abi.xml */
+   2:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Please DO NOT EDIT */
+   3:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+   4:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Onboard middleware library ABI
+   5:/home/lsk/paparazzi/var/include/abi_messages.h ****  * send and receive messages of class airborne
+   6:/home/lsk/paparazzi/var/include/abi_messages.h ****  */
+   7:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+   8:/home/lsk/paparazzi/var/include/abi_messages.h **** #ifndef ABI_MESSAGES_H
+   9:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGES_H
+  10:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  11:/home/lsk/paparazzi/var/include/abi_messages.h **** #include "subsystems/abi_common.h"
+  12:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  13:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Messages IDs */
+  14:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_ABS_ID 0
+  15:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BARO_DIFF_ID 1
+  16:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_AGL_ID 2
+  17:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_TEMPERATURE_ID 3
+  18:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_GYRO_INT32_ID 4
+  19:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_ACCEL_INT32_ID 5
+  20:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_MAG_INT32_ID 6
+  21:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_IMU_LOWPASSED_ID 7
+  22:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_BODY_TO_IMU_QUAT_ID 8
+  23:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_GEO_MAG_ID 9
+  24:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_GPS_ID 10
+  25:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  26:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Array and linked list structure */
+  27:/home/lsk/paparazzi/var/include/abi_messages.h **** #define ABI_MESSAGE_NB 11
+  28:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  29:/home/lsk/paparazzi/var/include/abi_messages.h **** ABI_EXTERN abi_event* abi_queues[ABI_MESSAGE_NB];
+  30:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  31:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Callbacks */
+  32:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_ABS)(uint8_t sender_id, float pressure);
+  33:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBARO_DIFF)(uint8_t sender_id, float pressure);
+  34:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackAGL)(uint8_t sender_id, float distance);
+  35:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackTEMPERATURE)(uint8_t sender_id, float temp);
+  36:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_GYRO_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * g
+  37:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_ACCEL_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * 
+  38:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_MAG_INT32)(uint8_t sender_id, uint32_t stamp, struct Int32Vect3 * ma
+  39:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackIMU_LOWPASSED)(uint8_t sender_id, uint32_t stamp, struct Int32Rates * gy
+  40:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackBODY_TO_IMU_QUAT)(uint8_t sender_id, struct FloatQuat * q_b2i_f);
+  41:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGEO_MAG)(uint8_t sender_id, struct FloatVect3 * h);
+  42:/home/lsk/paparazzi/var/include/abi_messages.h **** typedef void (*abi_callbackGPS)(uint8_t sender_id, uint32_t stamp, struct GpsState * gps_s);
+  43:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  44:/home/lsk/paparazzi/var/include/abi_messages.h **** /* Bind and Send functions */
+  45:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  46:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_ABS(uint8_t sender_id, abi_event * ev, abi_callbackBARO_ABS cb) {
+  47:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  48:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  49:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_ABS_ID],ev);
+  50:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  51:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  52:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_ABS(uint8_t sender_id, float pressure) {
+  53:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  54:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_ABS_ID],e) {
+ 153              		.loc 3 54 0
+ 154 001c 174B     		ldr	r3, .L26+8
+ 155              	.LBE23:
+ 156              	.LBE22:
+ 105:boards/baro_board_ms5611_i2c.c ****       float pressure = (float)bb_ms5611.data.pressure;
+ 157              		.loc 1 105 0
+ 158 001e D5ED0C7A 		flds	s15, [r5, #48]	@ int
+ 159              	.LBB27:
+ 160              	.LBB25:
+ 161              		.loc 3 54 0
+ 162 0022 1C68     		ldr	r4, [r3]
+ 163              	.LBE25:
+ 164              	.LBE27:
+ 165              		.loc 1 105 0
+ 166 0024 B8EE678A 		fuitos	s16, s15
+ 167              	.LVL6:
+ 168 0028 1E46     		mov	r6, r3
+ 169              	.L15:
+ 170              	.LBB28:
+ 171              	.LBB26:
+ 172              		.loc 3 54 0
+ 173 002a 4CB1     		cbz	r4, .L24
+  55:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 174              		.loc 3 55 0
+ 175 002c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 176 002e 012B     		cmp	r3, #1
+ 177 0030 04D8     		bhi	.L16
+ 178              	.LVL7:
+ 179              	.LBB24:
+  56:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_ABS cb = (abi_callbackBARO_ABS)(e->cb);
+  57:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+ 180              		.loc 3 57 0
+ 181 0032 6268     		ldr	r2, [r4, #4]
+ 182 0034 0120     		movs	r0, #1
+ 183 0036 18EE101A 		fmrs	r1, s16
+ 184 003a 9047     		blx	r2
+ 185              	.LVL8:
+ 186              	.L16:
+ 187              	.LBE24:
+  54:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_ABS_ID],e) {
+ 188              		.loc 3 54 0
+ 189 003c A468     		ldr	r4, [r4, #8]
+ 190              	.LVL9:
+ 191 003e F4E7     		b	.L15
+ 192              	.L24:
+ 193              	.LBE26:
+ 194              	.LBE28:
+ 106:boards/baro_board_ms5611_i2c.c ****       AbiSendMsgBARO_ABS(BARO_BOARD_SENDER_ID, pressure);
+ 107:boards/baro_board_ms5611_i2c.c ****       float temp = bb_ms5611.data.temperature / 100.0f;
+ 195              		.loc 1 107 0
+ 196 0040 D5ED0D7A 		flds	s15, [r5, #52]	@ int
+ 197              	.LBB29:
+ 198              	.LBB30:
+  58:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  59:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  60:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  61:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  62:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgBARO_DIFF(uint8_t sender_id, abi_event * ev, abi_callbackBARO_DIFF cb)
+  63:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  64:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  65:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_BARO_DIFF_ID],ev);
+  66:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  67:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  68:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgBARO_DIFF(uint8_t sender_id, float pressure) {
+  69:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  70:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_BARO_DIFF_ID],e) {
+  71:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  72:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackBARO_DIFF cb = (abi_callbackBARO_DIFF)(e->cb);
+  73:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, pressure);
+  74:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  75:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  76:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  77:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  78:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgAGL(uint8_t sender_id, abi_event * ev, abi_callbackAGL cb) {
+  79:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  80:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  81:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_AGL_ID],ev);
+  82:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  83:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  84:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgAGL(uint8_t sender_id, float distance) {
+  85:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+  86:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_AGL_ID],e) {
+  87:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+  88:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackAGL cb = (abi_callbackAGL)(e->cb);
+  89:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, distance);
+  90:/home/lsk/paparazzi/var/include/abi_messages.h ****     }
+  91:/home/lsk/paparazzi/var/include/abi_messages.h ****   }
+  92:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  93:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+  94:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiBindMsgTEMPERATURE(uint8_t sender_id, abi_event * ev, abi_callbackTEMPERATURE
+  95:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->id = sender_id;
+  96:/home/lsk/paparazzi/var/include/abi_messages.h ****   ev->cb = (abi_callback)cb;
+  97:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_PREPEND(abi_queues[ABI_TEMPERATURE_ID],ev);
+  98:/home/lsk/paparazzi/var/include/abi_messages.h **** }
+  99:/home/lsk/paparazzi/var/include/abi_messages.h **** 
+ 100:/home/lsk/paparazzi/var/include/abi_messages.h **** static inline void AbiSendMsgTEMPERATURE(uint8_t sender_id, float temp) {
+ 101:/home/lsk/paparazzi/var/include/abi_messages.h ****   abi_event* e;
+ 102:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_TEMPERATURE_ID],e) {
+ 199              		.loc 3 102 0
+ 200 0044 F468     		ldr	r4, [r6, #12]
+ 201              	.LVL10:
+ 202              	.LBE30:
+ 203              	.LBE29:
+ 204              		.loc 1 107 0
+ 205 0046 B8EEE78A 		fsitos	s16, s15
+ 206              	.LVL11:
+ 207 004a DFED0D7A 		flds	s15, .L26+12
+ 208 004e 88EE278A 		fdivs	s16, s16, s15
+ 209              	.LVL12:
+ 210              	.L18:
+ 211              	.LBB33:
+ 212              	.LBB32:
+ 213              		.loc 3 102 0
+ 214 0052 4CB1     		cbz	r4, .L25
+ 103:/home/lsk/paparazzi/var/include/abi_messages.h ****     if (e->id == ABI_BROADCAST || e->id == sender_id) {
+ 215              		.loc 3 103 0
+ 216 0054 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 217 0056 012B     		cmp	r3, #1
+ 218 0058 04D8     		bhi	.L19
+ 219              	.LVL13:
+ 220              	.LBB31:
+ 104:/home/lsk/paparazzi/var/include/abi_messages.h ****       abi_callbackTEMPERATURE cb = (abi_callbackTEMPERATURE)(e->cb);
+ 105:/home/lsk/paparazzi/var/include/abi_messages.h ****       cb(sender_id, temp);
+ 221              		.loc 3 105 0
+ 222 005a 6368     		ldr	r3, [r4, #4]
+ 223 005c 0120     		movs	r0, #1
+ 224 005e 18EE101A 		fmrs	r1, s16
+ 225 0062 9847     		blx	r3
+ 226              	.LVL14:
+ 227              	.L19:
+ 228              	.LBE31:
+ 102:/home/lsk/paparazzi/var/include/abi_messages.h ****   ABI_FOREACH(abi_queues[ABI_TEMPERATURE_ID],e) {
+ 229              		.loc 3 102 0
+ 230 0064 A468     		ldr	r4, [r4, #8]
+ 231              	.LVL15:
+ 232 0066 F4E7     		b	.L18
+ 233              	.L25:
+ 234              	.LBE32:
+ 235              	.LBE33:
+ 108:boards/baro_board_ms5611_i2c.c ****       AbiSendMsgTEMPERATURE(BARO_BOARD_SENDER_ID, temp);
+ 109:boards/baro_board_ms5611_i2c.c ****       bb_ms5611.data_available = FALSE;
+ 236              		.loc 1 109 0
+ 237 0068 85F82D40 		strb	r4, [r5, #45]
+ 238              	.LVL16:
+ 239              	.L11:
+ 240              	.LBE21:
+ 110:boards/baro_board_ms5611_i2c.c **** 
+ 111:boards/baro_board_ms5611_i2c.c **** #ifdef BARO_LED
+ 112:boards/baro_board_ms5611_i2c.c ****       RunOnceEvery(10, LED_TOGGLE(BARO_LED));
+ 113:boards/baro_board_ms5611_i2c.c **** #endif
+ 114:boards/baro_board_ms5611_i2c.c **** 
+ 115:boards/baro_board_ms5611_i2c.c **** #if DEBUG
+ 116:boards/baro_board_ms5611_i2c.c ****       float fbaroms = bb_ms5611.data.pressure / 100.;
+ 117:boards/baro_board_ms5611_i2c.c ****       DOWNLINK_SEND_BARO_MS5611(DefaultChannel, DefaultDevice,
+ 118:boards/baro_board_ms5611_i2c.c ****                                 &bb_ms5611.data.d1, &bb_ms5611.data.d2,
+ 119:boards/baro_board_ms5611_i2c.c ****                                 &fbaroms, &temp);
+ 120:boards/baro_board_ms5611_i2c.c **** #endif
+ 121:boards/baro_board_ms5611_i2c.c ****     }
+ 122:boards/baro_board_ms5611_i2c.c ****   }
+ 123:boards/baro_board_ms5611_i2c.c **** }
+ 241              		.loc 1 123 0
+ 242 006c BDEC028B 		fldmfdd	sp!, {d8}
+ 243 0070 70BD     		pop	{r4, r5, r6, pc}
+ 244              	.L27:
+ 245 0072 00BF     		.align	2
+ 246              	.L26:
+ 247 0074 00000000 		.word	sys_time
+ 248 0078 00000000 		.word	.LANCHOR0
+ 249 007c 00000000 		.word	abi_queues
+ 250 0080 0000C842 		.word	1120403456
+ 251              		.cfi_endproc
+ 252              	.LFE387:
+ 254              		.global	bb_ms5611
+ 255              		.section	.bss.bb_ms5611,"aw",%nobits
+ 256              		.align	2
+ 257              		.set	.LANCHOR0,. + 0
+ 260              	bb_ms5611:
+ 261 0000 00000000 		.space	84
+ 261      00000000 
+ 261      00000000 
+ 261      00000000 
+ 261      00000000 
+ 262              		.text
+ 263              	.Letext0:
+ 264              		.file 4 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 265              		.file 5 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 266              		.file 6 "/home/lsk/paparazzi/sw/include/std.h"
+ 267              		.file 7 "./mcu_periph/i2c.h"
+ 268              		.file 8 "./peripherals/ms5611.h"
+ 269              		.file 9 "./mcu_periph/sys_time.h"
+ 270              		.file 10 "./math/pprz_geodetic_int.h"
+ 271              		.file 11 "./mcu_periph/link_device.h"
+ 272              		.file 12 "./mcu_periph/uart.h"
+ 273              		.file 13 "./subsystems/gps/gps_ubx.h"
+ 274              		.file 14 "./subsystems/gps.h"
+ 275              		.file 15 "./subsystems/abi_common.h"
+ 276              		.file 16 "./subsystems/datalink/transport.h"
+ 277              		.file 17 "./subsystems/datalink/xbee.h"
+ 278              		.file 18 "./subsystems/datalink/datalink.h"
+ 279              		.file 19 "./subsystems/datalink/w5100.h"
+ 280              		.file 20 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 baro_board_ms5611_i2c.c
+     /tmp/cc88qCLT.s:20     .text.baro_init:00000000 $t
+     /tmp/cc88qCLT.s:25     .text.baro_init:00000000 baro_init
+     /tmp/cc88qCLT.s:43     .text.baro_init:0000000c $d
+     /tmp/cc88qCLT.s:49     .text.baro_periodic:00000000 $t
+     /tmp/cc88qCLT.s:54     .text.baro_periodic:00000000 baro_periodic
+     /tmp/cc88qCLT.s:106    .text.baro_periodic:00000028 $d
+     /tmp/cc88qCLT.s:114    .text.baro_event:00000000 $t
+     /tmp/cc88qCLT.s:119    .text.baro_event:00000000 baro_event
+     /tmp/cc88qCLT.s:247    .text.baro_event:00000074 $d
+     /tmp/cc88qCLT.s:260    .bss.bb_ms5611:00000000 bb_ms5611
+     /tmp/cc88qCLT.s:256    .bss.bb_ms5611:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.baro_board.h.9.9580e2ab62d42df2be4a9b74a9d3c62a
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.34a7bcc5d6061ae04ce49649a64c2253
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.i2c.h.173.edf41ec62e7796285c1333ff32983d5f
+                           .group:00000000 wm4.ms5611_regs.h.28.e3c13714248cc6f802085158f5967767
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.sys_time.h.40.92f532b5cea824e0ec5ea845e7275d34
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.systick.h.44.34e759e1f218a187b07e9a617cb1d556
+                           .group:00000000 wm4.sys_time.h.213.4ee43452c5934214134db56488f53299
+                           .group:00000000 wm4.led_hw.h.40.8014fb3594847a9d275099fc6ed94641
+                           .group:00000000 wm4.led.h.99.0116146560b22524df8538874a4f60bf
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.uart_arch.h.30.cb8e70feae0b6afe250750f6c1439671
+                           .group:00000000 wm4.uart.h.35.4345324d45fae43faace58e743d48e42
+                           .group:00000000 wm4.gps_ubx.h.36.d4183b0b154441c99ce352aae50967b5
+                           .group:00000000 wm4.gps.h.41.79d1c69e44dd427f855100ff8e932fbe
+                           .group:00000000 wm4.abi_sender_ids.h.29.e18315036ac250e614ad78ed4bcb93da
+                           .group:00000000 wm4.abi_common.h.46.0bb6611719a01752e88980049d8d5177
+                           .group:00000000 wm4.abi_messages.h.14.a63139ccdcd5241f8ab897fe12fc8134
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.messages.h.9.6fd66bc411dd06866b086a1b57e0f309
+                           .group:00000000 wm4.modules.h.5.be642dc363672736d1d1e45a75aad0cf
+                           .group:00000000 wm4.gps_ubx_ucenter.h.29.30a3f1ed020dbc7085e412c29746d829
+                           .group:00000000 wm4.pprz_algebra_double.h.91.82ca62ae962f4b4f295322d977f2dad5
+                           .group:00000000 wm4.modules.h.24.27c8342510f0f30e64a55f4e4778474a
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.actuators_pwm_arch.h.27.274c2fe245167861139e341fd233f9ea
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.datalink.h.28.0d234a7c203533b2ec538be3e18eddf4
+                           .group:00000000 wm4.dl_protocol.h.5.a12fe27a4b4a3cbb46fbca8acf33e3dd
+                           .group:00000000 wm4.datalink.h.46.36a5e0f36fb7d0784f1e7af767537c84
+                           .group:00000000 wm4.pprz_transport.h.57.167db0ee96032e142f5d6e570b3339aa
+                           .group:00000000 wm4.xbee24.h.29.a6677f8bcb71d3b07e11290a2de0e179
+                           .group:00000000 wm4.xbee.h.41.f36be817f95b74f883aef9324b53817b
+                           .group:00000000 wm4.w5100.h.29.d3529bed8de657ab3944b343be960f10
+                           .group:00000000 wm4.downlink.h.76.41034157e32fc9012166fd95ec7418fc
+
+UNDEFINED SYMBOLS
+ms5611_i2c_init
+i2c2
+ms5611_i2c_start_conversion
+ms5611_i2c_start_configure
+ms5611_i2c_periodic_check
+sys_time
+ms5611_i2c_event
+abi_queues

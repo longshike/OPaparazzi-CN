@@ -1,0 +1,269 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"common_flight_plan.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.nav_init_block,"ax",%progbits
+  20              		.align	1
+  21              		.global	nav_init_block
+  22              		.thumb
+  23              		.thumb_func
+  25              	nav_init_block:
+  26              	.LFB148:
+  27              		.file 1 "subsystems/navigation/common_flight_plan.c"
+   1:subsystems/navigation/common_flight_plan.c **** /*
+   2:subsystems/navigation/common_flight_plan.c ****  * Copyright (C) 2007-2009  ENAC, Pascal Brisset, Antoine Drouin
+   3:subsystems/navigation/common_flight_plan.c ****  *
+   4:subsystems/navigation/common_flight_plan.c ****  * This file is part of paparazzi.
+   5:subsystems/navigation/common_flight_plan.c ****  *
+   6:subsystems/navigation/common_flight_plan.c ****  * paparazzi is free software; you can redistribute it and/or modify
+   7:subsystems/navigation/common_flight_plan.c ****  * it under the terms of the GNU General Public License as published by
+   8:subsystems/navigation/common_flight_plan.c ****  * the Free Software Foundation; either version 2, or (at your option)
+   9:subsystems/navigation/common_flight_plan.c ****  * any later version.
+  10:subsystems/navigation/common_flight_plan.c ****  *
+  11:subsystems/navigation/common_flight_plan.c ****  * paparazzi is distributed in the hope that it will be useful,
+  12:subsystems/navigation/common_flight_plan.c ****  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:subsystems/navigation/common_flight_plan.c ****  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:subsystems/navigation/common_flight_plan.c ****  * GNU General Public License for more details.
+  15:subsystems/navigation/common_flight_plan.c ****  *
+  16:subsystems/navigation/common_flight_plan.c ****  * You should have received a copy of the GNU General Public License
+  17:subsystems/navigation/common_flight_plan.c ****  * along with paparazzi; see the file COPYING.  If not, write to
+  18:subsystems/navigation/common_flight_plan.c ****  * the Free Software Foundation, 59 Temple Place - Suite 330,
+  19:subsystems/navigation/common_flight_plan.c ****  * Boston, MA 02111-1307, USA.
+  20:subsystems/navigation/common_flight_plan.c ****  */
+  21:subsystems/navigation/common_flight_plan.c **** 
+  22:subsystems/navigation/common_flight_plan.c **** /**
+  23:subsystems/navigation/common_flight_plan.c ****  * @file subsystems/navigation/common_flight_plan.c
+  24:subsystems/navigation/common_flight_plan.c ****  * Common flight_plan functions shared between fixedwing and rotorcraft.
+  25:subsystems/navigation/common_flight_plan.c ****  */
+  26:subsystems/navigation/common_flight_plan.c **** 
+  27:subsystems/navigation/common_flight_plan.c **** #include "subsystems/navigation/common_flight_plan.h"
+  28:subsystems/navigation/common_flight_plan.c **** 
+  29:subsystems/navigation/common_flight_plan.c **** #include "generated/flight_plan.h"
+  30:subsystems/navigation/common_flight_plan.c **** 
+  31:subsystems/navigation/common_flight_plan.c **** 
+  32:subsystems/navigation/common_flight_plan.c **** /** In s */
+  33:subsystems/navigation/common_flight_plan.c **** uint16_t stage_time, block_time;
+  34:subsystems/navigation/common_flight_plan.c **** 
+  35:subsystems/navigation/common_flight_plan.c **** uint8_t nav_stage, nav_block;
+  36:subsystems/navigation/common_flight_plan.c **** 
+  37:subsystems/navigation/common_flight_plan.c **** /** To save the current block/stage to enable return */
+  38:subsystems/navigation/common_flight_plan.c **** uint8_t last_block, last_stage;
+  39:subsystems/navigation/common_flight_plan.c **** 
+  40:subsystems/navigation/common_flight_plan.c **** 
+  41:subsystems/navigation/common_flight_plan.c **** void nav_init_block(void)
+  42:subsystems/navigation/common_flight_plan.c **** {
+  28              		.loc 1 42 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  43:subsystems/navigation/common_flight_plan.c ****   if (nav_block >= NB_BLOCK) {
+  33              		.loc 1 43 0
+  34 0000 064B     		ldr	r3, .L3
+  35 0002 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+  36 0004 0F2A     		cmp	r2, #15
+  44:subsystems/navigation/common_flight_plan.c ****     nav_block = NB_BLOCK - 1;
+  37              		.loc 1 44 0
+  38 0006 84BF     		itt	hi
+  39 0008 0F22     		movhi	r2, #15
+  40 000a 1A70     		strbhi	r2, [r3]
+  45:subsystems/navigation/common_flight_plan.c ****   }
+  46:subsystems/navigation/common_flight_plan.c ****   nav_stage = 0;
+  41              		.loc 1 46 0
+  42 000c 044A     		ldr	r2, .L3+4
+  43 000e 0023     		movs	r3, #0
+  44 0010 1370     		strb	r3, [r2]
+  47:subsystems/navigation/common_flight_plan.c ****   block_time = 0;
+  45              		.loc 1 47 0
+  46 0012 044A     		ldr	r2, .L3+8
+  47 0014 1380     		strh	r3, [r2]	@ movhi
+  48:subsystems/navigation/common_flight_plan.c ****   InitStage();
+  48              		.loc 1 48 0
+  49 0016 FFF7FEBF 		b	nav_init_stage
+  50              	.LVL0:
+  51              	.L4:
+  52 001a 00BF     		.align	2
+  53              	.L3:
+  54 001c 00000000 		.word	.LANCHOR0
+  55 0020 00000000 		.word	.LANCHOR1
+  56 0024 00000000 		.word	.LANCHOR2
+  57              		.cfi_endproc
+  58              	.LFE148:
+  60              		.section	.text.nav_goto_block,"ax",%progbits
+  61              		.align	1
+  62              		.global	nav_goto_block
+  63              		.thumb
+  64              		.thumb_func
+  66              	nav_goto_block:
+  67              	.LFB149:
+  49:subsystems/navigation/common_flight_plan.c **** }
+  50:subsystems/navigation/common_flight_plan.c **** 
+  51:subsystems/navigation/common_flight_plan.c **** void nav_goto_block(uint8_t b)
+  52:subsystems/navigation/common_flight_plan.c **** {
+  68              		.loc 1 52 0
+  69              		.cfi_startproc
+  70              		@ args = 0, pretend = 0, frame = 0
+  71              		@ frame_needed = 0, uses_anonymous_args = 0
+  72              		@ link register save eliminated.
+  73              	.LVL1:
+  53:subsystems/navigation/common_flight_plan.c ****   if (b != nav_block) { /* To avoid a loop in a the current block */
+  74              		.loc 1 53 0
+  75 0000 064A     		ldr	r2, .L8
+  76 0002 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+  77 0004 9842     		cmp	r0, r3
+  78 0006 05D0     		beq	.L6
+  54:subsystems/navigation/common_flight_plan.c ****     last_block = nav_block;
+  79              		.loc 1 54 0
+  80 0008 0549     		ldr	r1, .L8+4
+  81 000a 0B70     		strb	r3, [r1]
+  55:subsystems/navigation/common_flight_plan.c ****     last_stage = nav_stage;
+  82              		.loc 1 55 0
+  83 000c 054B     		ldr	r3, .L8+8
+  84 000e 1978     		ldrb	r1, [r3]	@ zero_extendqisi2
+  85 0010 054B     		ldr	r3, .L8+12
+  86 0012 1970     		strb	r1, [r3]
+  87              	.L6:
+  56:subsystems/navigation/common_flight_plan.c ****   }
+  57:subsystems/navigation/common_flight_plan.c ****   GotoBlock(b);
+  88              		.loc 1 57 0
+  89 0014 1070     		strb	r0, [r2]
+  90 0016 FFF7FEBF 		b	nav_init_block
+  91              	.LVL2:
+  92              	.L9:
+  93 001a 00BF     		.align	2
+  94              	.L8:
+  95 001c 00000000 		.word	.LANCHOR0
+  96 0020 00000000 		.word	.LANCHOR3
+  97 0024 00000000 		.word	.LANCHOR1
+  98 0028 00000000 		.word	.LANCHOR4
+  99              		.cfi_endproc
+ 100              	.LFE149:
+ 102              		.global	last_stage
+ 103              		.global	last_block
+ 104              		.global	nav_block
+ 105              		.global	nav_stage
+ 106              		.global	block_time
+ 107              		.global	stage_time
+ 108              		.section	.bss.stage_time,"aw",%nobits
+ 109              		.align	1
+ 112              	stage_time:
+ 113 0000 0000     		.space	2
+ 114              		.section	.bss.last_block,"aw",%nobits
+ 115              		.set	.LANCHOR3,. + 0
+ 118              	last_block:
+ 119 0000 00       		.space	1
+ 120              		.section	.bss.block_time,"aw",%nobits
+ 121              		.align	1
+ 122              		.set	.LANCHOR2,. + 0
+ 125              	block_time:
+ 126 0000 0000     		.space	2
+ 127              		.section	.bss.nav_block,"aw",%nobits
+ 128              		.set	.LANCHOR0,. + 0
+ 131              	nav_block:
+ 132 0000 00       		.space	1
+ 133              		.section	.bss.last_stage,"aw",%nobits
+ 134              		.set	.LANCHOR4,. + 0
+ 137              	last_stage:
+ 138 0000 00       		.space	1
+ 139              		.section	.bss.nav_stage,"aw",%nobits
+ 140              		.set	.LANCHOR1,. + 0
+ 143              	nav_stage:
+ 144 0000 00       		.space	1
+ 145              		.text
+ 146              	.Letext0:
+ 147              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 148              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 149              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 150              		.file 5 "./math/pprz_algebra_float.h"
+ 151              		.file 6 "./math/pprz_algebra_int.h"
+ 152              		.file 7 "./math/pprz_geodetic_int.h"
+ 153              		.file 8 "./math/pprz_geodetic_float.h"
+ 154              		.file 9 "./math/pprz_orientation_conversion.h"
+ 155              		.file 10 "./state.h"
+ 156              		.file 11 "firmwares/rotorcraft/autopilot.h"
+ 157              		.file 12 "./subsystems/settings.h"
+ 158              		.file 13 "./subsystems/navigation/common_flight_plan.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 common_flight_plan.c
+     /tmp/ccPs6dD9.s:20     .text.nav_init_block:00000000 $t
+     /tmp/ccPs6dD9.s:25     .text.nav_init_block:00000000 nav_init_block
+     /tmp/ccPs6dD9.s:54     .text.nav_init_block:0000001c $d
+     /tmp/ccPs6dD9.s:61     .text.nav_goto_block:00000000 $t
+     /tmp/ccPs6dD9.s:66     .text.nav_goto_block:00000000 nav_goto_block
+     /tmp/ccPs6dD9.s:95     .text.nav_goto_block:0000001c $d
+     /tmp/ccPs6dD9.s:137    .bss.last_stage:00000000 last_stage
+     /tmp/ccPs6dD9.s:118    .bss.last_block:00000000 last_block
+     /tmp/ccPs6dD9.s:131    .bss.nav_block:00000000 nav_block
+     /tmp/ccPs6dD9.s:143    .bss.nav_stage:00000000 nav_stage
+     /tmp/ccPs6dD9.s:125    .bss.block_time:00000000 block_time
+     /tmp/ccPs6dD9.s:112    .bss.stage_time:00000000 stage_time
+     /tmp/ccPs6dD9.s:109    .bss.stage_time:00000000 $d
+     /tmp/ccPs6dD9.s:119    .bss.last_block:00000000 $d
+     /tmp/ccPs6dD9.s:121    .bss.block_time:00000000 $d
+     /tmp/ccPs6dD9.s:132    .bss.nav_block:00000000 $d
+     /tmp/ccPs6dD9.s:138    .bss.last_stage:00000000 $d
+     /tmp/ccPs6dD9.s:144    .bss.nav_stage:00000000 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.common_flight_plan.h.44.646a1ce27253f6593f90b59f8dd25a6d
+                           .group:00000000 wm4.modules.h.5.be642dc363672736d1d1e45a75aad0cf
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_algebra_float.h.32.544614e70075e1ed5693f00f6a441312
+                           .group:00000000 wm4.pprz_algebra_double.h.91.82ca62ae962f4b4f295322d977f2dad5
+                           .group:00000000 wm4.modules.h.24.27c8342510f0f30e64a55f4e4778474a
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_geodetic.h.35.f7fdb5d11659b92d11c7ce67b6317005
+                           .group:00000000 wm4.pprz_geodetic_int.h.127.8e737bed5ba4468e470311184b1fca7f
+                           .group:00000000 wm4.pprz_orientation_conversion.h.69.5cce798fefad8bb761767fd414e61db5
+                           .group:00000000 wm4.state.h.65.b18954aacb3801ec3e27b4e857d620d3
+                           .group:00000000 wm4.autopilot.h.36.9b09e2729fba5543f2a96f85ca588c23
+                           .group:00000000 wm4.settings.h.29.dff4b7c685fcd0dfb04f9f8de0a69e75
+                           .group:00000000 wm4.transport.h.27.9215bbc09b6a8d08d228c20740408d47
+                           .group:00000000 wm4.flight_plan.h.10.8647a2958f1cd51b9cdfe5b6c12cbd56
+
+UNDEFINED SYMBOLS
+nav_init_stage

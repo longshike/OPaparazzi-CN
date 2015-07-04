@@ -1,0 +1,295 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.eabi_attribute 27, 3
+   4              		.fpu fpv4-sp-d16
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 4
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.thumb
+  15              		.file	"imu_krooz_sd_arch.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.imu_krooz_sd_arch_init,"ax",%progbits
+  20              		.align	1
+  21              		.global	imu_krooz_sd_arch_init
+  22              		.thumb
+  23              		.thumb_func
+  25              	imu_krooz_sd_arch_init:
+  26              	.LFB60:
+  27              		.file 1 "arch/stm32/subsystems/imu/imu_krooz_sd_arch.c"
+   1:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include "subsystems/imu.h"
+   2:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** 
+   3:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include <libopencm3/stm32/rcc.h>
+   4:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include <libopencm3/stm32/gpio.h>
+   5:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include <libopencm3/stm32/exti.h>
+   6:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include <libopencm3/cm3/nvic.h>
+   7:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** 
+   8:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** #include "subsystems/imu/imu_krooz_sd_arch.h"
+   9:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** 
+  10:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** void imu_krooz_sd_arch_init(void)
+  11:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** {
+  28              		.loc 1 11 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 38B5     		push	{r3, r4, r5, lr}
+  33              		.cfi_def_cfa_offset 16
+  34              		.cfi_offset 3, -16
+  35              		.cfi_offset 4, -12
+  36              		.cfi_offset 5, -8
+  37              		.cfi_offset 14, -4
+  12:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   rcc_periph_clock_enable(RCC_SYSCFG);
+  38              		.loc 1 12 0
+  39 0002 40F68E00 		movw	r0, #2190
+  40 0006 FFF7FEFF 		bl	rcc_periph_clock_enable
+  41              	.LVL0:
+  13:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   rcc_periph_clock_enable(RCC_GPIOB);
+  42              		.loc 1 13 0
+  43 000a 40F20160 		movw	r0, #1537
+  44 000e FFF7FEFF 		bl	rcc_periph_clock_enable
+  45              	.LVL1:
+  14:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   rcc_periph_clock_enable(RCC_GPIOB);
+  15:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO5);
+  46              		.loc 1 15 0
+  47 0012 184D     		ldr	r5, .L2
+  16:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO6);
+  48              		.loc 1 16 0
+  49 0014 184C     		ldr	r4, .L2+4
+  14:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   rcc_periph_clock_enable(RCC_GPIOB);
+  50              		.loc 1 14 0
+  51 0016 40F20160 		movw	r0, #1537
+  52 001a FFF7FEFF 		bl	rcc_periph_clock_enable
+  53              	.LVL2:
+  15:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO5);
+  54              		.loc 1 15 0
+  55 001e 0021     		movs	r1, #0
+  56 0020 2846     		mov	r0, r5
+  57 0022 0A46     		mov	r2, r1
+  58 0024 2023     		movs	r3, #32
+  59 0026 FFF7FEFF 		bl	gpio_mode_setup
+  60              	.LVL3:
+  61              		.loc 1 16 0
+  62 002a 0021     		movs	r1, #0
+  63 002c 0A46     		mov	r2, r1
+  64 002e 4023     		movs	r3, #64
+  65 0030 2046     		mov	r0, r4
+  66 0032 FFF7FEFF 		bl	gpio_mode_setup
+  67              	.LVL4:
+  17:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** 
+  18:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   nvic_enable_irq(NVIC_EXTI9_5_IRQ);
+  68              		.loc 1 18 0
+  69 0036 1720     		movs	r0, #23
+  70 0038 FFF7FEFF 		bl	nvic_enable_irq
+  71              	.LVL5:
+  19:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_select_source(EXTI5, GPIOB);
+  72              		.loc 1 19 0
+  73 003c 2946     		mov	r1, r5
+  74 003e 2020     		movs	r0, #32
+  75 0040 FFF7FEFF 		bl	exti_select_source
+  76              	.LVL6:
+  20:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_select_source(EXTI6, GPIOC);
+  77              		.loc 1 20 0
+  78 0044 2146     		mov	r1, r4
+  79 0046 4020     		movs	r0, #64
+  80 0048 FFF7FEFF 		bl	exti_select_source
+  81              	.LVL7:
+  21:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_set_trigger(EXTI5, EXTI_TRIGGER_RISING);
+  82              		.loc 1 21 0
+  83 004c 2020     		movs	r0, #32
+  84 004e 0021     		movs	r1, #0
+  85 0050 FFF7FEFF 		bl	exti_set_trigger
+  86              	.LVL8:
+  22:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_set_trigger(EXTI6, EXTI_TRIGGER_FALLING);
+  87              		.loc 1 22 0
+  88 0054 0121     		movs	r1, #1
+  89 0056 4020     		movs	r0, #64
+  90 0058 FFF7FEFF 		bl	exti_set_trigger
+  91              	.LVL9:
+  23:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_enable_request(EXTI5);
+  92              		.loc 1 23 0
+  93 005c 2020     		movs	r0, #32
+  94 005e FFF7FEFF 		bl	exti_enable_request
+  95              	.LVL10:
+  24:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   exti_enable_request(EXTI6);
+  96              		.loc 1 24 0
+  97 0062 4020     		movs	r0, #64
+  98 0064 FFF7FEFF 		bl	exti_enable_request
+  99              	.LVL11:
+  25:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   nvic_set_priority(NVIC_EXTI9_5_IRQ, 0x0F);
+ 100              		.loc 1 25 0
+ 101 0068 1720     		movs	r0, #23
+ 102 006a 0F21     		movs	r1, #15
+  26:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** }
+ 103              		.loc 1 26 0
+ 104 006c BDE83840 		pop	{r3, r4, r5, lr}
+  25:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   nvic_set_priority(NVIC_EXTI9_5_IRQ, 0x0F);
+ 105              		.loc 1 25 0
+ 106 0070 FFF7FEBF 		b	nvic_set_priority
+ 107              	.LVL12:
+ 108              	.L3:
+ 109              		.align	2
+ 110              	.L2:
+ 111 0074 00040240 		.word	1073873920
+ 112 0078 00080240 		.word	1073874944
+ 113              		.cfi_endproc
+ 114              	.LFE60:
+ 116              		.section	.text.exti9_5_isr,"ax",%progbits
+ 117              		.align	1
+ 118              		.weak	exti9_5_isr
+ 119              		.thumb
+ 120              		.thumb_func
+ 122              	exti9_5_isr:
+ 123              	.LFB61:
+  27:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** 
+  28:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** void exti9_5_isr(void)
+  29:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** {
+ 124              		.loc 1 29 0
+ 125              		.cfi_startproc
+ 126              		@ args = 0, pretend = 0, frame = 0
+ 127              		@ frame_needed = 0, uses_anonymous_args = 0
+  30:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   /* clear EXTI */
+  31:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   if (EXTI_PR & EXTI6) {
+ 128              		.loc 1 31 0
+ 129 0000 0B4B     		ldr	r3, .L14
+ 130 0002 1A68     		ldr	r2, [r3]
+ 131 0004 12F0400F 		tst	r2, #64
+  29:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c **** {
+ 132              		.loc 1 29 0
+ 133 0008 10B5     		push	{r4, lr}
+ 134              		.cfi_def_cfa_offset 8
+ 135              		.cfi_offset 4, -8
+ 136              		.cfi_offset 14, -4
+ 137 000a 1C46     		mov	r4, r3
+ 138              		.loc 1 31 0
+ 139 000c 05D0     		beq	.L5
+  32:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****     exti_reset_request(EXTI6);
+ 140              		.loc 1 32 0
+ 141 000e 4020     		movs	r0, #64
+ 142 0010 FFF7FEFF 		bl	exti_reset_request
+ 143              	.LVL13:
+  33:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****     imu_krooz.hmc_eoc = TRUE;
+ 144              		.loc 1 33 0
+ 145 0014 074B     		ldr	r3, .L14+4
+ 146 0016 0122     		movs	r2, #1
+ 147 0018 5A70     		strb	r2, [r3, #1]
+ 148              	.L5:
+  34:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   }
+  35:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****   if (EXTI_PR & EXTI5) {
+ 149              		.loc 1 35 0
+ 150 001a 2368     		ldr	r3, [r4]
+ 151 001c 9B06     		lsls	r3, r3, #26
+ 152 001e 05D5     		bpl	.L4
+  36:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****     exti_reset_request(EXTI5);
+ 153              		.loc 1 36 0
+ 154 0020 2020     		movs	r0, #32
+ 155 0022 FFF7FEFF 		bl	exti_reset_request
+ 156              	.LVL14:
+  37:arch/stm32/subsystems/imu/imu_krooz_sd_arch.c ****     imu_krooz.mpu_eoc = TRUE;
+ 157              		.loc 1 37 0
+ 158 0026 034B     		ldr	r3, .L14+4
+ 159 0028 0122     		movs	r2, #1
+ 160 002a 1A70     		strb	r2, [r3]
+ 161              	.L4:
+ 162 002c 10BD     		pop	{r4, pc}
+ 163              	.L15:
+ 164 002e 00BF     		.align	2
+ 165              	.L14:
+ 166 0030 143C0140 		.word	1073822740
+ 167 0034 00000000 		.word	imu_krooz
+ 168              		.cfi_endproc
+ 169              	.LFE61:
+ 171              		.text
+ 172              	.Letext0:
+ 173              		.file 2 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/machine/_default_types.h"
+ 174              		.file 3 "/home/lsk/gcc-arm-none-eabi-4_8-2014q3/arm-none-eabi/include/stdint.h"
+ 175              		.file 4 "/home/lsk/paparazzi/sw/include/std.h"
+ 176              		.file 5 "./math/pprz_algebra_int.h"
+ 177              		.file 6 "./mcu_periph/i2c.h"
+ 178              		.file 7 "./peripherals/mpu60x0_regs.h"
+ 179              		.file 8 "./peripherals/mpu60x0.h"
+ 180              		.file 9 "./peripherals/mpu60x0_i2c.h"
+ 181              		.file 10 "./peripherals/hmc58xx.h"
+ 182              		.file 11 "./boards/krooz/imu_krooz.h"
+ 183              		.file 12 "../ext/libopencm3/include/libopencm3/stm32/f4/rcc.h"
+ 184              		.file 13 "../ext/libopencm3/include/libopencm3/stm32/common/exti_common_all.h"
+ 185              		.file 14 "../ext/libopencm3/include/libopencm3/stm32/common/rcc_common_all.h"
+ 186              		.file 15 "../ext/libopencm3/include/libopencm3/stm32/common/gpio_common_f234.h"
+ 187              		.file 16 "../ext/libopencm3/include/libopencm3/cm3/nvic.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 imu_krooz_sd_arch.c
+     /tmp/ccxtpBcI.s:20     .text.imu_krooz_sd_arch_init:00000000 $t
+     /tmp/ccxtpBcI.s:25     .text.imu_krooz_sd_arch_init:00000000 imu_krooz_sd_arch_init
+     /tmp/ccxtpBcI.s:111    .text.imu_krooz_sd_arch_init:00000074 $d
+     /tmp/ccxtpBcI.s:117    .text.exti9_5_isr:00000000 $t
+     /tmp/ccxtpBcI.s:122    .text.exti9_5_isr:00000000 exti9_5_isr
+     /tmp/ccxtpBcI.s:166    .text.exti9_5_isr:00000030 $d
+                     .debug_frame:00000010 $d
+                           .group:00000000 wm4.0.61e172dafa1e7adfbd840ee8b103061f
+                           .group:00000000 wm4.features.h.22.6a4ca7cd053637cc1d0db6c16f39b2d7
+                           .group:00000000 wm4._default_types.h.6.9e4229723f5523536bc8f574589d6a99
+                           .group:00000000 wm4.stdint.h.20.796e373797e732130a803d4c0338fa1b
+                           .group:00000000 wm4.stddef.h.263.49e44f5ee9cdd8820580fc4aa239e32a
+                           .group:00000000 wm4.inttypes.h.24.4db40689d622c4d3b547b5801303bdae
+                           .group:00000000 wm4.stdbool.h.29.1c9ee6859ce8145f7838a4f2549ccec2
+                           .group:00000000 wm4.newlib.h.8.fec018e441fee7bfa1923812ad010f97
+                           .group:00000000 wm4.config.h.212.4163ef2871a828c674038d036b081cfd
+                           .group:00000000 wm4._ansi.h.23.2147fde150631f5584b9dc29b914d1b8
+                           .group:00000000 wm4.stddef.h.39.2b75ea897b59bf67f50e970d678806e4
+                           .group:00000000 wm4.lock.h.2.9bc98482741e5e2a9450b12934a684ea
+                           .group:00000000 wm4._types.h.54.d3d34a3b7f3cc230cd159baf022b4b08
+                           .group:00000000 wm4.stddef.h.158.61317cdbfb4026324507d123a50b0fd6
+                           .group:00000000 wm4.reent.h.17.8bd9e4098e0428508c282cad794fae43
+                           .group:00000000 wm4.math.h.35.13c5bec129ef04ad1bb0a1152b29c624
+                           .group:00000000 wm4.message_pragmas.h.2.a703592919ab94db061a475289156c21
+                           .group:00000000 wm4.std.h.37.c94f17957e155d4dda789b7ad0549a32
+                           .group:00000000 wm4.float.h.29.1cf88a0527b6b1225d49fbee2b32acb7
+                           .group:00000000 wm4.cdefs.h.56.a2d04de9d47039852021e66fca39bb58
+                           .group:00000000 wm4.string.h.15.dab3980bf35408a4c507182805e2de3a
+                           .group:00000000 wm4.stddef.h.158.a7efb00f6cbc6f43213b50e183c9830c
+                           .group:00000000 wm4.string.h.126.6ff3aa59129e7f66b2c273baf353e066
+                           .group:00000000 wm4.pprz_algebra.h.47.d249264ea6bacf2198e290d461cf6dbe
+                           .group:00000000 wm4.pprz_trig_int.h.28.b756be608c9d9f3092a41321446e5fa2
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.53.1a82a3cc35cb0a04319c41bcf41d2a02
+                           .group:00000000 wm4.pprz_algebra_int.h.68.04ac162ae1e1d94f716d0bb402062624
+                           .group:00000000 wm4.pprz_algebra_float.h.98.bb035bcbfa66bb186e7ea81143fd64bc
+                           .group:00000000 wm4.pprz_orientation_conversion.h.57.c0c8f5187bc056807e507011653281f4
+                           .group:00000000 wm4.airframe.h.5.1b65f22e2c90217dfc42bdae27fe483a
+                           .group:00000000 wm4.krooz_sd.h.2.013366a614baabbe44cc2bbd3205e3d1
+                           .group:00000000 wm4.actuators_pwm_arch.h.41.fa66469024778df593e0e3d83e4a3c37
+                           .group:00000000 wm4.airframe.h.14.f46e30d413878b482f16a5abf2127a4b
+                           .group:00000000 wm4.common.h.21.22efaac882611267214d0a36f6f15e74
+                           .group:00000000 wm4.memorymap.h.21.0c01d18fc5814f65c6ceb1822d4030fa
+                           .group:00000000 wm4.memorymap.h.28.85f6f5de65b1d4294c70f79052a0b8c0
+                           .group:00000000 wm4.i2c_common_all.h.33.0891c362b103dbf9b3c797a7eb8c45dd
+                           .group:00000000 wm4.i2c.h.84.d7c95ef3b7385a54cace86b9fe5b1585
+                           .group:00000000 wm4.mpu60x0_regs.h.29.354741a377e41e863a6f15c8045a1631
+                           .group:00000000 wm4.mpu60x0.h.37.d6af4975dcfadd714415f3475e68a5c4
+                           .group:00000000 wm4.hmc58xx_regs.h.28.26f847f5969d95027ba278c81a388e81
+                           .group:00000000 wm4.imu_krooz.h.42.4d9d9e94d6adec753cdf3095a1d719d5
+                           .group:00000000 wm4.rcc.h.46.c4bbaa886b7ca1bd1829424ae12e70af
+                           .group:00000000 wm4.gpio_common_all.h.37.fedbbcb9179f773c905aa3c3e4b7dbdd
+                           .group:00000000 wm4.gpio_common_f234.h.48.ee30692f386eaf6801df27cae93943b1
+                           .group:00000000 wm4.gpio_common_f24.h.48.4e4be5e3ebe26aee10d604e2d0fecde8
+                           .group:00000000 wm4.exti_common_all.h.29.bb1b6f2d88bdbee656ff41e7a96e7174
+                           .group:00000000 wm4.nvic.h.38.b26077e701ba065ebce4922ce89b9357
+                           .group:00000000 wm4.nvic.h.16.68b2cd144a8737a35a31e344912a6e4f
+
+UNDEFINED SYMBOLS
+rcc_periph_clock_enable
+gpio_mode_setup
+nvic_enable_irq
+exti_select_source
+exti_set_trigger
+exti_enable_request
+nvic_set_priority
+exti_reset_request
+imu_krooz
