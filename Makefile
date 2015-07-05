@@ -24,9 +24,11 @@
 Q=@
 
 ifeq ($(Q),@)
+# 设置环境变量，不输出目录
 MAKEFLAGS += --no-print-directory
 endif
 
+# 将当前的路径赋值给 PAPARAZZI_SRC，也就是~/paparazzi
 PAPARAZZI_SRC ?= $(shell pwd)
 empty=
 space=$(empty) $(empty)
@@ -41,16 +43,18 @@ endif
 export PAPARAZZI_SRC
 export PAPARAZZI_HOME
 
+# 本地命令的绝对路径
 OCAML=$(shell which ocaml)
 OCAMLRUN=$(shell which ocamlrun)
 BUILD_DATETIME:=$(shell date +%Y%m%d-%H%M%S)
 
 # default mktemp in OS X doesn't work, use gmktemp with macports coreutils
+# -s, --kernel-name -- print the kernel name 
 UNAME = $(shell uname -s)
 ifeq ("$(UNAME)","Darwin")
-	MKTEMP = gmktemp
+	MKTEMP = gmktemp			# OS X
 else
-	MKTEMP = mktemp
+	MKTEMP = mktemp				# Ubuntu 
 endif
 
 #
@@ -80,6 +84,7 @@ SUBDIRS = $(PPRZCENTER) $(MISC) $(LOGALIZER)
 
 #
 # xml files used as input for header generation
+# 注意下面只是变量定义，并没有实际生成
 #
 MESSAGES_XML = $(CONF)/messages.xml
 ABI_XML = $(CONF)/abi.xml
@@ -89,6 +94,7 @@ XSENS_XML = $(CONF)/xsens_MTi-G.xml
 
 #
 # generated header files
+# STATICINCLUDE =$(PAPARAZZI_HOME)/var/include
 #
 MESSAGES_H=$(STATICINCLUDE)/messages.h
 MESSAGES2_H=$(STATICINCLUDE)/messages2.h
@@ -114,10 +120,16 @@ print_build_version:
 	@echo "Last build Paparazzi version" $(shell cat $(PAPARAZZI_HOME)/var/build_version.txt 2> /dev/null || echo UNKNOWN)
 	@echo "------------------------------------------------------------"
 
+# $(Q)按照上面的定义就是@，表示静态编译，不输出命令，只输出结果
+# > 文件生成流
+# $@ -- the target file
+# $^ -- All rely on documents
+# $< -- The first depend on the file
 _save_build_version:
 	$(Q)test -d $(PAPARAZZI_HOME)/var || mkdir -p $(PAPARAZZI_HOME)/var
 	$(Q)./paparazzi_version > $(PAPARAZZI_HOME)/var/build_version.txt
 
+# enter data/maps, then make according to the makefile
 update_google_version:
 	-$(MAKE) -C data/maps
 
@@ -180,10 +192,15 @@ $(LOGALIZER): libpprz
 
 static_h: $(GEN_HEADERS)
 
+
+# MESSAGES_H=$(STATICINCLUDE)/messages.h
+# MESSAGES_XML = $(CONF)/messages.xml
+# STATICINCLUDE =$(PAPARAZZI_HOME)/var/include
 $(MESSAGES_H) : $(MESSAGES_XML) generators
 	$(Q)test -d $(STATICINCLUDE) || mkdir -p $(STATICINCLUDE)
 	@echo GENERATE $@
 	$(eval $@_TMP := $(shell $(MKTEMP)))
+	# 前面的赋值，不知道后面的telemetry是什么????????????????????????????
 	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) $(GENERATORS)/gen_messages.out $< telemetry > $($@_TMP)
 	$(Q)mv $($@_TMP) $@
 	$(Q)chmod a+r $@
