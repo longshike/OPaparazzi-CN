@@ -19,8 +19,8 @@ OPaparazzi-CN 中文注释版
 
 快速通道
 ---------
-- [Home]：对整个社区的介绍
+- [Home](https://github.com/Dino-China/OPaparazzi-CN/wiki)：对整个社区的介绍
 - [PaparazziUAV 使用](https://github.com/Dino-China/OPaparazzi-CN/wiki/PaparazziUAV-%E4%BD%BF%E7%94%A8)：中文Wiki和使用教程
-- [PaparazziUAV 源码]：计划安排
-- [PaparazziUAV 改进]：*水平有限，这部分暂缺*
-- [PaparazziUAV 论坛]：论坛精华帖
+- [PaparazziUAV 源码](https://github.com/Dino-China/OPaparazzi-CN/wiki/PaparazziUAV-%E6%BA%90%E7%A0%81)：计划安排
+- [PaparazziUAV 改进](https://github.com/Dino-China/OPaparazzi-CN/wiki/PaparazziUAV-%E6%94%B9%E8%BF%9B)：*水平有限，这部分暂缺*
+- [PaparazziUAV 论坛](https://github.com/Dino-China/OPaparazzi-CN/wiki/PaparazziUAV-%E8%AE%BA%E5%9D%9B)：论坛精华帖
