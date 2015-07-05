@@ -24,11 +24,11 @@
 Q=@
 
 ifeq ($(Q),@)
-# ÉèÖÃ»·¾³±äÁ¿£¬²»Êä³öÄ¿Â¼
+# è®¾ç½®ç¯å¢ƒå˜é‡ï¼Œä¸è¾“å‡ºç›®å½•
 MAKEFLAGS += --no-print-directory
 endif
 
-# ½«µ±Ç°µÄÂ·¾¶¸³Öµ¸ø PAPARAZZI_SRC£¬Ò²¾ÍÊÇ~/paparazzi
+# å°†å½“å‰çš„è·¯å¾„èµ‹å€¼ç»™ PAPARAZZI_SRCï¼Œä¹Ÿå°±æ˜¯~/paparazzi
 PAPARAZZI_SRC ?= $(shell pwd)
 empty=
 space=$(empty) $(empty)
@@ -43,7 +43,7 @@ endif
 export PAPARAZZI_SRC
 export PAPARAZZI_HOME
 
-# ±¾µØÃüÁîµÄ¾ø¶ÔÂ·¾¶
+# æœ¬åœ°å‘½ä»¤çš„ç»å¯¹è·¯å¾„
 OCAML=$(shell which ocaml)
 OCAMLRUN=$(shell which ocamlrun)
 BUILD_DATETIME:=$(shell date +%Y%m%d-%H%M%S)
@@ -84,7 +84,7 @@ SUBDIRS = $(PPRZCENTER) $(MISC) $(LOGALIZER)
 
 #
 # xml files used as input for header generation
-# ×¢ÒâÏÂÃæÖ»ÊÇ±äÁ¿¶¨Òå£¬²¢Ã»ÓĞÊµ¼ÊÉú³É
+# æ³¨æ„ä¸‹é¢åªæ˜¯å˜é‡å®šä¹‰ï¼Œå¹¶æ²¡æœ‰å®é™…ç”Ÿæˆ
 #
 MESSAGES_XML = $(CONF)/messages.xml
 ABI_XML = $(CONF)/abi.xml
@@ -120,8 +120,8 @@ print_build_version:
 	@echo "Last build Paparazzi version" $(shell cat $(PAPARAZZI_HOME)/var/build_version.txt 2> /dev/null || echo UNKNOWN)
 	@echo "------------------------------------------------------------"
 
-# $(Q)°´ÕÕÉÏÃæµÄ¶¨Òå¾ÍÊÇ@£¬±íÊ¾¾²Ì¬±àÒë£¬²»Êä³öÃüÁî£¬Ö»Êä³ö½á¹û
-# > ÎÄ¼şÉú³ÉÁ÷
+# $(Q)æŒ‰ç…§ä¸Šé¢çš„å®šä¹‰å°±æ˜¯@ï¼Œè¡¨ç¤ºé™æ€ç¼–è¯‘ï¼Œä¸è¾“å‡ºå‘½ä»¤ï¼Œåªè¾“å‡ºç»“æœ
+# > æ–‡ä»¶ç”Ÿæˆæµ
 # $@ -- the target file
 # $^ -- All rely on documents
 # $< -- The first depend on the file
@@ -200,7 +200,7 @@ $(MESSAGES_H) : $(MESSAGES_XML) generators
 	$(Q)test -d $(STATICINCLUDE) || mkdir -p $(STATICINCLUDE)
 	@echo GENERATE $@
 	$(eval $@_TMP := $(shell $(MKTEMP)))
-	# Ç°ÃæµÄ¸³Öµ£¬²»ÖªµÀºóÃæµÄtelemetryÊÇÊ²Ã´????????????????????????????
+	# å‰é¢çš„èµ‹å€¼ï¼Œä¸çŸ¥é“åé¢çš„telemetryæ˜¯ä»€ä¹ˆ????????????????????????????
 	$(Q)PAPARAZZI_SRC=$(PAPARAZZI_SRC) PAPARAZZI_HOME=$(PAPARAZZI_HOME) $(GENERATORS)/gen_messages.out $< telemetry > $($@_TMP)
 	$(Q)mv $($@_TMP) $@
 	$(Q)chmod a+r $@
@@ -290,7 +290,7 @@ dox:
 	@echo "Done. Open doc/generated/html/index.html in your browser to view it."
 
 #
-# Cleaning
+# Cleaning å‘½ä»¤
 #
 
 clean:
