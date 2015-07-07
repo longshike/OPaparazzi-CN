@@ -34,7 +34,7 @@
 /* mode */
 uint8_t v_ctl_mode;
 
-/* outer loop */
+/* outer loop */     //纵向外环回路
 float v_ctl_altitude_setpoint;
 float v_ctl_altitude_pre_climb;
 float v_ctl_altitude_pgain;
@@ -51,7 +51,7 @@ uint8_t v_ctl_auto_throttle_submode;
 #define V_CTL_AUTO_THROTTLE_DGAIN 0.
 #endif
 
-/* "auto throttle" inner loop parameters */
+/* "auto throttle" inner loop parameters */    //内环自动油门回路参数
 float v_ctl_auto_throttle_cruise_throttle;
 float v_ctl_auto_throttle_nominal_cruise_throttle;
 float v_ctl_auto_throttle_min_cruise_throttle;
@@ -69,8 +69,8 @@ float v_ctl_auto_throttle_pitch_of_vz_dgain;
 #define V_CTL_AUTO_THROTTLE_PITCH_OF_VZ_DGAIN 0.
 #endif
 
-/* agressive tuning */
-#ifdef TUNE_AGRESSIVE_CLIMB
+/* agressive tuning */   
+#ifdef TUNE_AGRESSIVE_CLIMB    //大机动爬升
 float agr_climb_throttle;
 float agr_climb_pitch;
 float agr_climb_nav_ratio;
@@ -79,7 +79,7 @@ float agr_descent_pitch;
 float agr_descent_nav_ratio;
 #endif
 
-/* "auto pitch" inner loop parameters */
+/* "auto pitch" inner loop parameters */   //自动俯仰回路参数
 float v_ctl_auto_pitch_pgain;
 float v_ctl_auto_pitch_igain;
 float v_ctl_auto_pitch_sum_err;
@@ -98,7 +98,7 @@ inline static void v_ctl_climb_auto_throttle_loop(void);
 inline static void v_ctl_climb_auto_pitch_loop(void);
 #endif
 
-#if USE_AIRSPEED
+#if USE_AIRSPEED      //如果使用空速计，则会有自动空速回路
 float v_ctl_auto_airspeed_setpoint;
 float v_ctl_auto_airspeed_controlled;
 float v_ctl_auto_airspeed_pgain;
@@ -119,12 +119,12 @@ float v_ctl_auto_groundspeed_sum_err;
 #endif
 
 
-void v_ctl_init(void)
+void v_ctl_init(void)    //纵向控制回路初始化
 {
-  /* mode */
+  /* mode */   //设定模式
   v_ctl_mode = V_CTL_MODE_MANUAL;
 
-  /* outer loop */
+  /* outer loop */   //设定外环（高度）回路参数
   v_ctl_altitude_setpoint = 0.;
   v_ctl_altitude_pre_climb = 0.;
   v_ctl_altitude_pgain = V_CTL_ALTITUDE_PGAIN;
@@ -132,7 +132,7 @@ void v_ctl_init(void)
   v_ctl_altitude_pre_climb_correction = V_CTL_ALTITUDE_PRE_CLIMB_CORRECTION;
   v_ctl_altitude_max_climb = V_CTL_ALTITUDE_MAX_CLIMB;
 
-  /* inner loops */
+  /* inner loops */  //设定内回路参数
   v_ctl_climb_setpoint = 0.;
   v_ctl_climb_mode = V_CTL_CLIMB_MODE_AUTO_THROTTLE;
   v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_STANDARD;
@@ -140,7 +140,7 @@ void v_ctl_init(void)
   v_ctl_pitch_setpoint = 0.;
   v_ctl_pitch_trim = V_CTL_PITCH_TRIM;
 
-  /* "auto throttle" inner loop parameters */
+  /* "auto throttle" inner loop parameters */   //设定自动油门回路参数
   v_ctl_auto_throttle_nominal_cruise_throttle = V_CTL_AUTO_THROTTLE_NOMINAL_CRUISE_THROTTLE;
   v_ctl_auto_throttle_min_cruise_throttle = V_CTL_AUTO_THROTTLE_MIN_CRUISE_THROTTLE;
   v_ctl_auto_throttle_max_cruise_throttle = V_CTL_AUTO_THROTTLE_MAX_CRUISE_THROTTLE;
@@ -154,13 +154,13 @@ void v_ctl_init(void)
   v_ctl_auto_throttle_pitch_of_vz_dgain = V_CTL_AUTO_THROTTLE_PITCH_OF_VZ_DGAIN;
 
 #ifdef V_CTL_AUTO_PITCH_PGAIN
-  /* "auto pitch" inner loop parameters */
+  /* "auto pitch" inner loop parameters */  //设定自动俯仰回路参数
   v_ctl_auto_pitch_pgain = V_CTL_AUTO_PITCH_PGAIN;
   v_ctl_auto_pitch_igain = V_CTL_AUTO_PITCH_IGAIN;
   v_ctl_auto_pitch_sum_err = 0.;
 #endif
 
-#if USE_AIRSPEED
+#if USE_AIRSPEED  //如果使用空速计，则设定自动空速回路参数
   v_ctl_auto_airspeed_setpoint = V_CTL_AUTO_AIRSPEED_SETPOINT;
   v_ctl_auto_airspeed_controlled = V_CTL_AUTO_AIRSPEED_SETPOINT;
   v_ctl_auto_airspeed_pgain = V_CTL_AUTO_AIRSPEED_PGAIN;
@@ -175,7 +175,7 @@ void v_ctl_init(void)
 
   v_ctl_throttle_setpoint = 0;
 
-  /*agressive tuning*/
+  /*agressive tuning*/  //设定大机动爬升参数
 #ifdef TUNE_AGRESSIVE_CLIMB
   agr_climb_throttle = AGR_CLIMB_THROTTLE;
 #undef   AGR_CLIMB_THROTTLE
@@ -202,50 +202,50 @@ void v_ctl_init(void)
  * outer loop
  * \brief Computes v_ctl_climb_setpoint and sets v_ctl_auto_throttle_submode
  */
-void v_ctl_altitude_loop(void)
+void v_ctl_altitude_loop(void)   //外环高度回路，计算出爬升设定值
 {
-  float altitude_pgain_boost = 1.0;
+  float altitude_pgain_boost = 1.0;  
 
-#if USE_AIRSPEED && defined(AGR_CLIMB)
+#if USE_AIRSPEED && defined(AGR_CLIMB)  //如果使用了空速计且定义了大机动爬升
   // Aggressive climb mode (boost gain of altitude loop)
   if (v_ctl_climb_mode == V_CTL_CLIMB_MODE_AUTO_THROTTLE) {
-    float dist = fabs(v_ctl_altitude_error);
+    float dist = fabs(v_ctl_altitude_error);  //设定高度偏差绝对值
     altitude_pgain_boost = 1.0 + (V_CTL_AUTO_AGR_CLIMB_GAIN - 1.0) * (dist - AGR_BLEND_END) /
                            (AGR_BLEND_START - AGR_BLEND_END);
-    Bound(altitude_pgain_boost, 1.0, V_CTL_AUTO_AGR_CLIMB_GAIN);
+    Bound(altitude_pgain_boost, 1.0, V_CTL_AUTO_AGR_CLIMB_GAIN);  //限幅
   }
 #endif
 
-  v_ctl_altitude_error = v_ctl_altitude_setpoint - stateGetPositionUtm_f()->alt;
+  v_ctl_altitude_error = v_ctl_altitude_setpoint - stateGetPositionUtm_f()->alt;  //计算高度偏差
   v_ctl_climb_setpoint = altitude_pgain_boost * v_ctl_altitude_pgain * v_ctl_altitude_error
-                         + v_ctl_altitude_pre_climb * v_ctl_altitude_pre_climb_correction;
-  BoundAbs(v_ctl_climb_setpoint, v_ctl_altitude_max_climb);
+                         + v_ctl_altitude_pre_climb * v_ctl_altitude_pre_climb_correction;  //设定爬升设定值，高度偏差通过比例项和前馈得到
+  BoundAbs(v_ctl_climb_setpoint, v_ctl_altitude_max_climb);  //将爬升设定值的绝对值限幅在最大爬升率之间
 
-#ifdef AGR_CLIMB
+#ifdef AGR_CLIMB   //如果定义了大机动爬升
   if (v_ctl_climb_mode == V_CTL_CLIMB_MODE_AUTO_THROTTLE) {
-    float dist = fabs(v_ctl_altitude_error);
-    if (dist < AGR_BLEND_END) {
-      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_STANDARD;
-    } else if (dist > AGR_BLEND_START) {
-      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_AGRESSIVE;
-    } else {
-      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_BLENDED;
+    float dist = fabs(v_ctl_altitude_error);  //计算高度偏差
+    if (dist < AGR_BLEND_END) {  //如果高度偏差小于10米
+      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_STANDARD;  //启用正常自动油门回路
+    } else if (dist > AGR_BLEND_START) {  //如果高度偏差大于20米
+      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_AGRESSIVE;  //启用大机动自动油门回路
+    } else {  //如果高度偏差在10米至20米之间
+      v_ctl_auto_throttle_submode = V_CTL_AUTO_THROTTLE_BLENDED;  //启用混合自动油门回路
     }
   }
 #endif
 }
 
-void v_ctl_climb_loop(void)
+void v_ctl_climb_loop(void)   //爬升回路
 {
   switch (v_ctl_climb_mode) {
     case V_CTL_CLIMB_MODE_AUTO_THROTTLE:
     default:
-      v_ctl_climb_auto_throttle_loop();
+      v_ctl_climb_auto_throttle_loop();  //自动油门回路
       break;
 #ifdef V_CTL_AUTO_PITCH_PGAIN
 #pragma message "AUTO PITCH Enabled!"
     case V_CTL_CLIMB_MODE_AUTO_PITCH:
-      v_ctl_climb_auto_pitch_loop();
+      v_ctl_climb_auto_pitch_loop();  //自动俯仰回路
       break;
 #endif
   }
@@ -256,50 +256,50 @@ void v_ctl_climb_loop(void)
  * \brief
  */
 
-#if !USE_AIRSPEED
+#if !USE_AIRSPEED  //如果没有使用空速计
 
-inline static void v_ctl_climb_auto_throttle_loop(void)
+inline static void v_ctl_climb_auto_throttle_loop(void)  //自动油门回路
 {
-  static float last_err;
+  static float last_err;  
 
   float f_throttle = 0;
-  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;
-  float d_err = err - last_err;
+  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;  //计算爬升率的偏差
+  float d_err = err - last_err;  //计算爬升率偏差的微分
   last_err = err;
   float controlled_throttle = v_ctl_auto_throttle_cruise_throttle
                               + v_ctl_auto_throttle_climb_throttle_increment * v_ctl_climb_setpoint
                               - v_ctl_auto_throttle_pgain *
                               (err + v_ctl_auto_throttle_igain * v_ctl_auto_throttle_sum_err
-                               + v_ctl_auto_throttle_dgain * d_err);
+                               + v_ctl_auto_throttle_dgain * d_err);  //计算油门控制输出，其由两个前馈（巡航油门+油门增量组成），再加上PID控制得到
 
-  /* pitch pre-command */
+  /* pitch pre-command */  //预设俯仰值
   float v_ctl_pitch_of_vz = (v_ctl_climb_setpoint + d_err * v_ctl_auto_throttle_pitch_of_vz_dgain) *
-                            v_ctl_auto_throttle_pitch_of_vz_pgain;
+                            v_ctl_auto_throttle_pitch_of_vz_pgain;  //经过PD控制得到
 
-#if defined AGR_CLIMB
+#if defined AGR_CLIMB  //如果定义了快速爬升
   switch (v_ctl_auto_throttle_submode) {
-    case V_CTL_AUTO_THROTTLE_AGRESSIVE:
+    case V_CTL_AUTO_THROTTLE_AGRESSIVE:  //如果是大机动自动油门
       if (v_ctl_climb_setpoint > 0) { /* Climbing */
-        f_throttle =  AGR_CLIMB_THROTTLE;
-        v_ctl_pitch_setpoint = AGR_CLIMB_PITCH;
+        f_throttle =  AGR_CLIMB_THROTTLE;  //设定爬升油门，改值由配置文件生成
+        v_ctl_pitch_setpoint = AGR_CLIMB_PITCH;  //设定爬升时的俯仰值，改值由配置文件生成
       } else { /* Going down */
-        f_throttle =  AGR_DESCENT_THROTTLE;
-        v_ctl_pitch_setpoint = AGR_DESCENT_PITCH;
+        f_throttle =  AGR_DESCENT_THROTTLE;  //设定下沉率油门，该值由配置文件生成
+        v_ctl_pitch_setpoint = AGR_DESCENT_PITCH;  //设定下沉时的俯仰值，改值由配置文件生成
       }
       break;
 
-    case V_CTL_AUTO_THROTTLE_BLENDED: {
+    case V_CTL_AUTO_THROTTLE_BLENDED: {  //如果是混合自动油门回路
       float ratio = (fabs(v_ctl_altitude_error) - AGR_BLEND_END)
-                    / (AGR_BLEND_START - AGR_BLEND_END);
-      f_throttle = (1 - ratio) * controlled_throttle;
-      v_ctl_pitch_setpoint = (1 - ratio) * (v_ctl_pitch_of_vz + v_ctl_pitch_trim);
-      v_ctl_auto_throttle_sum_err += (1 - ratio) * err;
-      BoundAbs(v_ctl_auto_throttle_sum_err, V_CTL_AUTO_THROTTLE_MAX_SUM_ERR);
+                    / (AGR_BLEND_START - AGR_BLEND_END);  //计算比率
+      f_throttle = (1 - ratio) * controlled_throttle;  //由比率来计算油门值
+      v_ctl_pitch_setpoint = (1 - ratio) * (v_ctl_pitch_of_vz + v_ctl_pitch_trim);  //由比率来计算俯仰设定值
+      v_ctl_auto_throttle_sum_err += (1 - ratio) * err;  //计算油门误差积分
+      BoundAbs(v_ctl_auto_throttle_sum_err, V_CTL_AUTO_THROTTLE_MAX_SUM_ERR);  //将油门误差积分限幅
       /* positive error -> too low */
-      if (v_ctl_altitude_error > 0) {
+      if (v_ctl_altitude_error > 0) {  //如果高度偏差大于0
         f_throttle +=  ratio * AGR_CLIMB_THROTTLE;
         v_ctl_pitch_setpoint += ratio * AGR_CLIMB_PITCH;
-      } else {
+      } else {  //如果高度偏差小于0
         f_throttle += ratio * AGR_DESCENT_THROTTLE;
         v_ctl_pitch_setpoint += ratio * AGR_DESCENT_PITCH;
       }
@@ -309,67 +309,67 @@ inline static void v_ctl_climb_auto_throttle_loop(void)
     case V_CTL_AUTO_THROTTLE_STANDARD:
     default:
 #endif
-      f_throttle = controlled_throttle;
-      v_ctl_auto_throttle_sum_err += err;
-      BoundAbs(v_ctl_auto_throttle_sum_err, V_CTL_AUTO_THROTTLE_MAX_SUM_ERR);
-      v_ctl_pitch_setpoint = v_ctl_pitch_of_vz + v_ctl_pitch_trim + nav_pitch;
+      f_throttle = controlled_throttle;  //计算油门输出值
+      v_ctl_auto_throttle_sum_err += err;  //计算油门误差积分
+      BoundAbs(v_ctl_auto_throttle_sum_err, V_CTL_AUTO_THROTTLE_MAX_SUM_ERR);  //将油门误差积分限幅
+      v_ctl_pitch_setpoint = v_ctl_pitch_of_vz + v_ctl_pitch_trim + nav_pitch;  //计算俯仰设定值
 #if defined AGR_CLIMB
       break;
   } /* switch submode */
 #endif
 
-  v_ctl_throttle_setpoint = TRIM_UPPRZ(f_throttle * MAX_PPRZ);
+  v_ctl_throttle_setpoint = TRIM_UPPRZ(f_throttle * MAX_PPRZ);  //将油门设定值进行转化，转化至0-9600之间的数
 }
 
-#else // USE_AIRSPEED
+#else // USE_AIRSPEED  //如果使用了空速计
 
-inline static void v_ctl_climb_auto_throttle_loop(void)
+inline static void v_ctl_climb_auto_throttle_loop(void)  //自动油门回路
 {
   float f_throttle = 0;
   float controlled_throttle;
   float v_ctl_pitch_of_vz;
 
-  // Limit rate of change of climb setpoint (to ensure that airspeed loop can catch-up)
-  static float v_ctl_climb_setpoint_last = 0;
-  float diff_climb = v_ctl_climb_setpoint - v_ctl_climb_setpoint_last;
-  Bound(diff_climb, -V_CTL_AUTO_CLIMB_LIMIT, V_CTL_AUTO_CLIMB_LIMIT);
-  v_ctl_climb_setpoint = v_ctl_climb_setpoint_last + diff_climb;
+  // Limit rate of change of climb setpoint (to ensure that airspeed loop can catch-up)  //限制爬升率变化
+  static float v_ctl_climb_setpoint_last = 0;  
+  float diff_climb = v_ctl_climb_setpoint - v_ctl_climb_setpoint_last;  //计算爬升率的偏差
+  Bound(diff_climb, -V_CTL_AUTO_CLIMB_LIMIT, V_CTL_AUTO_CLIMB_LIMIT);  //将爬升率的偏差进行限幅
+  v_ctl_climb_setpoint = v_ctl_climb_setpoint_last + diff_climb;  //
   v_ctl_climb_setpoint_last = v_ctl_climb_setpoint;
 
   // Pitch control (input: rate of climb error, output: pitch setpoint)
-  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;
-  v_ctl_auto_pitch_sum_err += err;
-  BoundAbs(v_ctl_auto_pitch_sum_err, V_CTL_AUTO_PITCH_MAX_SUM_ERR);
+  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;  //计算爬升率偏差
+  v_ctl_auto_pitch_sum_err += err;  //计算俯仰误差积分
+  BoundAbs(v_ctl_auto_pitch_sum_err, V_CTL_AUTO_PITCH_MAX_SUM_ERR);  //进行俯仰误差积分限幅
   v_ctl_pitch_of_vz = -v_ctl_auto_pitch_pgain *
-                      (err + v_ctl_auto_pitch_igain * v_ctl_auto_pitch_sum_err);
+                      (err + v_ctl_auto_pitch_igain * v_ctl_auto_pitch_sum_err);  //计算俯仰设定值，PI控制
 
-  // Ground speed control loop (input: groundspeed error, output: airspeed controlled)
-  float err_groundspeed = (v_ctl_auto_groundspeed_setpoint - *stateGetHorizontalSpeedNorm_f());
-  v_ctl_auto_groundspeed_sum_err += err_groundspeed;
-  BoundAbs(v_ctl_auto_groundspeed_sum_err, V_CTL_AUTO_GROUNDSPEED_MAX_SUM_ERR);
+  // Ground speed control loop (input: groundspeed error, output: airspeed controlled)  //地速控制回路 （输入为地速偏差，输出为空速控制值）
+  float err_groundspeed = (v_ctl_auto_groundspeed_setpoint - *stateGetHorizontalSpeedNorm_f());   //计算地速偏差
+  v_ctl_auto_groundspeed_sum_err += err_groundspeed;  //计算地速误差积分
+  BoundAbs(v_ctl_auto_groundspeed_sum_err, V_CTL_AUTO_GROUNDSPEED_MAX_SUM_ERR);  //进行地速误差积分限幅
   v_ctl_auto_airspeed_controlled = (err_groundspeed + v_ctl_auto_groundspeed_sum_err * v_ctl_auto_groundspeed_igain) *
-                                   v_ctl_auto_groundspeed_pgain;
+                                   v_ctl_auto_groundspeed_pgain;  //计算空速控制值，为PI控制
 
   // Do not allow controlled airspeed below the setpoint
-  if (v_ctl_auto_airspeed_controlled < v_ctl_auto_airspeed_setpoint) {
+  if (v_ctl_auto_airspeed_controlled < v_ctl_auto_airspeed_setpoint) {  //如果空速控制值小于空速设定值
     v_ctl_auto_airspeed_controlled = v_ctl_auto_airspeed_setpoint;
     v_ctl_auto_groundspeed_sum_err = v_ctl_auto_airspeed_controlled / (v_ctl_auto_groundspeed_pgain *
-                                     v_ctl_auto_groundspeed_igain); // reset integrator of ground speed loop
+                                     v_ctl_auto_groundspeed_igain); // reset integrator of ground speed loop  重置地速回路的积分项
   }
 
-  // Airspeed control loop (input: airspeed controlled, output: throttle controlled)
-  float err_airspeed = (v_ctl_auto_airspeed_controlled - *stateGetAirspeed_f());
-  v_ctl_auto_airspeed_sum_err += err_airspeed;
-  BoundAbs(v_ctl_auto_airspeed_sum_err, V_CTL_AUTO_AIRSPEED_MAX_SUM_ERR);
+  // Airspeed control loop (input: airspeed controlled, output: throttle controlled)  空速控制回路 （输入为空速控制值，输出为油门控制值）
+  float err_airspeed = (v_ctl_auto_airspeed_controlled - *stateGetAirspeed_f());  //计算空速误差
+  v_ctl_auto_airspeed_sum_err += err_airspeed;  //计算空速误差积分
+  BoundAbs(v_ctl_auto_airspeed_sum_err, V_CTL_AUTO_AIRSPEED_MAX_SUM_ERR);  //进行空速误差积分限幅
   controlled_throttle = (err_airspeed + v_ctl_auto_airspeed_sum_err * v_ctl_auto_airspeed_igain) *
-                        v_ctl_auto_airspeed_pgain;
+                        v_ctl_auto_airspeed_pgain;  //计算油门控制值，PI控制
 
   // Done, set outputs
-  Bound(controlled_throttle, 0, v_ctl_auto_throttle_max_cruise_throttle);
-  f_throttle = controlled_throttle;
-  v_ctl_pitch_setpoint = v_ctl_pitch_of_vz + v_ctl_pitch_trim;
-  v_ctl_throttle_setpoint = TRIM_UPPRZ(f_throttle * MAX_PPRZ);
-  Bound(v_ctl_pitch_setpoint, V_CTL_AUTO_PITCH_MIN_PITCH, V_CTL_AUTO_PITCH_MAX_PITCH);
+  Bound(controlled_throttle, 0, v_ctl_auto_throttle_max_cruise_throttle);  //对油门控制进行限幅，不超过最大巡航油门
+  f_throttle = controlled_throttle;  //设定油门值
+  v_ctl_pitch_setpoint = v_ctl_pitch_of_vz + v_ctl_pitch_trim;  //设定俯仰值
+  v_ctl_throttle_setpoint = TRIM_UPPRZ(f_throttle * MAX_PPRZ);  //将油门设定值进行转化，转化至0-9600之间的数
+  Bound(v_ctl_pitch_setpoint, V_CTL_AUTO_PITCH_MIN_PITCH, V_CTL_AUTO_PITCH_MAX_PITCH);  //将俯仰设定值进行限幅
 }
 
 #endif // USE_AIRSPEED
@@ -380,15 +380,15 @@ inline static void v_ctl_climb_auto_throttle_loop(void)
  * \brief computes a v_ctl_pitch_setpoint from a climb_setpoint given a fixed throttle
  */
 #ifdef V_CTL_AUTO_PITCH_PGAIN
-inline static void v_ctl_climb_auto_pitch_loop(void)
+inline static void v_ctl_climb_auto_pitch_loop(void)  //自动俯仰回路
 {
-  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;
-  v_ctl_throttle_setpoint = nav_throttle_setpoint;
-  v_ctl_auto_pitch_sum_err += err;
-  BoundAbs(v_ctl_auto_pitch_sum_err, V_CTL_AUTO_PITCH_MAX_SUM_ERR);
+  float err  = stateGetSpeedEnu_f()->z - v_ctl_climb_setpoint;  //计算爬升率偏差
+  v_ctl_throttle_setpoint = nav_throttle_setpoint;  //将油门设定值设为导航油门设定值（自动模式下）
+  v_ctl_auto_pitch_sum_err += err;  //计算俯仰误差积分
+  BoundAbs(v_ctl_auto_pitch_sum_err, V_CTL_AUTO_PITCH_MAX_SUM_ERR);  //进行俯仰误差积分限幅
   v_ctl_pitch_setpoint = v_ctl_pitch_trim - v_ctl_auto_pitch_pgain *
-                         (err + v_ctl_auto_pitch_igain * v_ctl_auto_pitch_sum_err);
-  Bound(v_ctl_pitch_setpoint, V_CTL_AUTO_PITCH_MIN_PITCH, V_CTL_AUTO_PITCH_MAX_PITCH);
+                         (err + v_ctl_auto_pitch_igain * v_ctl_auto_pitch_sum_err);  //计算俯仰设定值，PI控制，配平值默认为零
+  Bound(v_ctl_pitch_setpoint, V_CTL_AUTO_PITCH_MIN_PITCH, V_CTL_AUTO_PITCH_MAX_PITCH);  //限幅
 }
 #endif
 
@@ -399,12 +399,12 @@ inline static void v_ctl_climb_auto_pitch_loop(void)
 #ifndef V_CTL_THROTTLE_SLEW
 #define V_CTL_THROTTLE_SLEW 1.
 #endif
-/** \brief Computes slewed throttle from throttle setpoint
+/** \brief Computes slewed throttle from throttle setpoint  //计算侧滑油门
     called at 20Hz
  */
-void v_ctl_throttle_slew(void)
+void v_ctl_throttle_slew(void)  //侧滑油门
 {
-  pprz_t diff_throttle = v_ctl_throttle_setpoint - v_ctl_throttle_slewed;
-  BoundAbs(diff_throttle, TRIM_PPRZ(V_CTL_THROTTLE_SLEW * MAX_PPRZ));
-  v_ctl_throttle_slewed += diff_throttle;
+  pprz_t diff_throttle = v_ctl_throttle_setpoint - v_ctl_throttle_slewed; //计算油门偏差
+  BoundAbs(diff_throttle, TRIM_PPRZ(V_CTL_THROTTLE_SLEW * MAX_PPRZ));  //将油门偏差设置到0至9600之间的数
+  v_ctl_throttle_slewed += diff_throttle;  //计算出侧滑油门
 }
